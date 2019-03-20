@@ -128,9 +128,11 @@ Proof.
   intros id1 id2.
   intros H1 H2.
   destruct id1 as [n1]. destruct id2 as [n2].
-  assert (n1 > n2) as HR. { inversion H1. auto. }
   assert (n1 < n2) as HL. { inversion H2. auto. }
-  intuition.
+  assert (n2 < n1) as HR. { inversion H1. auto. }
+  remember (Nat.lt_asymm n1 n2) as P.
+  contradict HR.
+  apply (P HL).
 Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
@@ -140,8 +142,10 @@ Proof.
   intros H1 H2.
   destruct id1 as [n1]. destruct id2 as [n2].
   assert (n2 <= n1) as HR. { inversion H1. auto. }
-  assert (n2 > n1) as HL. { inversion H2. auto. }
-  intuition.
+  assert (n1 < n2) as HL. { inversion H2. auto. }
+  remember (le_not_lt n2 n1) as P.
+  contradict HL.
+  apply (P HR).
 Qed.
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
@@ -181,7 +185,10 @@ Proof.
   intros id1 id2.
   destruct id1 as [n1]. destruct id2 as [n2].
   intro E. intro G.
-  assert (n1 = n2) as EN. { inversion E. auto. }
-  assert (n1 > n2) as GN. { inversion G. auto. }
-  intuition.
+  assert (n2 = n1) as EN. { inversion E. auto. }
+  assert (n2 < n1) as GN. { inversion G. auto. }
+  remember (le_not_lt n1 n2) as P.
+  contradict GN.
+  assert (n1 <= n2) as LE. { rewrite -> EN. apply (le_n n1). }
+  apply (P LE).
 Qed.
