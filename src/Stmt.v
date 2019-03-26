@@ -100,6 +100,9 @@ Proof.
   tauto.
 Qed.
 
+Ltac eq_by_2impl impl :=
+  apply bs_2impl_eq; apply impl; try assumption; try (apply bs_eq_symm; assumption).
+
 Ltac seq_inversion :=
   match goal with
     H: _ == _ ;; _ ==> _ |- _ => inversion_clear H
@@ -185,10 +188,8 @@ Module SmokeTest.
   Lemma while_eq (e : expr) (s1 s2 : stmt)
         (EQ : s1 ~~~ s2) :
     WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-  Proof. 
-    remember (while_impl e s1 s2 EQ) as LR.
-    remember (while_impl e s2 s1 (bs_eq_symm s1 s2 EQ)) as RL.
-    apply bs_2impl_eq; assumption.
+  Proof.
+    eq_by_2impl while_impl.
   Qed.
   
   (* Loops with the constant true condition don't terminate *)
@@ -243,9 +244,7 @@ Lemma eq_congruence_cond_else
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   COND e THEN s  ELSE s1 END ~~~ COND e THEN s  ELSE s2 END.
 Proof. 
-  remember (impl_congruence_cond_else e s s1 s2 EQ) as LR.
-  remember (impl_congruence_cond_else e s s2 s1 (bs_eq_symm s1 s2 EQ)) as RL.
-  apply bs_2impl_eq; assumption.
+  eq_by_2impl impl_congruence_cond_else.
 Qed.
 
 Lemma impl_congruence_cond_then
@@ -264,9 +263,7 @@ Lemma eq_congruence_cond_then
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   COND e THEN s1 ELSE s END ~~~ COND e THEN s2 ELSE s END.
 Proof. 
-  remember (impl_congruence_cond_then e s s1 s2 EQ) as LR.
-  remember (impl_congruence_cond_then e s s2 s1 (bs_eq_symm s1 s2 EQ)) as RL.
-  apply bs_2impl_eq; assumption.
+  eq_by_2impl impl_congruence_cond_then.
 Qed.
 
 Lemma impl_congruence_while
@@ -286,9 +283,7 @@ Lemma eq_congruence_while
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   WHILE e DO s1 END ~~~ WHILE e DO s2 END.
 Proof. 
-  remember (impl_congruence_while e s s1 s2 EQ) as LR.
-  remember (impl_congruence_while e s s2 s1 (bs_eq_symm s1 s2 EQ)) as RL.
-  apply bs_2impl_eq; assumption.
+  eq_by_2impl impl_congruence_while.
 Qed.
 
 Lemma eq_congruence (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
