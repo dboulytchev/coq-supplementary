@@ -677,39 +677,134 @@ Inductive cps_int : cont -> cont -> conf -> conf -> Prop :=
     k |- (st, i, o) -- !(WHILE e DO s END) --> c'
 where "k |- c1 -- s --> c2" := (cps_int k s c1 c2).
 
+Lemma bs_if_seq_assimilation (s0 s1 s2 : stmt) (e: expr):
+   ((COND e THEN s1 ELSE s2 END);; s0) ~~~
+   (COND e THEN s1;; s0 ELSE s2;; s0 END).
+Proof.
+  split. 
+  - intro H. inversion_clear H. inversion_clear STEP1.
+    + apply bs_If_True; try assumption. apply bs_Seq with (c' := c'0); assumption.
+    + apply bs_If_False; try assumption. apply bs_Seq with (c' := c'0); assumption.
+  - intro H. inversion_clear H; inversion_clear STEP.
+    + apply bs_Seq with (c' := c'0). apply bs_If_True. all: assumption.
+    + apply bs_Seq with (c' := c'0). apply bs_If_False. all: assumption. 
+Qed.
+
+Lemma bs_while_seq_extraction (s: stmt) (e: expr) (st: state Z) (i o: list Z) (VALUE: [| e |] st => Z.one):
+  forall (c': conf), ((st, i, o) == s;; (WHILE e DO s END) ==> c') -> 
+                     ((st, i, o) == WHILE e DO s END ==> c').
+Proof.
+  intros c' H.
+  inversion_clear H.
+  apply bs_While_True with (c' := c'0); assumption.
+Qed.
+
+Ltac specialize_and_eq IH S := specialize (IH S Logic.eq_refl).
+
 Ltac cps_bs_gen_helper k H HH :=
   destruct k eqn:K; subst; inversion H; subst;
   [inversion EXEC; subst | eapply bs_Seq; eauto];
   apply HH; auto.
-    
+
 Lemma cps_bs_gen (S : stmt) (c c' : conf) (S1 k : cont)
       (EXEC : k |- c -- S1 --> c') (DEF : !S = S1 @ k):
   c == S ==> c'.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent S. 
+  induction EXEC; intros.
+  - discriminate.
+  - cps_bs_gen_helper k DEF bs_Skip.
+  - cps_bs_gen_helper k DEF bs_Assign.
+  - cps_bs_gen_helper k DEF bs_Read.
+  - cps_bs_gen_helper k DEF bs_Write.
+  - destruct k.
+    + apply IHEXEC. assumption.
+    + unfold Kapp in DEF. unfold Kapp in IHEXEC.
+      specialize (IHEXEC (s1;; s2;; s)).
+      inversion_clear DEF. apply SmokeTest.seq_assoc.
+      apply IHEXEC. reflexivity.
+  - destruct k; unfold Kapp in DEF; inversion_clear DEF.
+    + apply bs_If_True; try assumption. apply IHEXEC. auto.
+    + unfold Kapp in IHEXEC. specialize (IHEXEC (s1;; s0)).
+      apply bs_if_seq_assimilation. apply bs_If_True; auto.
+  - destruct k; unfold Kapp in DEF; inversion_clear DEF.
+    + apply bs_If_False; try assumption. apply IHEXEC. auto.
+    + unfold Kapp in IHEXEC. specialize (IHEXEC (s2;; s0)).
+      apply bs_if_seq_assimilation. apply bs_If_False; auto.
+  - destruct k; unfold Kapp in DEF; unfold Kapp in IHEXEC; inversion_clear DEF.
+    + apply bs_while_seq_extraction; try assumption. apply IHEXEC. reflexivity.
+    + specialize_and_eq IHEXEC (s;; (WHILE e DO s END);; s0).
+      apply SmokeTest.seq_assoc in IHEXEC. inversion_clear IHEXEC.
+      apply bs_Seq with (c' := c'0). apply bs_while_seq_extraction. 
+      all: assumption.
+  - destruct k; unfold Kapp in DEF; unfold Kapp in IHEXEC; inversion_clear DEF.
+    + inversion_clear EXEC. apply bs_While_False. assumption.
+    + specialize_and_eq IHEXEC s0. apply bs_Seq with (c' := (st, i, o)).
+      * apply bs_While_False. assumption.
+      * assumption.
+Qed.
 
 Lemma cps_bs (s1 s2 : stmt) (c c' : conf) (STEP : !s2 |- c -- !s1 --> c'):
    c == s1 ;; s2 ==> c'.
-Proof. admit. Admitted.
+Proof. 
+  apply cps_bs_gen with (S := s1;; s2) in STEP; auto.
+Qed.
 
 Lemma cps_int_to_bs_int (c c' : conf) (s : stmt)
       (STEP : KEmpty |- c -- !(s) --> c') : 
   c == s ==> c'.
-Proof. admit. Admitted.
+Proof.
+  eapply cps_bs_gen. { apply STEP. } { unfold Kapp. reflexivity. }
+Qed.
 
 Lemma cps_cont_to_seq c1 c2 k1 k2 k3
       (STEP : (k2 @ k3 |- c1 -- k1 --> c2)) :
   (k3 |- c1 -- k1 @ k2 --> c2).
-Proof. admit. Admitted.
+Proof.
+  destruct k1; destruct k2; destruct k3; auto; unfold Kapp; unfold Kapp in STEP.
+  - inversion_clear STEP.
+  - inversion_clear STEP.
+  - econstructor. unfold Kapp. assumption.
+  - econstructor. unfold Kapp. assumption.
+Qed. 
 
 Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
       (EXEC : c1 == s ==> c2)
       (STEP : k |- c2 -- !(SKIP) --> c3) :
   k |- c1 -- !(s) --> c3.
-Proof. admit. Admitted.
+Proof.
+  inversion_clear STEP.
+  generalize dependent c3.
+  generalize dependent k.
+  induction EXEC; intros.
+  - econstructor. assumption.
+  - econstructor. { apply VAL. } { assumption. }
+  - econstructor. assumption.
+  - econstructor. { apply VAL. } { assumption. }
+  - econstructor. 
+    specialize (IHEXEC2 k c3 CSTEP).
+    assert (KEmpty |- c' -- !(s2) @ k --> c3) as P. 
+      { apply cps_cont_to_seq. unfold Kapp. destruct k; assumption. }
+    apply (IHEXEC1 (!s2 @ k) c3 P).
+  - destruct k;
+      apply cps_If_True; try assumption; apply IHEXEC; assumption.
+  - destruct k;
+      apply cps_If_False; try assumption; apply IHEXEC; assumption.
+  - apply cps_While_True; try assumption.
+    apply IHEXEC1. apply cps_cont_to_seq. apply IHEXEC2; unfold Kapp; destruct k; auto.
+  - apply cps_While_False; assumption.
+Qed.
 
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
-Proof. admit. Admitted.
+Proof.
+  induction EXEC; try (econstructor; eauto; constructor).
+  - econstructor. unfold Kapp. apply bs_int_to_cps_int_cont with (c2 := c').
+    + assumption. + econstructor. assumption.
+  - apply cps_While_True; try assumption. unfold Kapp.
+    apply bs_int_to_cps_int_cont with (c2 := c').
+    + assumption. + econstructor. assumption.
+Qed.
 
 (* Lemma cps_stmt_assoc s1 s2 s3 s (c c' : conf) : *)
 (*   (! (s1 ;; s2 ;; s3)) |- c -- ! (s) --> (c') <-> *)
