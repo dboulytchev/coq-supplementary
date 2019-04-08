@@ -806,6 +806,18 @@ Proof.
     + assumption. + econstructor. assumption.
 Qed.
 
+Lemma bs_cps_eq (s : stmt) (c c' : conf):
+  (KEmpty |- c -- !s --> c') <-> (c == s ==> c').
+Proof.
+  split.
+  - intro H. 
+    apply cps_bs_gen with (k := KEmpty) (S1 := !s); auto.
+  - intro H.
+    destruct c as [p o]. destruct p as [st i].
+    apply bs_int_to_cps_int in H.
+    assumption.
+Qed.
+
 (* Lemma cps_stmt_assoc s1 s2 s3 s (c c' : conf) : *)
 (*   (! (s1 ;; s2 ;; s3)) |- c -- ! (s) --> (c') <-> *)
 (*   (! ((s1 ;; s2) ;; s3)) |- c -- ! (s) --> (c'). *)
