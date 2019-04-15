@@ -8,7 +8,6 @@ Require Export State.
 Require Export Expr.
 
 From hahn Require Import HahnBase.
-Require Import Coq.Program.Equality.
 
 (* AST for statements *)
 Inductive stmt : Type :=
@@ -153,10 +152,14 @@ Module SmokeTest.
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
   Proof.
-    dependent induction EXE.
-    - specialize (IHEXE2 e s st i o). apply IHEXE2. reflexivity. reflexivity.
-    - assumption.
+    remember (WHILE e DO s END) as tS eqn:HeqtS.
+    remember (st, i, o) as c' eqn:Heqc'.
+    induction EXE; try discriminate; intros.
+    - inversion HeqtS. subst. auto.
+    - inversion HeqtS. inversion Heqc'. subst. assumption.
   Qed.
+
+  Print Assumptions while_false.
   
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
@@ -178,9 +181,9 @@ Module SmokeTest.
     unfold bs_implies.
     unfold bs_equivalent in EQ.
     intros c c'.
-    intro W. dependent induction W.
-    - specialize (IHW2 e s1 EQ). apply bs_While_True with (c' := c').
-        { assumption. } { apply EQ. assumption. } { apply IHW2. reflexivity. }
+    intro W. remember (WHILE e DO s1 END) as tS eqn:HeqtS.
+    induction W; try discriminate; inversion HeqtS; subst.
+    - eapply bs_While_True; auto. apply EQ. assumption.
     - apply bs_While_False. assumption.
   Qed.
   
@@ -198,8 +201,9 @@ Module SmokeTest.
     ~ c == WHILE (Nat 1) DO s END ==> c'.
   Proof. 
     unfold not.
-    intro W. dependent induction W.
-    - specialize (IHW2 s). apply IHW2. reflexivity.
+    intro W. remember (WHILE Nat 1 DO s END) as tS eqn:HeqtS. 
+    induction W; try discriminate; inversion HeqtS; subst.
+    - eapply IHW2. assumption.
     - inversion CVAL.
   Qed.
   
@@ -273,9 +277,9 @@ Proof.
   unfold bs_equivalent.
   unfold bs_equivalent in EQ.
   intros c c'.
-  intro W. dependent induction W.
-  - specialize (IHW2 e s1 EQ). apply bs_While_True with (c' := c').
-    { assumption. } { apply EQ. assumption. } { apply IHW2. reflexivity. }
+  intro W. remember (WHILE e DO s1 END) as tS eqn:HeqtS.
+  induction W; try discriminate; inversion HeqtS; subst.
+  - eapply bs_While_True; auto. apply EQ. assumption.
   - apply bs_While_False. assumption.
 Qed.
 
@@ -348,18 +352,17 @@ Proof.
     + eval_zero_not_one.
     + specialize (IHs2 c2 c1 (s, i, o) STEP STEP0). auto.
   
-  - dependent induction EXEC1.
+  - remember (WHILE e DO s END) as tS eqn:HeqtS.
+    induction EXEC1; try discriminate; inversion HeqtS; subst.
     + clear IHEXEC1_1.
-      specialize (IHEXEC1_2 s IHs e).
-      apply IHEXEC1_2.
-      * reflexivity.
-      * assert (c'' = c2).
-        { inversion_clear EXEC2.
-          - apply IHEXEC1_2. reflexivity.
-            assert (c'0 = c'). { apply (IHs c' c'0 (st, i, o)); assumption. }
-            subst. assumption.
-          - eval_zero_not_one. }
-        subst. assumption.
+      eapply IHEXEC1_2; auto.
+      assert (c'' = c2).
+      { inversion_clear EXEC2.
+        - apply IHEXEC1_2. reflexivity.
+          assert (c'0 = c'). { apply (IHs c' c'0 (st, i, o)); assumption. }
+          subst. assumption.
+        - eval_zero_not_one. }
+      subst. assumption.
     + inversion_clear EXEC2.
       * eval_zero_not_one.
       * reflexivity.
@@ -581,10 +584,11 @@ Qed.
         * generalize dependent o.
           generalize dependent i.
           generalize dependent st.
-          dependent induction WSTEP; intros.
+          remember (WHILE e DO s END) as tS eqn:HeqtS.
+          induction WSTEP; try discriminate; inversion HeqtS; subst; intros.
           { clear IHWSTEP1.
             assert (WHILE e DO s END = WHILE e DO s END) as TEQ. { reflexivity. }
-            specialize (IHWSTEP2 s IHs e TEQ st CVAL i o WSTEP1).
+            specialize (IHWSTEP2 TEQ st CVAL i o WSTEP1).
             apply ss_int_Step with (s' := (COND e THEN s ;; WHILE e DO s END ELSE SKIP END)) (c' := (st0, i0, o0)).
             apply ss_While.
             apply ss_int_Step with (s' := s;; (WHILE e DO s END)) (c' := (st0, i0, o0)).
