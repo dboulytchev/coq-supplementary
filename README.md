@@ -12,6 +12,7 @@ This is a supplementary repository for a one-term course on formal semantics. Th
 - `State.v` --- definition of states and some operations for states;
 - `Expr.v` --- pure strict expressions with big-step evaluation definition and equivalences;
 - `Stmt.v` --- a While-like language with big-step/small-step/CPS semantics, equivalences and properties.
+- `StackMachine.v` --- a simple stack machine and a compiler for a straight-line programs.
 - Some other things in progress.
 
 # Installation
