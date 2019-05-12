@@ -613,31 +613,134 @@ Ltac cps_bs_gen_helper k H HH :=
 Lemma cps_bs_gen (S : stmt) (c c' : conf) (S1 k : cont)
       (EXEC : k |- c -- S1 --> c') (DEF : !S = S1 @ k):
   c == S ==> c'.
-Proof. admit. Admitted.
+Proof.
+  pose proof SmokeTest.seq_assoc as Assoc.
+  unfold bs_equivalent in Assoc.
+
+  generalize dependent S.
+  induction EXEC; intros S Heq.
+  - inversion Heq.
+  - cps_bs_gen_helper k Heq bs_Skip.
+  - cps_bs_gen_helper k Heq bs_Assign.
+  - cps_bs_gen_helper k Heq bs_Read.
+  - cps_bs_gen_helper k Heq bs_Write.
+  - destruct k as [ | Sk]; inversion Heq; subst.
+    + apply IHEXEC. auto.
+    + apply Assoc. apply IHEXEC. auto.
+  - destruct k as [ | Sk]; inversion Heq; subst.
+    + apply bs_If_True. assumption. apply IHEXEC. auto.
+    + assert (Hexec : ((s, i, o)) == s1 ;; Sk ==> (c')). {
+        apply IHEXEC. auto.
+      }
+      inversion Hexec; subst.
+      apply bs_Seq with (c'0). apply bs_If_True.
+      assumption. assumption. assumption.
+  - destruct k as [ | Sk]; inversion Heq; subst.
+    + apply bs_If_False. assumption. apply IHEXEC. auto.
+    + assert (Hexec : ((s, i, o)) == s2 ;; Sk ==> (c')). {
+        apply IHEXEC. auto.
+      }
+      inversion Hexec; subst.
+      apply bs_Seq with (c'0). apply bs_If_False.
+      assumption. assumption. assumption.
+  - destruct k as [ | Sk]; inversion Heq; subst.
+    + assert (Hexec : ((st, i, o)) == s ;; ((WHILE e DO s END)) ==> (c')). {
+        apply IHEXEC. auto.
+      }
+      inversion Hexec; subst. apply bs_While_True with (c'0).
+      assumption. assumption. assumption.
+    + assert (Hexec : ((st, i, o)) == s ;; ((WHILE e DO s END) ;; Sk) ==> (c')). {
+        apply IHEXEC. auto.
+      }
+      inversion Hexec; subst. inversion STEP2; subst. apply bs_Seq with (c'1).
+      apply bs_While_True with (c'0).
+      assumption. assumption. assumption. assumption.
+  - cps_bs_gen_helper k Heq bs_While_False.
+Qed.
 
 Lemma cps_bs (s1 s2 : stmt) (c c' : conf) (STEP : !s2 |- c -- !s1 --> c'):
    c == s1 ;; s2 ==> c'.
-Proof. admit. Admitted.
+Proof.
+  apply cps_bs_gen with (k:=(! s2)) (S1:=(! s1)).
+  assumption. auto.
+Qed.
 
 Lemma cps_int_to_bs_int (c c' : conf) (s : stmt)
       (STEP : KEmpty |- c -- !(s) --> c') : 
   c == s ==> c'.
-Proof. admit. Admitted.
+Proof.
+  apply cps_bs_gen with (k:=KEmpty) (S1:=(! s)).
+  assumption. auto.
+Qed.
 
 Lemma cps_cont_to_seq c1 c2 k1 k2 k3
       (STEP : (k2 @ k3 |- c1 -- k1 --> c2)) :
   (k3 |- c1 -- k1 @ k2 --> c2).
-Proof. admit. Admitted.
+Proof.
+  destruct k1 as [ | Sk1]; destruct k2 as [ | Sk2].
+  - auto.
+  - inversion STEP. destruct k3; unfold Kapp in H0; inversion H0.
+  - unfold Kapp in STEP. unfold Kapp. assumption.
+  - unfold Kapp. apply cps_Seq. assumption.
+Qed.
+
+Fact k_eq k : k @ KEmpty = k.
+Proof.
+  destruct k; auto.
+Qed.
 
 Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
       (EXEC : c1 == s ==> c2)
       (STEP : k |- c2 -- !(SKIP) --> c3) :
   k |- c1 -- !(s) --> c3.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent c3.
+  generalize dependent k.
+  induction EXEC; intros k c3 STEP.
+  - assumption.
+  - apply cps_Assign with (z). assumption.
+    inversion STEP. assumption.
+  - apply cps_Read. inversion STEP. assumption.
+  - apply cps_Write with (z). assumption.
+    inversion STEP. assumption.
+  - apply cps_Seq. apply IHEXEC1.
+    apply cps_Skip. apply cps_cont_to_seq.
+    rewrite -> k_eq. apply IHEXEC2. assumption.
+  - apply cps_If_True. assumption.
+    apply IHEXEC. assumption.
+  - apply cps_If_False. assumption.
+    apply IHEXEC. assumption.
+  - apply cps_While_True. assumption. apply IHEXEC1.
+    apply cps_Skip. apply cps_cont_to_seq.
+    rewrite -> k_eq. apply IHEXEC2. assumption.
+  - apply cps_While_False. assumption.
+    inversion STEP. assumption.
+Qed.
+
+Lemma my_bs_int_to_cps_int c c' s (EXEC : c == s ==> c') :
+  KEmpty |- c -- !s --> c'.
+Proof.
+  induction EXEC.
+  - apply cps_Skip. apply cps_Empty.
+  - apply cps_Assign with (z). assumption. apply cps_Empty.
+  - apply cps_Read. apply cps_Empty.
+  - apply cps_Write with (z). assumption. apply cps_Empty.
+  - apply cps_Seq. unfold Kapp.
+    apply bs_int_to_cps_int_cont with (c').
+    assumption. apply cps_Skip. assumption.
+  - apply cps_If_True. assumption. assumption.
+  - apply cps_If_False. assumption. assumption.
+  - apply cps_While_True. assumption. unfold Kapp.
+    apply bs_int_to_cps_int_cont with (c').
+    assumption. apply cps_Skip. assumption.
+  - apply cps_While_False. assumption. apply cps_Empty.
+Qed.
 
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
-Proof. admit. Admitted.
+Proof.
+  apply (my_bs_int_to_cps_int (st, i, o) c' s) in EXEC. assumption.
+Qed.
 
 (* Lemma cps_stmt_assoc s1 s2 s3 s (c c' : conf) : *)
 (*   (! (s1 ;; s2 ;; s3)) |- c -- ! (s) --> (c') <-> *)
