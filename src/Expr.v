@@ -1,4 +1,6 @@
 From Bignums Require Export BigZ.
+Require Import List.
+Import ListNotations.
 Require Export Id.
 Require Export State.
 
@@ -264,3 +266,58 @@ Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
 Proof. admit. Admitted.
+
+Module SmallStep.
+
+  Inductive is_value : expr -> Prop :=
+    isv_Intro : forall n, is_value (Nat n).
+
+  Reserved Notation "st |- e --> e'" (at level 0).
+
+  Inductive ss_eval : state Z -> expr -> expr -> Prop :=
+    ss_Var   : forall (s   : state Z)
+                      (i   : id)
+                      (z   : Z)
+                      (VAL : s / i => z), (s |- (Var i) --> (Nat z))
+  | ss_Left  : forall (s      : state Z)
+                      (l r l' : expr)
+                      (op     : bop)
+                      (LEFT   : s |- l --> l'), (s |- (Bop op l r) --> (Bop op l' r))
+  | ss_Right : forall (s      : state Z)
+                      (l r r' : expr)
+                      (op     : bop)
+                      (RIGHT  : s |- r --> r'), (s |- (Bop op l r) --> (Bop op l r'))
+  | ss_Bop   : forall (s       : state Z)
+                      (zl zr z : Z)
+                      (op      : bop)
+                      (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))      
+  where "st |- e --> e'" := (ss_eval st e e').
+
+  Lemma no_step_from_value (e : expr) (HV: is_value e) : ~ forall s, exists e', (s |- e --> e').
+  Proof. admit. Admitted.
+  
+  Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
+  Proof. admit. Admitted.
+  
+  Lemma ss_deterministic_step (e e' : expr)
+                         (s    : state Z)
+                         (z z' : Z)
+                         (H1   : s |- e --> (Nat z))
+                         (H2   : s |- e --> e') : e' = Nat z.
+  Proof. admit. Admitted.
+
+  Lemma ss_eval_equiv (e : expr)
+                      (s : state Z)
+                      (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
+  Proof. admit. Admitted.
+
+
+(*
+  s |- e -> .... -> Nat z
+       \
+        \-> .... -> Nat z
+
+  s |- e -> .... -> e'  
+*)
+  
+End SmallStep.

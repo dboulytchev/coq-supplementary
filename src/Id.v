@@ -95,4 +95,3 @@ Proof. admit. Admitted.
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
 Proof. admit. Admitted.
-
