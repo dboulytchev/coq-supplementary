@@ -1,8 +1,7 @@
-From Bignums Require Export BigZ.
-Require Import List.
-Import ListNotations.
+Require Import BinInt ZArith_dec.
 Require Export Id.
 Require Export State.
+Require Export Lia.
 
 From hahn Require Import HahnBase.
 

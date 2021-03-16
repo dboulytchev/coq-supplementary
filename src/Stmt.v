@@ -1,8 +1,8 @@
 Require Import List.
 Import ListNotations.
-Require Import Omega.
+Require Import Lia.
 
-From Bignums Require Export BigZ.
+Require Import BinInt ZArith_dec Zorder ZArith.
 Require Export Id.
 Require Export State.
 Require Export Expr.
@@ -26,7 +26,7 @@ Notation "'COND' e 'THEN' s1 'ELSE' s2 'END'" := (If    e s1 s2) (at level 36, n
 Notation "'WHILE' e 'DO' s 'END'"             := (While e s    ) (at level 36, no associativity).
 
 (* Configuration *)
-Definition conf :=  (state Z * list Z * list Z)%type.
+Definition conf := (state Z * list Z * list Z)%type.
 
 (* Big-step evaluation relation *)
 Reserved Notation "c1 '==' s '==>' c2" (at level 0).

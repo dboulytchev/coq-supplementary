@@ -24,7 +24,7 @@ Module StraightLine.
       StraightLine (s1 ;; s2).
 
   (* Instructions *)
-  Inductive insn : Type :=
+  Inductive insn : Set :=
   | R  : insn
   | W  : insn
   | C  : Z -> insn
