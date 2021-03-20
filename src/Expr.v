@@ -174,14 +174,14 @@ where "[| e |] st => z" := (eval e st z).
 Hint Constructors eval.
 
 Module SmokeTest.
-
+            
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. admit. Admitted.
+  Proof. Admitted.
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. admit. Admitted.
+  Proof. Admitted.
 
 End SmokeTest.
 

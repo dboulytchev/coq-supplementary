@@ -1,4 +1,4 @@
-Table of Contents
+1Table of Contents
 =================
 
   * [Introduction](#introduction)
@@ -23,10 +23,9 @@ with `ocaml>=4.07.1` and `coq>=8.8.2`. From the command line:
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam remote add coq-weakmemory-local -k git https://github.com/weakmemory/local-coq-opam-archive
 opam install coq
-opam install coq-bignums
 opam install coq-hahn
 ```
-This will install coq + bignums + hahn library. You can then make the project
+This will install coq + hahn library. You can then make the project
 ```bash
 make
 ```
