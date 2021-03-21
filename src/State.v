@@ -29,30 +29,95 @@ Section S.
         (SN : st / x => n)
         (SM : st / x => m) :
     n = m.
-  Proof. admit. Admitted.
+  Proof.
+    induction SN as [| tail id'' ]; inversion SM.
+    { auto. } { exfalso. auto. }
+    { exfalso. auto. } { auto. }
+  Qed.
  
   Lemma update_eq (st : state) (x : id) (n : A) :
     st [x <- n] / x => n.
-  Proof. admit. Admitted.
+  Proof.
+    constructor.
+  Qed.
 
   Lemma update_neq (st : state) (x2 x1 : id) (n m : A)
         (NEQ : x2 <> x1) : st / x1 => m <-> st [x2 <- n] / x1 => m.
-  Proof. admit. Admitted.
+  Proof.
+    split; intro H.
+    { constructor. auto. auto. }
+    { unfold update in H. inversion H. { exfalso. auto. } { auto. } }
+  Qed.
 
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
-  Proof. admit. Admitted.
-  
+  Proof.
+    split; intro H; inversion H.
+    { constructor. }
+    { constructor. auto. apply update_neq in H6. auto. auto. }
+    { constructor. }
+    { apply update_neq. auto. apply update_neq. auto. auto. }
+  Qed.
+
   Lemma update_same (st : state) (x1 x2 : id) (n1 m : A)
         (SN : st / x1 => n1)
         (SM : st / x2 => m) :
     st [x1 <- n1] / x2 => m.
-  Proof. admit. Admitted.
+  Proof.
+    destruct (Id.id_eq_dec x1 x2).
+    { rewrite e in SN.
+      specialize (state_deterministic st x2 n1 m SN SM).
+      intro H.
+      rewrite e.
+      rewrite H.
+      constructor.
+    }
+    { apply update_neq. auto. auto. }
+  Qed.
+
+  Lemma update_binds_eq (st: state) (x: id) (n1 n2: A) :
+    st [x <- n2] / x => n1 <-> n1 = n2.
+  Proof.
+    split; intro H.
+    { inversion H. auto. exfalso. auto. }
+    { rewrite H. constructor. }
+  Qed.
   
   Lemma update_permute (st : state) (x1 x2 x3 : id) (n1 n2 m : A)
         (NEQ : x2 <> x1)
         (SM : st [x2 <- n1][x1 <- n2] / x3 => m) :
     st [x1 <- n2][x2 <- n1] / x3 => m.
-  Proof. admit. Admitted.
+  Proof.
+    destruct (Id.id_eq_dec x1 x3).
+    { rewrite e in SM.
+      apply update_binds_eq in SM.
+      rewrite e in NEQ.
+      apply update_neq.
+      auto.
+      rewrite e.
+      rewrite SM.
+      constructor.
+    }
+    { destruct (Id.id_eq_dec x2 x3).
+      { rewrite e.
+        apply update_binds_eq.
+        apply update_neq in SM.
+        rewrite e in SM.
+        apply update_binds_eq in SM.
+        auto.
+        auto.
+      }
+      { apply update_neq.
+        auto.
+        apply update_neq.
+        auto.
+        apply update_neq in SM.
+        apply update_neq in SM.
+        auto.
+        auto.
+        auto.
+      }
+    }
+  Qed.
 
 End S.
