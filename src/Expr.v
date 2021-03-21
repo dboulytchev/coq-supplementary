@@ -176,12 +176,22 @@ Hint Constructors eval.
 Module SmokeTest.
             
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. Admitted.
+  Proof.
+    constructor.
+  Qed.
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. Admitted.
+  Proof.
+    inversion HH.
+    inversion VALB.
+    replace (za * 2)%Z with (za + za)%Z.
+    constructor.
+    auto.
+    auto.
+    lia.
+  Qed.
 
 End SmokeTest.
 
@@ -193,6 +203,25 @@ Inductive V : expr -> id -> Prop :=
 | v_Bop : forall (id : id) (a b : expr) (op : bop), id ? a \/ id ? b -> id ? (Bop op a b)
 where "x ? e" := (V e x).
 
+Lemma kek (a b : expr)
+      (id : Id.id)
+      (op : bop)
+      (za zb : Z)
+      (s : state Z)
+      (ID: (id) ? (Bop op a b))
+      (IHRED1 : (id) ? (a) -> exists z' : Z, (s) / id => (z'))
+      (IHRED2 : (id) ? (b) -> exists z' : Z, (s) / id => (z'))
+      (RED1 : [|a|] s => (za)) (RED2 : [|b|] s => (zb)) :
+  exists z' : Z, (s) / id => (z').
+Proof.
+   inversion ID.
+   destruct H3.
+   apply IHRED1 in H3.
+   auto.
+   apply IHRED2 in H3.
+   auto.
+Qed.
+
 (* If an expression is defined in some state, then each its' variable is
    defined in that state
  *)
@@ -201,7 +230,12 @@ Lemma defined_expression
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. admit. Admitted.
+Proof.
+  induction RED. 
+  { inversion ID. }
+  { inversion ID. exists z. rewrite <- H1. auto. }
+  all: ( specialize (kek _ _ _ _ _ _ _ ID IHRED1 IHRED2 RED1 RED2); auto ).
+Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -209,13 +243,28 @@ Proof. admit. Admitted.
 Lemma undefined_variable (e : expr) (s : state Z) (id : id)
       (ID : id ? e) (UNDEF : forall (z : Z), ~ (s / id => z)) :
   forall (z : Z), ~ ([| e |] s => z).
-Proof. admit. Admitted.
+Proof.
+  intro z.
+  unfold not.
+  intro H.
+  specialize (defined_expression _ _ _ _ H ID).
+  intro H1.
+  destruct H1.
+  specialize (UNDEF x).
+  auto.
+Qed.
 
 (* The evaluation relation is deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
-Proof. admit. Admitted.
+Proof.
+(*  induction E1.
+  { inversion E2. auto. }
+  { inversion E2. specialize (state_deterministic _ s i z z2 VAR VAR0). auto. }
+  { inversion E2.}*)
+  admit
+Admitted.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
@@ -234,14 +283,30 @@ Definition equivalent (e1 e2 : expr) : Prop :=
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
 Lemma eq_refl (e : expr): e ~~ e.
-Proof. admit. Admitted.
+Proof.
+  unfold equivalent.
+  intuition.
+Qed.
 
 Lemma eq_symm (e1 e2 : expr) (EQ : e1 ~~ e2): e2 ~~ e1.
-Proof. admit. Admitted.
+Proof.
+  unfold equivalent.
+  unfold equivalent in EQ.
+  intros n s.
+  specialize (EQ n s). auto.
+  intuition.
+Qed.
 
 Lemma eq_trans (e1 e2 e3 : expr) (EQ1 : e1 ~~ e2) (EQ2 : e2 ~~ e3):
   e1 ~~ e3.
-Proof. admit. Admitted.
+Proof.
+  unfold equivalent.
+  unfold equivalent in EQ1, EQ2.
+  intros n s.
+  specialize (EQ1 n s).
+  specialize (EQ2 n s).
+  intuition.
+Qed.
 
 Inductive Context : Type :=
 | Hole : Context
