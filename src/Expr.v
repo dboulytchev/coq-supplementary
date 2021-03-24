@@ -203,7 +203,7 @@ Inductive V : expr -> id -> Prop :=
 | v_Bop : forall (id : id) (a b : expr) (op : bop), id ? a \/ id ? b -> id ? (Bop op a b)
 where "x ? e" := (V e x).
 
-Lemma kek (a b : expr)
+Lemma lemma (a b : expr)
       (id : Id.id)
       (op : bop)
       (za zb : Z)
@@ -234,7 +234,7 @@ Proof.
   induction RED. 
   { inversion ID. }
   { inversion ID. exists z. rewrite <- H1. auto. }
-  all: ( specialize (kek _ _ _ _ _ _ _ ID IHRED1 IHRED2 RED1 RED2); auto ).
+  all: ( specialize (lemma _ _ _ _ _ _ _ ID IHRED1 IHRED2 RED1 RED2); auto ).
 Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
