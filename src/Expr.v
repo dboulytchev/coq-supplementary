@@ -203,25 +203,6 @@ Inductive V : expr -> id -> Prop :=
 | v_Bop : forall (id : id) (a b : expr) (op : bop), id ? a \/ id ? b -> id ? (Bop op a b)
 where "x ? e" := (V e x).
 
-Lemma lemma (a b : expr)
-      (id : Id.id)
-      (op : bop)
-      (za zb : Z)
-      (s : state Z)
-      (ID: (id) ? (Bop op a b))
-      (IHRED1 : (id) ? (a) -> exists z' : Z, (s) / id => (z'))
-      (IHRED2 : (id) ? (b) -> exists z' : Z, (s) / id => (z'))
-      (RED1 : [|a|] s => (za)) (RED2 : [|b|] s => (zb)) :
-  exists z' : Z, (s) / id => (z').
-Proof.
-   inversion ID.
-   destruct H3.
-   apply IHRED1 in H3.
-   auto.
-   apply IHRED2 in H3.
-   auto.
-Qed.
-
 (* If an expression is defined in some state, then each its' variable is
    defined in that state
  *)
@@ -231,10 +212,11 @@ Lemma defined_expression
       (ID  : id ? e) :
   exists z', s / id => z'.
 Proof.
-  induction RED. 
+  generalize dependent z.
+  induction e; intros.
   { inversion ID. }
-  { inversion ID. exists z. rewrite <- H1. auto. }
-  all: ( specialize (lemma _ _ _ _ _ _ _ ID IHRED1 IHRED2 RED1 RED2); auto ).
+  { inversion ID. inversion RED. exists z. subst id. auto. }
+  { inversion_clear RED; inversion_clear ID; inversion_clear H; eauto. }
 Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
@@ -254,17 +236,31 @@ Proof.
   auto.
 Qed.
 
-(* The evaluation relation is deterministic *)
+(* The evaluation relation is   generalize FV.
+  intro krk.deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
 Proof.
-(*  induction E1.
-  { inversion E2. auto. }
-  { inversion E2. specialize (state_deterministic _ s i z z2 VAR VAR0). auto. }
-  { inversion E2.}*)
-  admit
-Admitted.
+  generalize dependent E1.
+  generalize dependent E2.
+  generalize dependent z1.
+  generalize dependent z2.
+  induction e;  intros z01 z02 E01 E02.
+  { inversion E01. inversion E02. intuition. }
+  { inversion_clear E01. inversion_clear E02. apply state_deterministic with (st:=s) (x:=i); auto. }
+  { inversion E01;
+    rewrite <- H0 in E02;
+    inversion E02;
+    specialize (IHe1 za za0);
+    specialize (IHe2 zb zb0);
+    apply IHe1 in VALA;
+    apply IHe2 in VALB;
+    try (subst za0; subst zb0; auto);
+    intuition;
+    auto.
+  }
+Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
@@ -275,8 +271,65 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
           equivalent_states s1 s2 id)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. admit. Admitted.
-
+Proof.
+  generalize dependent z.
+  induction e; intros z0 EV.
+  { inversion EV. constructor. }
+  { inversion EV. constructor. apply FV. constructor. auto. }
+  { inversion EV.
+    1-3: econstructor;
+    [ eapply IHe1;
+       [ intros;
+         eapply FV;
+         subst b;
+         econstructor;
+         eauto | eauto
+     ] |
+     eapply IHe2;
+     [ intros;
+       eapply FV;
+       subst b;
+       econstructor;
+       eauto | eauto
+     ]
+    ].
+    
+    1-14: econstructor;
+    [ eapply IHe1;
+      [ intros;
+        eapply FV;
+        subst b;
+        econstructor;
+        eauto | eauto
+      ] | 
+      eapply IHe2;
+      [ intros;
+        eapply FV;
+        subst b;
+        econstructor;
+        eauto | eauto
+      ] | eauto; eauto
+    ].
+    
+    1-2: econstructor;
+    [ eapply IHe1;
+      [ intros;
+        eapply FV;
+        subst b;
+        econstructor;
+        eauto | eauto
+      ] | 
+      eapply IHe2;
+      [ intros;
+        eapply FV;
+        subst b;
+        econstructor;
+        eauto | eauto
+      ] | eauto; eauto | eauto
+    ].
+  }
+Qed.
+ 
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z), 
     [| e1 |] s => n <-> [| e2 |] s => n.
