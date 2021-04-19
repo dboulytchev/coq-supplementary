@@ -274,60 +274,37 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
 Proof.
   generalize dependent z.
   induction e; intros z0 EV.
+(*  - фигурные скобки у последнего гоула -- плохо?)
+    - сначала решать короткие гоулы, потом длинные 
+    - inversion + сразу subst, чтобы снести лишние равенства
+         subst -- подставить вообще все равенства
+*)  
   { inversion EV. constructor. }
   { inversion EV. constructor. apply FV. constructor. auto. }
-  { inversion EV.
-    1-3: econstructor;
-    [ eapply IHe1;
-       [ intros;
-         eapply FV;
-         subst b;
-         econstructor;
-         eauto | eauto
-     ] |
-     eapply IHe2;
-     [ intros;
-       eapply FV;
-       subst b;
-       econstructor;
-       eauto | eauto
-     ]
-    ].
-    
-    1-14: econstructor;
-    [ eapply IHe1;
-      [ intros;
-        eapply FV;
-        subst b;
-        econstructor;
-        eauto | eauto
-      ] | 
-      eapply IHe2;
-      [ intros;
-        eapply FV;
-        subst b;
-        econstructor;
-        eauto | eauto
-      ] | eauto; eauto
-    ].
-    
-    1-2: econstructor;
-    [ eapply IHe1;
-      [ intros;
-        eapply FV;
-        subst b;
-        econstructor;
-        eauto | eauto
-      ] | 
-      eapply IHe2;
-      [ intros;
-        eapply FV;
-        subst b;
-        econstructor;
-        eauto | eauto
-      ] | eauto; eauto | eauto
-    ].
-  }
+  inversion_clear EV. (*inversion_clear EV. subst. *)
+  
+  all: econstructor; eauto; [eapply IHe1 | eapply IHe2 ]; eauto;
+    intros; eapply FV; econstructor; eauto.
+
+(*
+  by -- показывает, что goal будет решен этой тактикой
+  try -- попробует применить, если goal решен, иначе ничего
+
+  паттерн try by, чтобы не писать номера
+
+  плохо заходит, когда тактика долго работает
+
+  можно разбить ; на all, чтобы отлаживаться было проще
+
+  all:try by econstructor; [eapply IHe1 | eapply IHe2 ]; eauto.
+  all:intros; eapply FV; econstructor; eauto.
+
+  all:try by econstructor; [eapply IHe1 | eapply IHe2|eauto ]; eauto;
+    intros; eapply FV; econstructor; eauto.
+
+  all:by econstructor; eauto; [eapply IHe1 | eapply IHe2|eauto | eauto ]; eauto;
+    intros; eapply FV; econstructor; eauto.
+ *)
 Qed.
  
 Definition equivalent (e1 e2 : expr) : Prop :=

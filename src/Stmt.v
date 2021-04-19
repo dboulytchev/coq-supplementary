@@ -90,25 +90,62 @@ Module SmokeTest.
   (* Associativity of sequential composition *)
   Lemma seq_assoc (s1 s2 s3 : stmt) :
     ((s1 ;; s2) ;; s3) ~~~ (s1 ;; (s2 ;; s3)).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent.
+    intros.
+    split.
+    { intro.
+      inversion_clear H.
+      inversion_clear STEP1.
+      repeat econstructor; eauto.
+    }
+  admit. Admitted.
   
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent.
+    intros.
+    split.
+    { intro.
+      inversion_clear H.
+      econstructor. eauto.
+      econstructor. eauto.
+      auto.
+      { apply bs_If_False. auto. constructor. }
+    }
+  admit. Admitted.
   
   (* Terminating loop invariant *)
   Lemma while_false (e : expr) (s : stmt) (st : state Z)
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof. admit. Admitted.
+  Proof.
+    remember (WHILE e DO s END).
+    remember (st, i, o).
+    induction EXE; inversion Heqs0; subst.
+    { apply IHEXE2. auto. auto. }
+    { inversion Heqp. subst. auto. }
+  Qed.
   
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
     (WHILE (Nat 1) DO SKIP END) ~~~
     (COND (Nat 3) THEN SKIP ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent.
+    intros.
+    split.
+    intro.
+    inversion_clear H.
+    inversion STEP.
+    destruct c' eqn:E. destruct p.
+    apply (while_false (Nat 1) SKIP s l0 l c'0) in WSTEP.
+    inversion WSTEP.
+    inversion CVAL.    
+  Qed.
   
   (* Loops with equivalent bodies are equivalent *)
   Lemma while_eq (e : expr) (s1 s2 : stmt)
