@@ -237,8 +237,7 @@ Proof.
   auto.
 Qed.
 
-(* The evaluation relation is   generalize FV.
-  intro krk.deterministic *)
+(* The evaluation relation is deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
