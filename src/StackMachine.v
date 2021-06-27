@@ -2,7 +2,6 @@ Require Import List.
 Import ListNotations.
 Require Import Omega.
 
-From Bignums Require Export BigZ.
 Require Export Id.
 Require Export State.
 Require Export Expr.
