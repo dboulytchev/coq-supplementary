@@ -2,6 +2,7 @@ Require Import BinInt ZArith_dec.
 Require Export Id.
 Require Export State.
 Require Export Lia.
+Require Export List.
 
 From hahn Require Import HahnBase.
 
@@ -274,37 +275,12 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
 Proof.
   generalize dependent z.
   induction e; intros z0 EV.
-(*  - фигурные скобки у последнего гоула -- плохо?)
-    - сначала решать короткие гоулы, потом длинные 
-    - inversion + сразу subst, чтобы снести лишние равенства
-         subst -- подставить вообще все равенства
-*)  
   { inversion EV. constructor. }
   { inversion EV. constructor. apply FV. constructor. auto. }
-  inversion_clear EV. (*inversion_clear EV. subst. *)
+  inversion_clear EV.
   
   all: econstructor; eauto; [eapply IHe1 | eapply IHe2 ]; eauto;
     intros; eapply FV; econstructor; eauto.
-
-(*
-  by -- показывает, что goal будет решен этой тактикой
-  try -- попробует применить, если goal решен, иначе ничего
-
-  паттерн try by, чтобы не писать номера
-
-  плохо заходит, когда тактика долго работает
-
-  можно разбить ; на all, чтобы отлаживаться было проще
-
-  all:try by econstructor; [eapply IHe1 | eapply IHe2 ]; eauto.
-  all:intros; eapply FV; econstructor; eauto.
-
-  all:try by econstructor; [eapply IHe1 | eapply IHe2|eauto ]; eauto;
-    intros; eapply FV; econstructor; eauto.
-
-  all:by econstructor; eauto; [eapply IHe1 | eapply IHe2|eauto | eauto ]; eauto;
-    intros; eapply FV; econstructor; eauto.
- *)
 Qed.
  
 Definition equivalent (e1 e2 : expr) : Prop :=
@@ -347,7 +323,7 @@ Fixpoint plug (C : Context) (e : expr) : expr :=
   match C with
   | Hole => e
   | BopL b C e1 => Bop b (plug C e) e1
-  | BopR b e1 C => Bop b (plug C e) e1
+  | BopR b e1 C => Bop b e1 (plug C e)
   end.  
 
 Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
@@ -359,7 +335,20 @@ Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
 
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
-Proof. admit. Admitted.
+Proof.
+  split.
+  { intro. unfold contextual_equivalent. intro.
+    induction C. unfold plug. auto.
+    
+    all: unfold plug; fold plug; unfold equivalent in *; intros;
+    split; intros; inversion H0;
+    try apply IHC in VALA; try apply IHC in VALB; econstructor; eauto.
+  }
+  { intro.
+    unfold contextual_equivalent in H.
+    specialize (H Hole). simpl in H. auto.
+  }
+Qed.
 
 Module SmallStep.
 
@@ -388,22 +377,92 @@ Module SmallStep.
   where "st |- e --> e'" := (ss_eval st e e').
 
   Lemma no_step_from_value (e : expr) (HV: is_value e) : ~ forall s, exists e', (s |- e --> e').
-  Proof. admit. Admitted.
+  Proof.
+    unfold not.
+    intro.
+    inversion HV.
+    remember (List.nil (A:=(id * Z))) as list.
+    specialize (H list).
+    subst list.
+    destruct H.
+    induction H; inversion H0.
+  Qed.
   
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
-  Proof. admit. Admitted.
+  Proof.
+    unfold not.
+    intros.
+    remember ((Nat Z.one) [*] (Nat Z.zero)) as e''''.
+    remember ((Nat Z.one) [+] (Nat Z.one)) as e'''.
+    remember (e'''' [+] e''') as e.
+    remember ((Nat Z.zero) [+] e''') as e'.
+    remember ((e'''' [+] (Nat Z.two))) as e''.
+    remember (List.nil (A:=(id * Z))) as empty.
+    specialize (H e e' e'' empty).
+    assert ((e' = e'') -> False).
+    { intro.
+      subst e'.
+      subst e''.
+      subst e'''.
+      subst e''''.
+      inversion H0.
+    }
+    apply H0.
+    apply H.
+    { subst.
+      econstructor.
+      econstructor.
+      replace (Z.zero)%Z with (Z.one * Z.zero)%Z.
+      auto.
+      auto.
+    }
+    { subst.
+      econstructor.
+      econstructor.
+      replace (Z.two)%Z with (Z.one + Z.one)%Z.
+      auto.
+      auto.
+    }
+  Qed.
   
   Lemma ss_deterministic_step (e e' : expr)
                          (s    : state Z)
                          (z z' : Z)
                          (H1   : s |- e --> (Nat z))
                          (H2   : s |- e --> e') : e' = Nat z.
-  Proof. admit. Admitted.
-
+  Proof.
+    inversion H1.
+    { subst e.
+      inversion H2.
+      assert (z1 = z).
+      { eapply state_deterministic. eauto. eauto. }
+      subst.
+      auto.
+    }
+    { subst e.
+      inversion H2.
+      { inversion LEFT. }
+      { inversion RIGHT.  }
+      assert (z = z1).
+      { eapply eval_deterministic. eauto. eauto. }
+      subst.
+      auto.
+    }
+  Qed.
+  
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
-  Proof. admit. Admitted.
+  Proof.
+    (* split; intros.
+    { generalize dependent z.
+      generalize dependent s.
+      induction e; intros.
+      { inversion H. left. auto. }
+      { right. econstructor. inversion H. auto. }
+      { inversion H.
+      } *)
+  admit. Admitted.
 
 
 (*
