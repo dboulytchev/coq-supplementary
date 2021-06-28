@@ -59,39 +59,123 @@ Ltac prove_with th :=
   try (constructor; assumption); congruence.
 
 Lemma lt_eq_lt_id_dec: forall (id1 id2 : id), {id1 i< id2} + {id1 = id2} + {id2 i< id1}.
-Proof. admit. Admitted.
+Proof.
+  (* prove_with lt_eq_lt_dec. *)
+  
+  intros [n1] [n2].
+  destruct (lt_eq_lt_dec n1 n2).
+  { destruct s.
+    { left. left. apply lt_conv. auto. } 
+    { left. right. auto. }  
+  }
+  { right. apply lt_conv. auto. }
+Qed.
 
 Lemma gt_eq_gt_id_dec: forall (id1 id2 : id), {id1 i> id2} + {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  (* prove_with gt_eq_gt_dec. *)
+  intros [n1] [n2].
+  destruct (gt_eq_gt_dec n1 n2).
+  { destruct s.
+    { right. apply gt_conv. auto. } 
+    { left. right. auto. }  
+  }
+  { left. left. apply gt_conv. auto. }
+Qed.
 
 Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
-Proof. admit. Admitted.
+Proof.
+  (* prove_with le_gt_dec. *)
+  intros [n1] [n2].
+  destruct (le_gt_dec n1 n2).
+  { left. apply le_conv. auto. }
+  { right. apply gt_conv. auto. } 
+Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof.
+  (* prove_with Nat.eq_dec. *)
+  intros [n1] [n2].
+  destruct (Nat.eq_dec n1 n2).
+  { left.  auto. }
+  { right. injection. auto. }
+Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (id_eq_dec x x).
+  { auto. }
+  { destruct n. auto. }
+Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (id_eq_dec x y).
+  { destruct H. auto. }
+  { auto. } 
+Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n1] [n2] H1 H2.
+  inversion H1.
+  inversion H2.
+  apply gt_asym in H3.
+  auto.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n1] [n2] H1 H2.
+  inversion H1.
+  inversion H2.
+  apply gt_not_le in H6.
+  auto.
+Qed.
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  specialize (gt_eq_gt_id_dec id1 id2).
+  intro H1.
+  destruct H1.
+  { destruct s.
+    { exfalso.
+      eapply le_gt_id_false .
+      apply H. apply g.
+    }
+    { auto. } 
+  }
+  { apply Sumbool.sumbool_not. auto. }
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
-    
+Proof.
+  intros id1 id2 H.
+  specialize (gt_eq_gt_id_dec id1 id2).
+  intro H1.
+  destruct H1.
+  { 
+    destruct s.
+    { auto. }
+    { destruct H. auto. }
+  }
+  { auto. }
+Qed.
+
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n1] [n2] H1 H2.
+  inversion H1.
+  inversion H2.
+  rewrite -> H0 in H4.
+  apply gt_irrefl in H4.
+  auto.
+Qed.

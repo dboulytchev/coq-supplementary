@@ -2,6 +2,9 @@ Require Import BinInt ZArith_dec.
 Require Export Id.
 Require Export State.
 Require Export Lia.
+Require Import List.
+Import ListNotations.
+
 
 From hahn Require Import HahnBase.
 
@@ -176,12 +179,21 @@ Hint Constructors eval.
 Module SmokeTest.
             
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. Admitted.
+  Proof.
+     apply bs_Nat.
+  Qed.
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. Admitted.
+  Proof.
+    inversion HH.
+    inversion VALB.
+    assert ((za * 2%Z)%Z = (za + za)%Z). { lia. }
+    rewrite H.
+    apply bs_Add.
+    1-2: exact VALA.
+  Qed.
 
 End SmokeTest.
 
@@ -201,7 +213,13 @@ Lemma defined_expression
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  induction e; intros.
+  { inversion ID. }
+  { inversion ID. inversion RED. exists z. subst id. auto. }
+  { inversion_clear RED; inversion_clear ID; inversion_clear H; eauto. }
+Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -209,13 +227,44 @@ Proof. admit. Admitted.
 Lemma undefined_variable (e : expr) (s : state Z) (id : id)
       (ID : id ? e) (UNDEF : forall (z : Z), ~ (s / id => z)) :
   forall (z : Z), ~ ([| e |] s => z).
-Proof. admit. Admitted.
+Proof.
+  intros.
+  pose proof (defined_expression e s z id) as H1.
+  intro H.
+  pose proof (H1 H ID) as H2.
+  inversion H2.
+  specialize (UNDEF x).
+  auto.
+Qed.
 
-(* The evaluation relation is deterministic *)
+(* The evaluation relation is   generalize FV.
+  intro krk.deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z1.
+  generalize dependent z2.
+  induction e; intros.
+  { 
+    intros. inversion E1. inversion E2.
+    rewrite <- H2. auto.
+  }  
+  { 
+    intros. inversion E1. inversion E2.
+    eapply state_deterministic.
+    - apply VAR.
+    - apply VAR0.
+  }
+  {
+    destruct b;
+      inversion_clear E1; inversion_clear E2; 
+        pose proof (IHe1 za VALA za0 VALA0) as H1;
+        pose proof (IHe2 zb VALB zb0 VALB0) as H2;
+        subst; auto.
+        all: (subst; contradict OP; auto).
+  }
+Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
@@ -226,22 +275,47 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
           equivalent_states s1 s2 id)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  induction e; intros.
 
+  { inversion EV. constructor. }
+  { inversion EV. constructor. apply FV. constructor. auto. }
+  inversion_clear EV.
+  
+  all: econstructor; eauto; [eapply IHe1 | eapply IHe2 ]; eauto;
+    intros; eapply FV; econstructor; eauto.
+
+
+Qed.
+ 
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z), 
     [| e1 |] s => n <-> [| e2 |] s => n.
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
 Lemma eq_refl (e : expr): e ~~ e.
-Proof. admit. Admitted.
+Proof.
+  unfold equivalent.
+  intuition.
+Qed.
 
 Lemma eq_symm (e1 e2 : expr) (EQ : e1 ~~ e2): e2 ~~ e1.
-Proof. admit. Admitted.
+Proof.
+  unfold equivalent. intros.
+  apply iff_sym. auto.
+Qed.
 
 Lemma eq_trans (e1 e2 e3 : expr) (EQ1 : e1 ~~ e2) (EQ2 : e2 ~~ e3):
   e1 ~~ e3.
-Proof. admit. Admitted.
+Proof.
+  unfold equivalent.
+  unfold equivalent in EQ1.
+  unfold equivalent in EQ2.
+  intros.
+
+  apply (iff_trans (EQ1 n s) (EQ2 n s)).
+Qed.
 
 Inductive Context : Type :=
 | Hole : Context
@@ -252,8 +326,8 @@ Fixpoint plug (C : Context) (e : expr) : expr :=
   match C with
   | Hole => e
   | BopL b C e1 => Bop b (plug C e) e1
-  | BopR b e1 C => Bop b (plug C e) e1
-  end.  
+  | BopR b e1 C => Bop b e1 (plug C e)
+ end.  
 
 Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
 
@@ -262,9 +336,52 @@ Definition contextual_equivalent (e1 e2 : expr) : Prop :=
 Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
                             (at level 42, no associativity).
 
+Ltac par_eval H b za zb :=
+  intros H; destruct b; inversion H; [
+         apply bs_Add |
+         apply bs_Sub |
+         apply bs_Mul |
+         apply bs_Div |
+         apply bs_Mod |
+         apply bs_Le_T with (za) (zb) |
+         apply bs_Le_F with (za) (zb) |
+         apply bs_Lt_T with (za) (zb) |
+         apply bs_Lt_F with (za) (zb) |
+         apply bs_Ge_T with (za) (zb) |
+         apply bs_Ge_F with (za) (zb) |
+         apply bs_Gt_T with (za) (zb) |
+         apply bs_Gt_F with (za) (zb) |
+         apply bs_Eq_T with (za) (zb) |
+         apply bs_Eq_F with (za) (zb) |
+         apply bs_Ne_T with (za) (zb) |
+         apply bs_Ne_F with (za) (zb) |
+         apply bs_And |
+         apply bs_Or
+       ].
+
+
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
-Proof. admit. Admitted.
+
+Proof.
+ split.
+  { intro. unfold contextual_equivalent. intro. 
+    induction C. unfold plug. auto.
+ 
+   all: unfold plug; fold plug; unfold equivalent in *; intros;
+    split; intros; inversion H0;
+    try apply IHC in VALA; try apply IHC in VALB; econstructor; eauto.
+
+  }
+
+  { 
+    intro.
+    unfold contextual_equivalent in H.
+    specialize (H Hole). simpl in H.
+    auto.
+  }
+Qed.
+
 
 Module SmallStep.
 
@@ -293,23 +410,89 @@ Module SmallStep.
   where "st |- e --> e'" := (ss_eval st e e').
 
   Lemma no_step_from_value (e : expr) (HV: is_value e) : ~ forall s, exists e', (s |- e --> e').
-  Proof. admit. Admitted.
-  
+    Proof.
+    unfold not.
+    intros.
+    destruct HV.
+    pose (nil : state Z) as e_list.
+    simpl in e_list.
+    specialize (H e_list).
+    destruct H.
+    inversion H.
+  Qed.
+
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
-  Proof. admit. Admitted.
-  
+Proof.
+    unfold not.
+    intros.
+    remember ((Nat Z.one) [*] (Nat Z.zero)) as e10.
+    remember ((Nat Z.one) [+] (Nat Z.one)) as e11.
+    remember (e10 [+] e11) as e.
+    remember ((Nat Z.zero) [+] e11) as e'.
+    remember ((e10 [+] (Nat Z.two))) as e''.
+    remember (List.nil (A:=(id * Z))) as empty.
+    specialize (H e e' e'' empty).
+    assert ((e' = e'') -> False).
+    { 
+      intro.
+      subst.
+      inversion H0.
+    }
+    apply H0.
+    apply H.
+    { 
+      subst.
+      constructor. constructor.
+      replace (Z.zero)%Z with (Z.one * Z.zero)%Z.
+      auto. auto.
+    }
+    { 
+      subst.
+      constructor. constructor.
+      replace (Z.two)%Z with (Z.one + Z.one)%Z.
+      auto. auto.
+    }
+  Qed.
+
   Lemma ss_deterministic_step (e e' : expr)
                          (s    : state Z)
                          (z z' : Z)
                          (H1   : s |- e --> (Nat z))
                          (H2   : s |- e --> e') : e' = Nat z.
-  Proof. admit. Admitted.
-
+Proof.
+  inversion H1.
+    { 
+      subst.
+      inversion H2.
+      assert (z0 = z).
+      eapply state_deterministic. eauto. eauto.
+      rewrite H4.
+      done.
+    }
+    { 
+      subst.
+      inversion H2.
+      { inversion LEFT. }
+      { inversion RIGHT.  }
+      assert (z = z0).
+      eapply eval_deterministic. eauto. eauto.
+      rewrite H6.
+      done.
+    }
+Qed.
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
-  Proof. admit. Admitted.
-
+  Proof.
+    split.
+    {   intros.
+        destruct e.
+        { inversion H. left. auto. }
+        { right. inversion H. apply (ss_Var s i z VAR). }
+        { right. remember (Bop b e1 e2). inversion H. }
+  (*What to do here?*)
+    }
+    admit. Admitted.
 
 (*
   s |- e -> .... -> Nat z
