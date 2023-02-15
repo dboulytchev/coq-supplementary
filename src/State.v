@@ -2,7 +2,7 @@
 
 Require Import List.
 Import ListNotations.
-Require Import Omega.
+Require Import Lia.
 Require Export Arith Arith.EqNat.
 Require Export Id.
 

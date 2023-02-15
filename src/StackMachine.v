@@ -1,6 +1,6 @@
 Require Import List.
 Import ListNotations.
-Require Import Omega.
+Require Import Lia.
 
 From Bignums Require Export BigZ.
 Require Export Id.
@@ -8,6 +8,7 @@ Require Export State.
 Require Export Expr.
 Require Export Stmt.
 
+(*
 (* Configuration *)
 Definition conf := (list Z * state Z * list Z * list Z)%type.
 
@@ -268,3 +269,4 @@ Module StraightLine.
   
 End StraightLine.
 
+*)

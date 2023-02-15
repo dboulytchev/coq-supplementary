@@ -196,12 +196,13 @@ where "x ? e" := (V e x).
 (* If an expression is defined in some state, then each its' variable is
    defined in that state
  *)
+      
 Lemma defined_expression
       (e : expr) (s : state Z) (z : Z) (id : id)
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. admit. Admitted.
+Proof. Admitted.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well

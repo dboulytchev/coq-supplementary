@@ -1,7 +1,7 @@
 (** Borrowed from Pierce's "Software Foundations" *)
 
 Require Import Arith Arith.EqNat.
-Require Import Omega.
+Require Import Lia.
 
 Inductive id : Type :=
   Id : nat -> id.
