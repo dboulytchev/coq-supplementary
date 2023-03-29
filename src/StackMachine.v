@@ -1,14 +1,13 @@
+Require Import BinInt ZArith_dec.
 Require Import List.
 Import ListNotations.
 Require Import Lia.
 
-From Bignums Require Export BigZ.
 Require Export Id.
 Require Export State.
 Require Export Expr.
 Require Export Stmt.
 
-(*
 (* Configuration *)
 Definition conf := (list Z * state Z * list Z * list Z)%type.
 
@@ -200,7 +199,7 @@ Module StraightLine.
         (EXEC: (n::s, st, i, o) -- p --> c) :        
     (s, st, i, o) -- (compile_expr e) ++ p --> c.
   Proof. admit. Admitted.
-  
+
   Hint Resolve compiled_expr_correct_cont.
   
   Lemma compiled_expr_correct
@@ -269,4 +268,45 @@ Module StraightLine.
   
 End StraightLine.
 
-*)
+Inductive insn : Set :=
+  JMP : nat -> insn
+| JZ  : nat -> insn
+| JNZ : nat -> insn
+| LAB : nat -> insn
+| B   : StraightLine.insn -> insn.
+
+Definition prog := list insn.
+
+Fixpoint label_occurs_ones_rec (occured : bool) (n: nat) (p : prog) : bool :=
+  match p with
+    LAB m :: p' => if eq_nat_dec n m
+                   then if occured
+                        then false
+                        else label_occurs_ones_rec true n p'
+                   else label_occurs_ones_rec occured n p'
+  | _     :: p' => label_occurs_ones_rec occured n p'
+  | []          => occured
+  end.
+
+Definition label_occurs_ones (n : nat) (p : prog) : bool := label_occurs_ones_rec false n p.
+
+Fixpoint prog_wf_rec (prog p : prog) : bool :=
+  match p with
+    []      => true
+  | i :: p' => match i with
+                 JMP l => label_occurs_ones l prog
+               | JZ  l => label_occurs_ones l prog
+               | JNZ l => label_occurs_ones l prog
+               | _     => true
+               end && prog_wf_rec prog p'
+                                  
+  end.
+
+Definition prog_wf (p : prog) : bool := prog_wf_rec p p.
+
+Fixpoint at_label (l : nat) (p : prog) : prog :=
+  match p with
+    []          => []
+  | LAB m :: p' => if eq_nat_dec l m then p' else at_label l p'
+  | _     :: p' => at_label l p'
+  end.

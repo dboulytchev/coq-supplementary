@@ -173,6 +173,30 @@ where "[| e |] st => z" := (eval e st z).
 
 Hint Constructors eval.
 
+(*
+Module SmallStep.
+
+  Inductive R : Set := Expr : expr -> R | Num : Z -> R.
+    
+  Inductive ss_eval : expr -> state Z -> R -> Prop :=
+    ss_Nat          : forall (s : state Z) (n     : Z), ss_eval (Nat n) s (Num n)
+  | ss_Var          : forall (s : state Z) (i     : id) (z : Z) (VAR : s / i => z), ss_eval (Var i) s (Num z)
+
+  | ss_Or           : forall (s : state Z) (b : expr), ss_eval ((Nat Z.one)  [\/] b) s (Num Z.one)                                                                | ss_And          : forall (s : state Z) (b : expr), ss_eval ((Nat Z.zero) [&] b) s (Num Z.zero)                                                                                            
+  | ss_Bop          : forall (o : bop) (s : state Z) (za zb zc : Z) (EVAL : [|Bop o (Nat za) (Nat zb)|] s => zc) (OP : o <> Or /\ o <> And),
+                        ss_eval (Bop o (Nat za) (Nat zb)) s (Num zc)
+                                                                
+  | ss_Bop_RCompl   : forall (o : bop) (s : state Z) (za zb : Z) (b    : expr) (EVALB : ss_eval b s (Num  zb)),
+                        ss_eval (Bop o (Nat za) b) s (Expr (Bop o (Nat za) (Nat zb)))
+  | ss_Bop_RIncompl : forall (o : bop) (s : state Z) (za    : Z) (b b' : expr) (EVALB : ss_eval b s (Expr b')),
+                        ss_eval (Bop o (Nat za) b) s (Expr (Bop o (Nat za) b'))
+  | ss_Bop_LCompl   : forall (o : bop) (s : state Z) (za    : Z) (a b  : expr) (EVALA : ss_eval a s (Num  za)),
+                        ss_eval (Bop o a b) s (Expr (Bop o (Nat za) b))
+  | ss_Bop_LIncompl : forall (o : bop) (s : state Z) (a b a' : expr)           (EVALA : ss_eval a s (Expr a')),
+                        ss_eval (Bop o a b) s (Expr (Bop o a' b)).    
+
+End SmallStep.
+*)
 Module SmokeTest.
             
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.

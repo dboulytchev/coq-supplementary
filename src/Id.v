@@ -5,7 +5,7 @@ Require Import Lia.
 
 Inductive id : Type :=
   Id : nat -> id.
-
+             
 Reserved Notation "m i<= n" (at level 70, no associativity).
 Reserved Notation "m i>  n" (at level 70, no associativity).
 Reserved Notation "m i<  n" (at level 70, no associativity).
@@ -60,7 +60,7 @@ Ltac prove_with th :=
 
 Lemma lt_eq_lt_id_dec: forall (id1 id2 : id), {id1 i< id2} + {id1 = id2} + {id2 i< id1}.
 Proof. admit. Admitted.
-
+  
 Lemma gt_eq_gt_id_dec: forall (id1 id2 : id), {id1 i> id2} + {id1 = id2} + {id2 i> id1}.
 Proof. admit. Admitted.
 

@@ -30,7 +30,7 @@ Section S.
         (SM : st / x => m) :
     n = m.
   Proof. admit. Admitted.
- 
+    
   Lemma update_eq (st : state) (x : id) (n : A) :
     st [x <- n] / x => n.
   Proof. admit. Admitted.
