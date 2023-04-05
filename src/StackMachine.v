@@ -267,7 +267,7 @@ Module StraightLine.
   Proof. admit. Admitted.
   
 End StraightLine.
-
+  
 Inductive insn : Set :=
   JMP : nat -> insn
 | JZ  : nat -> insn
@@ -310,3 +310,57 @@ Fixpoint at_label (l : nat) (p : prog) : prog :=
   | LAB m :: p' => if eq_nat_dec l m then p' else at_label l p'
   | _     :: p' => at_label l p'
   end.
+
+Notation "c1 '==' q '==>' c2" := (StraightLine.sm_int c1 q c2) (at level 0). 
+Reserved Notation "P '|-' c1 '--' q '-->' c2" (at level 0).
+
+Inductive sm_int : prog -> conf -> prog -> conf -> Prop :=  
+| sm_Base      : forall (c c' c'' : conf)
+                        (P p : prog)
+                        (i   : StraightLine.insn)
+                        (H   : c == [i] ==> c')
+                        (HP  : P |- c' -- p --> c''), P |- c -- B i :: p --> c''
+           
+| sm_Label     : forall (c c' : conf)
+                        (P p : prog)
+                        (l : nat)
+                        (H : P |- c -- p --> c'), P |- c -- LAB l :: p --> c'
+                                                         
+| sm_JMP       : forall (c c' : conf)
+                        (P p : prog)
+                        (l : nat)
+                        (H : P |- c -- at_label l P --> c'), P |- c -- JMP l :: p --> c'
+                                                                    
+| sm_JZ_False  : forall (s i o : list Z)
+                        (m : state Z)
+                        (c' : conf)
+                        (P p : prog)
+                        (l : nat)
+                        (z : Z)
+                        (HZ : z <> 0%Z)
+                        (H : P |- (s, m, i, o) -- p --> c'), P |- (z :: s, m, i, o) -- JZ l :: p --> c'
+                                                                                    
+| sm_JZ_True   : forall (s i o : list Z)
+                        (m : state Z)
+                        (c' : conf)
+                        (P p : prog)
+                        (l : nat)
+                        (H : P |- (s, m, i, o) -- at_label l P --> c'), P |- (0%Z :: s, m, i, o) -- JZ l :: p --> c'
+                                                                                                 
+| sm_JNZ_False : forall (s i o : list Z)
+                        (m : state Z)
+                        (c' : conf)
+                        (P p : prog)
+                        (l : nat)
+                        (H : P |- (s, m, i, o) -- p --> c'), P |- (0%Z :: s, m, i, o) -- JNZ l :: p --> c'
+                                                                                      
+| sm_JNZ_True  : forall (s i o : list Z)
+                        (m : state Z)
+                        (c' : conf)
+                        (P p : prog)
+                        (l : nat)
+                        (z : Z)
+                        (HZ : z <> 0%Z)
+                        (H : P |- (s, m, i, o) -- at_label l P --> c'), P |- (z :: s, m, i, o) -- JNZ l :: p --> c'
+| sm_Empty : forall (c : conf) (P : prog), P |- c -- [] --> c 
+where "P '|-' c1 '--' q '-->' c2" := (sm_int P c1 q c2).
