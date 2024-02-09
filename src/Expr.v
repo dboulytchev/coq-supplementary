@@ -171,7 +171,7 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
     [| a [\/] b |] s => (zor za zb)
 where "[| e |] st => z" := (eval e st z). 
 
-Hint Constructors eval.
+#[export] Hint Constructors eval.
 
 (*
 Module SmallStep.

@@ -200,7 +200,7 @@ Module StraightLine.
     (s, st, i, o) -- (compile_expr e) ++ p --> c.
   Proof. admit. Admitted.
 
-  Hint Resolve compiled_expr_correct_cont.
+  #[export] Hint Resolve compiled_expr_correct_cont.
   
   Lemma compiled_expr_correct
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
