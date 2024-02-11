@@ -1,0 +1,12 @@
+.vscode/*
+
+*.aux
+*.glob
+
+*.vok
+*.vo
+*.vos
+
+.Makefile*
+Makefile.*
+_Coq*
