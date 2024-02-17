@@ -11,3 +11,4 @@
 .Makefile*
 Makefile.*
 _Coq*
+.lia.cache

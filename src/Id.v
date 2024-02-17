@@ -59,16 +59,46 @@ Ltac prove_with th :=
   try (constructor; assumption); congruence.
 
 Lemma lt_eq_lt_id_dec: forall (id1 id2 : id), {id1 i< id2} + {id1 = id2} + {id2 i< id1}.
-Proof. admit. Admitted.
-  
+Proof. 
+  intros id1 id2.
+  destruct id1. destruct id2.
+  remember (lt_eq_lt_dec n n0). destruct Heqs.
+  inversion s. 
+  inversion H. left. left. constructor. assumption.
+  left. right. subst n. reflexivity.
+  right. constructor. assumption.
+Qed.
+
 Lemma gt_eq_gt_id_dec: forall (id1 id2 : id), {id1 i> id2} + {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof. 
+  intros id1 id2.
+  destruct id1. destruct id2.
+  remember (lt_eq_lt_dec n n0). destruct Heqs.
+  inversion s. 
+  inversion H. right. constructor. assumption.
+  left. right. subst n. reflexivity.
+  left. left. constructor. assumption.
+Qed.
 
 Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
-Proof. admit. Admitted.
+Proof. 
+  intros id1 id2.
+  destruct id1. destruct id2.
+  remember (lt_eq_lt_dec n n0). destruct Heqs.
+  inversion s. inversion H.
+  left. constructor. lia.
+  left. constructor. lia.
+  right. constructor. lia.
+Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof.
+  intros id1 id2.
+  destruct id1. destruct id2.
+  remember (eq_nat_dec n n0). destruct Heqs.
+  inversion s. left. subst n. constructor.
+  right. injection. auto.
+Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
 Proof. admit. Admitted.
