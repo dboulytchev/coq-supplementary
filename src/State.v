@@ -62,20 +62,20 @@ Section S.
       pose proof (state_deterministic (st [x1 <- n1] [x1 <- n2]) x1 m n2).
       pose proof (H1 H H0).
       pose proof (st_binds_hd st x1 n2). 
-      rewrite -> H2. auto.
+      rewrite -> H2. assumption.
     - rewrite <- e. intro.
       pose proof (st_binds_hd st x1 n2).
       pose proof (state_deterministic (st [x1 <- n2]) x1 m n2).
       pose proof (H1 H H0).
       pose proof (st_binds_hd (st [x1 <- n1]) x1 n2).
-      rewrite -> H2. auto.
+      rewrite -> H2. assumption.
     - intro.
       pose proof (update_neq (st [x2 <- n1]) x2 x1 n2).
       assert(x1 <> x2 <-> x2 <> x1). { split. auto. auto. }
       inversion H1. pose proof (H2 n). pose proof ((H0 m) H4). 
       inversion H5. pose proof (H7 H).
       apply st_binds_tl. auto. pose proof (update_neq st x2 x1 n1 m). 
-      pose proof (H9 H4). inversion H10. pose proof (H12 H8). auto.
+      pose proof (H9 H4). inversion H10. pose proof (H12 H8). assumption.
     - intro. 
       pose proof (update_neq (st [x2 <- n1]) x2 x1 n2).
       assert(x1 <> x2 <-> x2 <> x1). { split. auto. auto. }
@@ -85,7 +85,7 @@ Section S.
       apply st_binds_tl. auto. pose proof (update_neq st x2 x1 n1 m).
       pose proof (H10 H4). inversion H11. 
       pose proof (update_neq st x2 x1 n2 m). pose proof (H14 H4). inversion H15. 
-      pose proof (H17 H). pose proof (H12 H18). auto.
+      pose proof (H17 H). pose proof (H12 H18). assumption.
     Qed.
   
   Lemma update_same (st : state) (x1 x2 : id) (n1 m : A)
@@ -96,13 +96,25 @@ Section S.
     destruct (id_eq_dec x1 x2).
     - rewrite <- e. pose proof (state_deterministic st x1 n1 m). replace x2 in SM. 
       intuition. rewrite <- H. apply update_eq.
-    - apply update_neq. auto. auto.
+    - apply update_neq. assumption. assumption.
   Qed.
   
   Lemma update_permute (st : state) (x1 x2 x3 : id) (n1 n2 m : A)
         (NEQ : x2 <> x1)
         (SM : st [x2 <- n1][x1 <- n2] / x3 => m) :
     st [x1 <- n2][x2 <- n1] / x3 => m.
-  Proof. admit. Admitted.
+  Proof.
+    inversion SM. 
+    - apply st_binds_tl. rewrite H3 in NEQ.
+      intuition. apply st_binds_hd.
+    - destruct (id_eq_dec x2 x3).
+      * rewrite e. pose proof (update_eq (st [x1 <- n2]) x3 n1).
+        rewrite e in H5. pose proof (update_eq st x3 n1). 
+        pose proof (state_deterministic (st [x3 <- n1]) x3 n1 m). pose proof (((H8) H7) H5).
+        rewrite H9. rewrite H9 in H6. assumption.
+      * apply update_neq. trivial. apply update_neq. intuition. 
+        pose proof (update_neq st x2 x3 n1 m). pose proof (H6 n). destruct H7.  
+        pose proof (H8 H5). assumption.
+  Qed.
 
 End S.
