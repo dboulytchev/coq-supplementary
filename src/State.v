@@ -105,16 +105,20 @@ Section S.
     st [x1 <- n2][x2 <- n1] / x3 => m.
   Proof.
     inversion SM. 
-    - apply st_binds_tl. rewrite H3 in NEQ.
-      intuition. apply st_binds_hd.
+    - apply st_binds_tl. rewrite H3 in NEQ. intuition. 
+      apply st_binds_hd.
     - destruct (id_eq_dec x2 x3).
-      * rewrite e. pose proof (update_eq (st [x1 <- n2]) x3 n1).
+      * rewrite e. 
+        pose proof (update_eq (st [x1 <- n2]) x3 n1).
         rewrite e in H5. pose proof (update_eq st x3 n1). 
         pose proof (state_deterministic (st [x3 <- n1]) x3 n1 m). pose proof (((H8) H7) H5).
-        rewrite H9. rewrite H9 in H6. assumption.
+        rewrite H9. rewrite H9 in H6. 
+        assumption.
       * apply update_neq. trivial. apply update_neq. intuition. 
-        pose proof (update_neq st x2 x3 n1 m). pose proof (H6 n). destruct H7.  
-        pose proof (H8 H5). assumption.
+        pose proof (update_neq st x2 x3 n1 m). 
+        pose proof (H6 n). destruct H7.  
+        pose proof (H8 H5). 
+        assumption.
   Qed.
 
 End S.
