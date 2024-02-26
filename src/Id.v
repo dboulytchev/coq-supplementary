@@ -6,6 +6,7 @@ Require Import Coq.Arith.Compare_dec.
 Require Import Nat.
 Require Import Lia.
 Require Import Coq.Logic.Decidable.
+Require Import Coq.Arith.Gt.
 
 Inductive id : Type :=
   Id : nat -> id.
@@ -150,7 +151,7 @@ Proof.
   + constructor.
   + remember (nat_compare_le n n).
     apply i0 in H.
-    contradiction.  
+    contradiction.
 Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
@@ -168,32 +169,58 @@ Proof.
   destruct H5.
   destruct H6.
   inversion H.
-  remember (n0 ?= m0).
-  symmetry in Heqc.
-  destruct c.
-  + remember (nat_compare_eq n0 m0).
-    apply e in Heqc.
-    subst n0.
-    subst m1.
-    remember (ge_falso m0).
-    contradiction.
-  + assert (n0 ?= m0 <> Lt).
-    - remember (nat_compare_gt n0 m0).
-      apply i in H4.
-      unfold not.
-      admit.
-    - admit.
-  + admit.  
-Admitted.
+  remember (gt_asym n0 m0).
+  apply n4 in H4.
+  contradiction.
+Qed.
 
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros id1 id2 Hid2_le_id1 Hid2_gt_id1.
+  inversion Hid2_le_id1.
+  inversion Hid2_gt_id1.
+  destruct id1, id2.
+  inversion H3.
+  inversion H4.
+  inversion H0.
+  inversion H1.
+  subst m0 m n n0.
+  remember (gt_not_le n2 n1).
+  apply n in H2.
+  contradiction.
+Qed.
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof. 
+  intros id1 id2 Hid1_leq_id2.
+  destruct id1, id2.
+  remember (n ?= n0).
+  destruct c.
+  + remember (nat_compare_eq n n0).
+    rewrite -> e.
+    - left. reflexivity.
+    - rewrite Heqc. reflexivity.
+  + remember (nat_compare_lt n n0).
+    assert ((n ?= n0) = Lt).
+    - rewrite -> Heqc. reflexivity.
+    - apply i in H.
+      right.
+      constructor.
+      destruct H.
+      * constructor.
+      * constructor. assumption.
+  + remember (nat_compare_gt n n0).
+    assert ((n ?= n0) = Gt).
+    - rewrite -> Heqc. reflexivity.
+    - apply i in H.
+      assert (n <= n0).
+      * destruct i.
+        Focus 2.
+      discriminate Hid1_leq_id2.
+    rewrite Heqi.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
