@@ -57,15 +57,15 @@ Ltac prove_with th :=
     | H: ?n <= ?m |- {Id ?n i<= Id ?m} + {_}               => left
     end;
   try (constructor; assumption); congruence.
-
+    
 Lemma lt_eq_lt_id_dec: forall (id1 id2 : id), {id1 i< id2} + {id1 = id2} + {id2 i< id1}.
-Proof. admit. Admitted.
-  
+Proof. prove_with lt_eq_lt_dec. Qed.
+
 Lemma gt_eq_gt_id_dec: forall (id1 id2 : id), {id1 i> id2} + {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof. prove_with gt_eq_gt_dec. Qed.
 
 Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
-Proof. admit. Admitted.
+Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
 Proof. admit. Admitted.
