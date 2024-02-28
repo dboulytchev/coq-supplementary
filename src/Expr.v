@@ -200,12 +200,21 @@ End SmallStep.
 Module SmokeTest.
             
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. Admitted.
+  Proof.
+    apply bs_Nat.  
+  Qed.
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. Admitted.
+  Proof. 
+    inversion HH. inversion VALB.
+    replace (za * 2)%Z with (za + za)%Z.
+    - apply bs_Add. 
+      + assumption.
+      + assumption.
+    - lia.
+  Qed.
 
 End SmokeTest.
 
