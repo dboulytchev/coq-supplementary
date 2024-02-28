@@ -124,3 +124,13 @@ Qed.
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
 Proof. intros. destruct H. dependent destruction H0. lia. Qed.
+
+Lemma id_neq_sym : forall id1 id2 : id,
+    id1 <> id2 -> id2 <> id1.
+Proof.
+    intros.
+    destruct (id_eq_dec id2 id1).
+    * rewrite e in H. contradiction.
+    * assumption.
+Qed.
+
