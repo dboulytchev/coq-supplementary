@@ -7,6 +7,8 @@ Require Export Lia.
 Require Import List.
 Import ListNotations.
 
+Require Import Coq.Program.Equality.
+
 From hahn Require Import HahnBase.
 
 (* Type of binary operators *)
@@ -28,7 +30,7 @@ Inductive bop : Type :=
 (* Type of arithmetic expressions *)
 Inductive expr : Type :=
 | Nat : Z -> expr
-| Var : id  -> expr              
+| Var : id  -> expr
 | Bop : bop -> expr -> expr -> expr.
 
 (* Supplementary notation *)
@@ -47,7 +49,7 @@ Notation "x '[&]'  y" := (Bop And x y) (at level 38, left associativity).
 Notation "x '[\/]' y" := (Bop Or  x y) (at level 38, left associativity).
 
 Definition zbool (x : Z) : Prop := x = Z.one \/ x = Z.zero.
-  
+
 Definition zor (x y : Z) : Z :=
   if Z_le_gt_dec (Z.of_nat 1) (x + y) then Z.one else Z.zero.
 
@@ -55,7 +57,7 @@ Reserved Notation "[| e |] st => z" (at level 0).
 Notation "st / x => y" := (st_binds Z st x y) (at level 0).
 
 (* Big-step evaluation relation *)
-Inductive eval : expr -> state Z -> Z -> Prop := 
+Inductive eval : expr -> state Z -> Z -> Prop :=
   bs_Nat  : forall (s : state Z) (n : Z), [| Nat n |] s => n
 
 | bs_Var  : forall (s : state Z) (i : id) (z : Z) (VAR : s / i => z),
@@ -94,7 +96,7 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (OP : Z.le za zb),
     [| a [<=] b |] s => Z.one
 
-| bs_Le_F : forall (s : state Z) (a b : expr) (za zb : Z) 
+| bs_Le_F : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
                    (OP : Z.gt za zb),
@@ -135,7 +137,7 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (VALB : [| b |] s => zb)
                    (OP : Z.le za zb),
     [| a [>] b |] s => Z.zero
-                         
+
 | bs_Eq_T : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
@@ -173,19 +175,47 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (BOOLA : zbool za)
                    (BOOLB : zbool zb),
     [| a [\/] b |] s => (zor za zb)
-where "[| e |] st => z" := (eval e st z). 
+where "[| e |] st => z" := (eval e st z).
 
 #[export] Hint Constructors eval : core.
 
 Module SmokeTest.
 
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. admit. Admitted.
-  
+  Proof. constructor. Qed.
+
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. admit. Admitted.
+  Proof.
+    dependent destruction HH; dependent destruction HH1; dependent destruction HH2;
+    rewrite <- Zplus_diag_eq_mult_2;
+    try constructor; try constructor; try assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Le_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Le_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Le_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Le_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Lt_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Lt_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Lt_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Lt_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Ge_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Ge_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Ge_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Ge_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Gt_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Gt_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Gt_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Gt_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Eq_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Eq_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Eq_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Eq_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Ne_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Ne_T s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Ne_F s _ _ za zb0); assumption.
+    * dependent destruction a; dependent destruction b; apply (bs_Ne_F s _ _ za zb0); assumption.
+  Qed.
 
 End SmokeTest.
 
@@ -205,20 +235,81 @@ Proof. admit. Admitted.
 Reserved Notation "x ? e" (at level 0).
 
 (* Set of variables is an expression *)
-Inductive V : expr -> id -> Prop := 
+Inductive V : expr -> id -> Prop :=
   v_Var : forall (id : id), id ? (Var id)
 | v_Bop : forall (id : id) (a b : expr) (op : bop), id ? a \/ id ? b -> id ? (Bop op a b)
 where "x ? e" := (V e x).
 
 (* If an expression is defined in some state, then each its' variable is
    defined in that state
- *)      
+ *)
+
 Lemma defined_expression
       (e : expr) (s : state Z) (z : Z) (id : id)
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. admit. Admitted.
+Proof.
+    induction RED; dependent destruction ID.
+    * exists z. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+    * dependent destruction H.
+      - apply IHRED1. assumption.
+      - apply IHRED2. assumption.
+Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -226,51 +317,197 @@ Proof. admit. Admitted.
 Lemma undefined_variable (e : expr) (s : state Z) (id : id)
       (ID : id ? e) (UNDEF : forall (z : Z), ~ (s / id => z)) :
   forall (z : Z), ~ ([| e |] s => z).
-Proof. admit. Admitted.
+Proof.
+    intros until 1.
+    destruct (defined_expression e s z id); try assumption.
+    contradiction (UNDEF x).
+Qed.
 
 (* The evaluation relation is deterministic *)
-Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
+Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z)
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
-Proof. admit. Admitted.
+Proof.
+    dependent induction e; dependent destruction E1; dependent destruction E2; try reflexivity.
+    * apply (state_deterministic Z s i); assumption.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e. clear Heqe. clear e.
+      reflexivity.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e. clear Heqe. clear e.
+      reflexivity.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e. clear Heqe. clear e.
+      reflexivity.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e. clear Heqe. clear e.
+      reflexivity.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e. clear Heqe. clear e.
+      reflexivity.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      lia.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      lia.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      lia.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      lia.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      lia.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      lia.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      lia.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      lia.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      contradiction (OP0 OP).
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      contradiction (OP OP0).
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      contradiction (OP OP0).
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e in OP. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e in OP. clear Heqe. clear e.
+      contradiction (OP0 OP).
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e. clear Heqe. clear e.
+      reflexivity.
+    * remember (IHe1 s za za0 E1_1 E2_1). rewrite e. clear Heqe. clear e.
+      remember (IHe2 s zb zb0 E1_2 E2_2). rewrite e. clear Heqe. clear e.
+      reflexivity.
+Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
-  forall z : Z, s1 /id => z <-> s2 / id => z.
+  forall z : Z, s1 / id => z <-> s2 / id => z.
 
 Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
       (FV : forall (id : id) (ID : id ? e),
           equivalent_states s1 s2 id)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. admit. Admitted.
+Proof.
+    induction EV.
+    * constructor.
+    * constructor. apply FV. constructor. assumption.
+    * constructor.
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+    * constructor.
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+    * constructor.
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+    * constructor.
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * constructor.
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Le_T _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Le_F _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Lt_T _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Lt_F _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Ge_T _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Ge_F _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Gt_T _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Gt_F _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Eq_T _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Eq_F _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Ne_T _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * apply (bs_Ne_F _ _ _ za zb).
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+    * constructor.
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+      - assumption.
+    * constructor.
+      - apply IHEV1. intros. apply FV. constructor. left. assumption.
+      - apply IHEV2. intros. apply FV. constructor. right. assumption.
+      - assumption.
+      - assumption.
+Qed.
 
 Definition equivalent (e1 e2 : expr) : Prop :=
-  forall (n : Z) (s : state Z), 
+  forall (n : Z) (s : state Z),
     [| e1 |] s => n <-> [| e2 |] s => n.
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
 Lemma eq_refl (e : expr): e ~~ e.
-Proof. admit. Admitted.
+Proof. intro. intro. constructor; intro; assumption. Qed.
 
 Lemma eq_symm (e1 e2 : expr) (EQ : e1 ~~ e2): e2 ~~ e1.
-Proof. admit. Admitted.
+Proof. intro. intro. constructor; intro; apply EQ; assumption. Qed.
 
-Lemma eq_trans (e1 e2 e3 : expr) (EQ1 : e1 ~~ e2) (EQ2 : e2 ~~ e3):
-  e1 ~~ e3.
-Proof. admit. Admitted.
+Lemma eq_trans (e1 e2 e3 : expr) (EQ1 : e1 ~~ e2) (EQ2 : e2 ~~ e3): e1 ~~ e3.
+Proof.
+    intro. intro. constructor.
+    * intro. apply EQ2. apply EQ1. assumption.
+    * intro. apply EQ1. apply EQ2. assumption.
+Qed.
 
 Inductive Context : Type :=
 | Hole : Context
 | BopL : bop -> Context -> expr -> Context
 | BopR : bop -> expr -> Context -> Context.
 
-Fixpoint plug (C : Context) (e : expr) : expr := 
+Fixpoint plug (C : Context) (e : expr) : expr :=
   match C with
   | Hole => e
   | BopL b C e1 => Bop b (plug C e) e1
   | BopR b e1 C => Bop b e1 (plug C e)
-  end.  
+  end.
 
 Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
 
@@ -282,13 +519,99 @@ Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
 
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
-Proof. admit. Admitted.
+Proof.
+    constructor.
+    * intro. intro. induction C; constructor; intro; simpl; simpl in H0.
+      - apply H. assumption.
+      - apply H. assumption.
+      - dependent destruction b; dependent destruction H0.
+        + constructor. apply IHC. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption. assumption.
+        + apply (bs_Le_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Le_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Lt_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Lt_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Ge_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Ge_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Gt_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Gt_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Eq_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Eq_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Ne_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Ne_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption. assumption. assumption.
+      - dependent destruction b; dependent destruction H0.
+        + constructor. apply IHC. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption. assumption.
+        + apply (bs_Le_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Le_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Lt_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Lt_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Ge_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Ge_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Gt_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Gt_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Eq_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Eq_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Ne_T _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + apply (bs_Ne_F _ _ _ za zb). apply IHC. assumption. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption. assumption. assumption.
+        + constructor. apply IHC. assumption. assumption. assumption. assumption.
+      - dependent destruction b; dependent destruction H0.
+        + constructor. assumption. apply IHC. assumption.
+        + constructor. assumption. apply IHC. assumption.
+        + constructor. assumption. apply IHC. assumption.
+        + constructor. assumption. apply IHC. assumption. assumption.
+        + constructor. assumption. apply IHC. assumption. assumption.
+        + apply (bs_Le_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Le_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Lt_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Lt_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Ge_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Ge_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Gt_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Gt_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Eq_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Eq_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Ne_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Ne_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + constructor. assumption. apply IHC. assumption. assumption. assumption.
+        + constructor. assumption. apply IHC. assumption. assumption. assumption.
+      - dependent destruction b; dependent destruction H0.
+        + constructor. assumption. apply IHC. assumption.
+        + constructor. assumption. apply IHC. assumption.
+        + constructor. assumption. apply IHC. assumption.
+        + constructor. assumption. apply IHC. assumption. assumption.
+        + constructor. assumption. apply IHC. assumption. assumption.
+        + apply (bs_Le_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Le_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Lt_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Lt_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Ge_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Ge_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Gt_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Gt_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Eq_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Eq_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Ne_T _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + apply (bs_Ne_F _ _ _ za zb). assumption. apply IHC. assumption. assumption.
+        + constructor. assumption. apply IHC. assumption. assumption. assumption.
+        + constructor. assumption. apply IHC. assumption. assumption. assumption.
+    * intro. intro. constructor; intro; simpl; simpl in H0; apply (H Hole); assumption.
+Qed.
 
 Module SmallStep.
 
   Inductive is_value : expr -> Prop :=
     isv_Intro : forall n, is_value (Nat n).
-               
+
   Reserved Notation "st |- e --> e'" (at level 0).
 
   Inductive ss_step : state Z -> expr -> expr -> Prop :=
@@ -307,7 +630,7 @@ Module SmallStep.
   | ss_Bop   : forall (s       : state Z)
                       (zl zr z : Z)
                       (op      : bop)
-                      (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))      
+                      (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))
   where "st |- e --> e'" := (ss_step st e e').
 
   Reserved Notation "st |- e -->> e'" (at level 0).
@@ -320,54 +643,90 @@ Module SmallStep.
                      (HStep : s |- e --> e')
                      (Heval: s |- e' -->> e''), s |- e -->> e''
   where "st |- e -->> e'"  := (ss_eval st e e').
-  
+
   Definition normal_form (e : expr) : Prop :=
-    forall s, ~ exists e', (s |- e --> e').   
+    forall s, ~ exists e', (s |- e --> e').
 
   Lemma value_is_normal_form (e : expr) (HV: is_value e) : normal_form e.
   Proof. admit. Admitted.
 
   Lemma normal_form_is_not_a_value : ~ forall (e : expr), normal_form e -> is_value e.
   Proof. admit. Admitted.
-  
-  Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
-  Proof. admit. Admitted.
-  
+
+  Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z),
+    s |- e --> e' -> s |- e --> e'' -> e' = e''.
+  Proof.
+    intro.
+    absurd ((Nat 1 [+] Var (Id 2)) = (Var (Id 1) [+] Nat 2)).
+    * intro. inversion H0.
+    * apply (H
+        (Var (Id 1) [+] Var (Id 2))
+        (Nat 1 [+] Var (Id 2))
+        (Var (Id 1) [+] Nat 2)
+        ((Id 2, Zpos 2) :: (Id 1, Zpos 1) :: nil)).
+      - constructor. constructor. constructor.
+        + intro. inversion H0.
+        + constructor.
+      - constructor. constructor. constructor.
+  Qed.
+
   Lemma ss_deterministic_step (e e' : expr)
                          (s    : state Z)
                          (z z' : Z)
                          (H1   : s |- e --> (Nat z))
                          (H2   : s |- e --> e') : e' = Nat z.
-  Proof. admit. Admitted.
-  
+  Proof.
+    induction e; dependent destruction H1; dependent destruction H2.
+    * f_equal. apply (state_deterministic _ s i). assumption. assumption.
+    * inversion H2.
+    * inversion H2.
+    * f_equal. apply (eval_deterministic (Bop b (Nat zl) (Nat zr)) s). assumption. assumption.
+  Qed.
+
   Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
   Proof. admit. Admitted.
-  
+
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
   Proof. admit. Admitted.
-  
+
+  Lemma ss_eval_not_equiv
+    : ~(forall (e : expr)
+               (s : state Z)
+               (z : Z), ([| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)))).
+  Proof.
+    intro.
+    absurd (((Id 1, Zpos 1) :: nil) |- (Var (Id 1) [+] Nat 2) --> (Nat 3)).
+    * intro. inversion H0.
+    * destruct (H (Var (Id 1) [+] Nat 2) ((Id 1, Zpos 1) :: nil) (Zpos 3)).
+      - destruct H0.
+        + apply (bs_Add _ _ _ (Zpos 1) (Zpos 2)).
+          constructor. constructor. constructor.
+        + inversion H0.
+        + assumption.
+  Qed.
+
 End SmallStep.
 
 Module Renaming.
-  
+
   Definition renaming := { f : id -> id | Bijective f }.
-  
+
   Fixpoint rename_id (r : renaming) (x : id) : id :=
     match r with
       exist _ f _ => f x
     end.
 
   Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.
-  
+
   Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
   Proof.
     destruct r. unfold Bijective in b. inversion b. inversion_clear H.
     assert (B: Bijective x0). unfold Bijective. exists x. split; assumption.
     exists (exist _ x0 B).
     unfold renamings_inv. intro x1. simpl. auto.
-  Qed.    
+  Qed.
 
   Lemma renaming_inv2 (r : renaming) : exists (r' : renaming), renamings_inv r r'.
   Proof.
@@ -375,25 +734,20 @@ Module Renaming.
     assert (B: Bijective x0). unfold Bijective. exists x. split; assumption.
     exists (exist _ x0 B).
     unfold renamings_inv. intro x1. simpl. auto.
-  Qed.  
+  Qed.
 
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with
-    | Var x => Var (rename_id r x) 
+    | Var x => Var (rename_id r x)
     | Nat n => Nat n
-    | Bop op e1 e2 => Bop op (rename_expr r e1) (rename_expr r e2) 
+    | Bop op e1 e2 => Bop op (rename_expr r e1) (rename_expr r e2)
     end.
 
   Lemma re_rename_expr
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (e    : expr) : rename_expr r (rename_expr r' e) = e.
-  Proof.
-    unfold renamings_inv in Hinv. 
-    induction e; simpl; try reflexivity.
-    { rewrite Hinv. reflexivity. }
-    { rewrite IHe1, IHe2. reflexivity. }
-  Qed.
+  Proof. admit. Admitted.
 
   Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
     match st with
@@ -406,17 +760,13 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (st   : state Z) : rename_state r (rename_state r' st) = st.
-  Proof.
-    unfold renamings_inv in Hinv.
-    induction st; simpl; try reflexivity.
-    { destruct a, r'. simpl. destruct r. rewrite IHst. rewrite Hinv. reflexivity. }
-  Qed.
-      
+  Proof. admit. Admitted.
+
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
   Proof. admit. Admitted.
-  
+
   Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
   Proof. admit. Admitted.
-    
+
 End Renaming.
