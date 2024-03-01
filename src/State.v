@@ -169,7 +169,24 @@ Section S.
         (SN : st / x1 => n1)
         (SM : st / x2 => m) :
     st [x1 <- n1] / x2 => m.
-  Proof. admit. Admitted.
+  Proof.
+    destruct (id_eq_dec x1 x2).
+    {
+      assert (G': n1 = m).
+      apply (state_deterministic st x1).
+      apply SN.
+      rewrite e.
+      apply SM.
+      rewrite G'.
+      rewrite e.
+      apply update_eq.
+    }
+    {
+      apply update_neq.
+      apply n.
+      apply SM.
+    }
+  Qed.
 
   Lemma update_permute (st : state) (x1 x2 x3 : id) (n1 n2 m : A)
         (NEQ : x2 <> x1)
