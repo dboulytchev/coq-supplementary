@@ -126,12 +126,12 @@ Section S.
     {
       apply st_binds_tl.
       unfold not.
-      intros.
+      intro.
       symmetry in H.
       contradiction.
     }
     {
-      intros.
+      intro.
       inversion H.
       contradiction.
       apply H6.
@@ -143,7 +143,7 @@ Section S.
   Proof.
     split.
     {
-      intros.
+      intro.
       inversion H.
       apply update_eq.
       inversion H6.
@@ -154,7 +154,7 @@ Section S.
       apply H13.
     }
     {
-      intros.
+      intro.
       inversion H.
       apply update_eq.
       apply st_binds_tl.
@@ -192,7 +192,31 @@ Section S.
         (NEQ : x2 <> x1)
         (SM : st [x2 <- n1][x1 <- n2] / x3 => m) :
     st [x1 <- n2][x2 <- n1] / x3 => m.
-  Proof. admit. Admitted.
+  Proof.
+    inversion SM.
+    {
+      apply update_neq.
+      rewrite <- H3.
+      apply NEQ.
+      apply update_eq.
+    }
+    inversion H5.
+    apply update_eq.
+
+    apply update_neq.
+    unfold not.
+    intro.
+    symmetry in H13.
+    contradiction.
+
+    apply update_neq.
+    unfold not.
+    intro.
+    symmetry in H13.
+    contradiction.
+
+    apply H12.
+  Qed.
 
 End S.
 
