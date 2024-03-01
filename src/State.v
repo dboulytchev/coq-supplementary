@@ -140,7 +140,30 @@ Section S.
 
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
-  Proof. admit. Admitted.
+  Proof.
+    split.
+    {
+      intros.
+      inversion H.
+      apply update_eq.
+      inversion H6.
+      symmetry in H7.
+      contradiction.
+      apply st_binds_tl.
+      apply H5.
+      apply H13.
+    }
+    {
+      intros.
+      inversion H.
+      apply update_eq.
+      apply st_binds_tl.
+      apply H5.
+      apply st_binds_tl.
+      apply H5.
+      apply H6.
+    }
+  Qed.
 
   Lemma update_same (st : state) (x1 x2 : id) (n1 m : A)
         (SN : st / x1 => n1)
