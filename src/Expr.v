@@ -749,7 +749,46 @@ Module SmallStep.
                          (z z' : Z)
                          (H1   : s |- e --> (Nat z))
                          (H2   : s |- e --> e') : e' = Nat z.
-  Proof. admit. Admitted.
+  Proof.
+    inversion H1.
+    inversion H2.
+    {
+      rewrite <- H5 in H0.
+      inversion H0.
+      rewrite H8 in VAL.
+      rewrite (state_deterministic Z s i0 z1 z).
+      constructor.
+      apply VAL0.
+      apply VAL.
+    }
+    {
+      rewrite <- H5 in H1.
+      inversion H1.
+      rewrite <- H10 in LEFT.
+      inversion LEFT.
+    }
+    {
+      rewrite <- H5 in H1.
+      inversion H1.
+      rewrite <- H11 in RIGHT.
+      inversion RIGHT.
+    }
+    {
+      rewrite <- H5 in H0.
+      inversion H0.
+    }
+    {
+      rewrite <- H0 in H2.
+      inversion H2.
+      easy.
+      easy.
+      remember (Bop op (Nat zl) (Nat zr)) as e''.
+      rewrite (eval_deterministic e'' s z1 z).
+      constructor.
+      apply EVAL0.
+      apply EVAL.
+    }
+  Qed.
 
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
