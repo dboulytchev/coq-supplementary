@@ -790,9 +790,41 @@ Module SmallStep.
     }
   Qed.
 
+  Lemma ss_eval_inequiv: ~ (forall e s z, [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z))).
+  Proof.
+    unfold not.
+    intros.
+    remember ([(Id 1, Z.one)] : state Z) as s.
+    remember (Var (Id 1) [+] Var (Id 1)) as e.
+    assert (e = Nat 2 \/ s |- e --> (Nat 2)).
+    apply H.
+    rewrite Heqe.
+    assert (2%Z = Z.add 1%Z 1%Z). lia.
+    rewrite H0.
+    rewrite Heqs.
+    apply bs_Add.
+    apply bs_Var.
+    apply st_binds_hd.
+    apply bs_Var.
+    apply st_binds_hd.
+
+    inversion H0.
+    rewrite H1 in Heqe.
+    discriminate.
+    inversion H1.
+    rewrite Heqs in VAL.
+    inversion VAL.
+    inversion H11.
+
+    rewrite Heqe in H3.
+    discriminate.
+  Qed.
+
+  (*
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
   Proof. admit. Admitted.
+  *)
 
 End SmallStep.
