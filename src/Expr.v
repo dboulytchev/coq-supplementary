@@ -255,7 +255,42 @@ Lemma defined_expression
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  induction e.
+  { inversion ID. }
+  {
+    inversion ID.
+    intros.
+    inversion RED.
+    exists z.
+    apply VAR.
+  }
+  inversion ID.
+  inversion H3.
+  {
+    intros.
+    assert (G': exists z1, [| e1 |] s => z1).
+    eapply strictness.
+    apply subexpr_left.
+    apply subexpr_refl.
+    apply RED.
+    destruct G'.
+    apply (IHe1 H4 x).
+    apply H5.
+  }
+  {
+    intros.
+    assert (G': exists z2, [| e2 |] s => z2).
+    eapply strictness.
+    apply subexpr_right.
+    apply subexpr_refl.
+    apply RED.
+    destruct G'.
+    apply (IHe2 H4 x).
+    apply H5.
+  }
+Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
