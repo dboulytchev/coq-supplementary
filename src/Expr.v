@@ -681,7 +681,17 @@ Module SmallStep.
   where "st |- e --> e'" := (ss_eval st e e').
 
   Lemma no_step_from_value (e : expr) (HV: is_value e) : forall s, ~ exists e', (s |- e --> e').
-  Proof. admit. Admitted.
+  Proof.
+    unfold not.
+    intros.
+    destruct H.
+    inversion HV.
+    inversion H.
+    rewrite <- H2 in H0. discriminate.
+    rewrite <- H2 in H0. discriminate.
+    rewrite <- H2 in H0. discriminate.
+    rewrite <- H2 in H0. discriminate.
+  Qed.
 
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
   Proof. admit. Admitted.
