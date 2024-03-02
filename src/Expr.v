@@ -528,7 +528,131 @@ Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
 
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
-Proof. admit. Admitted.
+Proof.
+  split.
+  intro.
+  split.
+  {
+    generalize dependent n.
+    induction C.
+    {
+      intros.
+      apply H.
+      apply H0.
+    }
+    {
+      intros.
+      simpl in H0.
+      simpl.
+      inversion H0.
+      apply bs_Add. apply IHC. apply VALA. apply VALB.
+      apply bs_Sub. apply IHC. apply VALA. apply VALB.
+      apply bs_Mul. apply IHC. apply VALA. apply VALB.
+      apply bs_Div. apply IHC. apply VALA. apply VALB. apply NZERO.
+      apply bs_Mod. apply IHC. apply VALA. apply VALB. apply NZERO.
+      apply (bs_Le_T s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Le_F s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Lt_T s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Lt_F s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Ge_T s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Ge_F s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Gt_T s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Gt_F s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Eq_T s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Eq_F s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Ne_T s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Ne_F s (C <~ e2) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply bs_And. apply IHC. apply VALA. apply VALB. apply BOOLA. apply BOOLB.
+      apply bs_Or. apply IHC. apply VALA. apply VALB. apply BOOLA. apply BOOLB.
+    }
+    {
+      intros.
+      simpl in H0.
+      simpl.
+      inversion H0.
+      apply bs_Add. apply VALA. apply IHC. apply VALB.
+      apply bs_Sub. apply VALA. apply IHC. apply VALB.
+      apply bs_Mul. apply VALA. apply IHC. apply VALB.
+      apply bs_Div. apply VALA. apply IHC. apply VALB. apply NZERO.
+      apply bs_Mod. apply VALA. apply IHC. apply VALB. apply NZERO.
+      apply (bs_Le_T s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Le_F s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Lt_T s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Lt_F s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Ge_T s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Ge_F s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Gt_T s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Gt_F s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Eq_T s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Eq_F s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Ne_T s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Ne_F s e (C <~ e2) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply bs_And. apply VALA. apply IHC. apply VALB. apply BOOLA. apply BOOLB.
+      apply bs_Or. apply VALA. apply IHC. apply VALB. apply BOOLA. apply BOOLB.
+    }
+  }
+  {
+    generalize dependent n.
+    induction C.
+    {
+      intros.
+      apply H.
+      apply H0.
+    }
+    {
+      intros.
+      simpl in H0.
+      simpl.
+      inversion H0.
+      apply bs_Add. apply IHC. apply VALA. apply VALB.
+      apply bs_Sub. apply IHC. apply VALA. apply VALB.
+      apply bs_Mul. apply IHC. apply VALA. apply VALB.
+      apply bs_Div. apply IHC. apply VALA. apply VALB. apply NZERO.
+      apply bs_Mod. apply IHC. apply VALA. apply VALB. apply NZERO.
+      apply (bs_Le_T s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Le_F s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Lt_T s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Lt_F s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Ge_T s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Ge_F s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Gt_T s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Gt_F s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Eq_T s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Eq_F s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Ne_T s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply (bs_Ne_F s (C <~ e1) e za zb). apply IHC. apply VALA. apply VALB. apply OP.
+      apply bs_And. apply IHC. apply VALA. apply VALB. apply BOOLA. apply BOOLB.
+      apply bs_Or. apply IHC. apply VALA. apply VALB. apply BOOLA. apply BOOLB.
+    }
+    {
+      intros.
+      simpl in H0.
+      simpl.
+      inversion H0.
+      apply bs_Add. apply VALA. apply IHC. apply VALB.
+      apply bs_Sub. apply VALA. apply IHC. apply VALB.
+      apply bs_Mul. apply VALA. apply IHC. apply VALB.
+      apply bs_Div. apply VALA. apply IHC. apply VALB. apply NZERO.
+      apply bs_Mod. apply VALA. apply IHC. apply VALB. apply NZERO.
+      apply (bs_Le_T s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Le_F s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Lt_T s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Lt_F s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Ge_T s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Ge_F s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Gt_T s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Gt_F s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Eq_T s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Eq_F s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Ne_T s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply (bs_Ne_F s e (C <~ e1) za zb). apply VALA. apply IHC. apply VALB. apply OP.
+      apply bs_And. apply VALA. apply IHC. apply VALB. apply BOOLA. apply BOOLB.
+      apply bs_Or. apply VALA. apply IHC. apply VALB. apply BOOLA. apply BOOLB.
+    }
+  }
+  intro.
+  apply (H Hole).
+Qed.
 
 Module SmallStep.
 
