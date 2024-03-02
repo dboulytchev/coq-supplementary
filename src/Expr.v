@@ -208,7 +208,36 @@ where "e1 << e2" := (subexpr e1 e2).
 
 Lemma strictness (e e' : expr) (HSub : e' << e) (st : state Z) (z : Z) (HV : [| e |] st => z) :
   exists z' : Z, [| e' |] st => z'.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  induction e.
+  {
+    intros.
+    inversion HSub.
+    exists z0.
+    apply HV.
+  }
+  {
+    intros.
+    inversion HSub.
+    exists z.
+    apply HV.
+  }
+  intros.
+  inversion HSub.
+  {
+    exists z.
+    apply HV.
+  }
+  {
+    inversion HV.
+    all: apply (IHe1 H1 za); apply VALA.
+  }
+  {
+    inversion HV.
+    all: apply (IHe2 H1 zb); apply VALB.
+  }
+Qed.
 
 Reserved Notation "x ? e" (at level 0).
 
