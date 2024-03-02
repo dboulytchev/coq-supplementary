@@ -368,84 +368,21 @@ Proof.
     rewrite (IHe1 za VALA za0 VALA0);
     rewrite (IHe2 zb VALB zb0 VALB0);
     reflexivity.
-  {
-    inversion E1.
-    inversion E2.
-    reflexivity.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    inversion E2.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    reflexivity.
-  }
-  {
-    inversion E1.
-    inversion E2.
-    reflexivity.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    inversion E2.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    reflexivity.
-  }
-  {
-    inversion E1.
-    inversion E2.
-    reflexivity.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    inversion E2.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    reflexivity.
-  }
-  {
-    inversion E1.
-    inversion E2.
-    reflexivity.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    inversion E2.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    reflexivity.
-  }
-  {
-    inversion E1.
-    inversion E2.
-    reflexivity.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    inversion E2.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    reflexivity.
-  }
-  {
-    inversion E1.
-    inversion E2.
-    reflexivity.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    inversion E2.
-    rewrite (IHe1 za VALA za0 VALA0) in OP.
-    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
-    contradiction.
-    reflexivity.
-  }
+  all:
+    inversion E1;
+    [ inversion E2;
+      [ reflexivity
+      | rewrite (IHe1 za VALA za0 VALA0) in OP;
+        rewrite (IHe2 zb VALB zb0 VALB0) in OP;
+        contradiction
+      ]
+    | inversion E2;
+      [ rewrite (IHe1 za VALA za0 VALA0) in OP;
+        rewrite (IHe2 zb VALB zb0 VALB0) in OP;
+        contradiction
+      | reflexivity
+      ]
+    ].
 Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
