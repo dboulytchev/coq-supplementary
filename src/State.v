@@ -58,7 +58,7 @@ Section S.
     * reflexivity.
     * contradiction.
     * contradiction.
-    * exact (IHst SN SM).
+    * apply (IHst SN SM).
   Qed.
 
   Lemma update_eq (st : state) (x : id) (n : A) :
