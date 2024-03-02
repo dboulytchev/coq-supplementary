@@ -217,7 +217,7 @@ Lemma defined_expression
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. Admitted.
+Proof. admit. Admitted.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -268,7 +268,7 @@ Fixpoint plug (C : Context) (e : expr) : expr :=
   match C with
   | Hole => e
   | BopL b C e1 => Bop b (plug C e) e1
-  | BopR b e1 C => Bop b (plug C e) e1
+  | BopR b e1 C => Bop b e1 (plug C e)
   end.  
 
 Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
@@ -308,8 +308,8 @@ Module SmallStep.
                       (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))      
   where "st |- e --> e'" := (ss_eval st e e').
 
-  Lemma no_step_from_value (e : expr) (HV: is_value e) : ~ forall s, exists e', (s |- e --> e').
-  Proof. admin. Admitted.
+  Lemma no_step_from_value (e : expr) (HV: is_value e) : forall s, ~ exists e', (s |- e --> e').
+  Proof. admit. Admitted.
 
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
   Proof. admit. Admitted.
@@ -325,14 +325,5 @@ Module SmallStep.
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
   Proof. admit. Admitted.
-
-
-(*
-  s |- e -> .... -> Nat z
-       \
-        \-> .... -> Nat z
-
-  s |- e -> .... -> e'  
-*)
   
 End SmallStep.

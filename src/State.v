@@ -25,12 +25,17 @@ Section S.
 
   Notation "st [ x '<-' y ]" := (update st x y) (at level 0).
 
+  (* Functional version of binding-in-a-state relation *)
   Fixpoint st_eval (st : state) (x : id) : option A :=
     match st with
     | (x', a) :: st' =>
         if id_eq_dec x' x then Some a else st_eval st' x
     | [] => None
     end.
+
+  (* State a prove a lemma which claims that st_eval and
+     st_binds are actually define the same relation.
+   *)
 
   Lemma state_deterministic' (st : state) (x : id) (n m : option A)
     (SN : st_eval st x = n)
@@ -219,6 +224,3 @@ Section S.
   Qed.
 
 End S.
-
-
-Print update_permute.
