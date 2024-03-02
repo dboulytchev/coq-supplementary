@@ -202,84 +202,14 @@ Module StraightLine.
     (s, st, i, o) -- (compile_expr e) ++ p --> c.
   Proof.
     dependent induction e; dependent destruction VAL.
-    * constructor. assumption.
-    * apply (sm_Load _ _ z). assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      constructor. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      constructor. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      constructor. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      constructor. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      constructor. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Le_T. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Le_F. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Lt_T. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Lt_F. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Ge_T. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Ge_F. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Gt_T. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Gt_F. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Eq_T. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Eq_F. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Ne_T. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      apply sm_Ne_F. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      constructor. assumption. assumption. assumption.
-    * simpl.
-      rewrite app_ass. apply (IHe1 _ _ _ _ za). assumption.
-      rewrite app_ass. apply (IHe2 _ _ _ _ zb). assumption.
-      constructor. assumption. assumption. assumption.
+
+    constructor. assumption.
+    econstructor. eassumption. assumption.
+
+    all: simpl;
+         rewrite app_ass; eapply IHe1; [ eassumption | ];
+         rewrite app_ass; eapply IHe2; [ eassumption | ];
+         constructor; assumption; assumption.
   Qed.
 
   #[export] Hint Resolve compiled_expr_correct_cont.

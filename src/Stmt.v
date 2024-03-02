@@ -307,28 +307,17 @@ Lemma bs_int_deterministic (c c1 c2 : conf) (s : stmt)
       (EXEC1 : c == s ==> c1) (EXEC2 : c == s ==> c2) :
   c1 = c2.
 Proof.
-    dependent induction EXEC1 in c2; dependent destruction EXEC2.
-    * reflexivity.
-    * by_eval_deterministic.
-    * reflexivity.
-    * by_eval_deterministic.
-    * apply IHEXEC1_2. rewrite (IHEXEC1_1 c'0). assumption. assumption.
-    * apply IHEXEC1. assumption.
-    * absurd (Z.one = Z.zero).
-      - intro. inversion H.
-      - apply (eval_deterministic e s). assumption. assumption.
-    * absurd (Z.one = Z.zero).
-      - intro. inversion H.
-      - apply (eval_deterministic e s). assumption. assumption.
-    * apply IHEXEC1. assumption.
-    * apply IHEXEC1_2. rewrite (IHEXEC1_1 c'0). assumption. assumption.
-    * absurd (Z.one = Z.zero).
-      - intro. inversion H.
-      - apply (eval_deterministic e st). assumption. assumption.
-    * absurd (Z.one = Z.zero).
-      - intro. inversion H.
-      - apply (eval_deterministic e st). assumption. assumption.
-    * reflexivity.
+    dependent induction EXEC1 in c2; dependent destruction EXEC2;
+    try reflexivity; try by_eval_deterministic.
+
+    all: try ( apply IHEXEC1_2; rewrite (IHEXEC1_1 c'0); assumption; assumption ).
+    all: try ( apply IHEXEC1; assumption ).
+
+    all: try ( absurd (Z.one = Z.zero);
+        [ intro; inversion H
+        | ( try rename s into st ); apply (eval_deterministic e st);
+          try assumption; try assumption
+        ] ).
 Qed.
 
 Definition equivalent_states (s1 s2 : state Z) :=
@@ -425,19 +414,16 @@ Module SmallStep.
     c' = c''.
   Proof.
     dependent induction s;
-    dependent destruction EXEC1; dependent destruction EXEC2; try reflexivity.
-    * by_eval_deterministic.
-    * by_eval_deterministic.
-    * remember (IHs1 c (None, c') (None, c'0) EXEC1 EXEC2). inversion e. f_equal.
-    * dependent destruction EXEC1; dependent destruction EXEC2.
-    * dependent destruction EXEC1; dependent destruction EXEC2.
-    * remember (IHs1 c (Some s1', c') (Some s1'0, c'0) EXEC1 EXEC2). inversion e. f_equal.
-    * absurd (Z.one = Z.zero).
-      - intro. inversion H.
-      - apply (eval_deterministic e s). assumption. assumption.
-    * absurd (Z.one = Z.zero).
-      - intro. inversion H.
-      - apply (eval_deterministic e s). assumption. assumption.
+    dependent destruction EXEC1; dependent destruction EXEC2.
+
+    all: try reflexivity.
+    all: try by_eval_deterministic.
+    all: try by dependent destruction EXEC1; dependent destruction EXEC2.
+    all: try by specialize (IHs1 _ _ _ EXEC1 EXEC2); inversion IHs1; f_equal.
+    all: absurd (Z.one = Z.zero);
+        [ intro; inversion H
+        | apply (eval_deterministic e s); assumption; assumption
+        ].
   Qed.
 
   Lemma ss_int_deterministic (c c' c'' : conf) (s : stmt)
@@ -458,13 +444,7 @@ Module SmallStep.
 
   Lemma ss_bs_base (s : stmt) (c c' : conf) (STEP : c -- s --> (None, c')) :
     c == s ==> c'.
-  Proof.
-    dependent destruction STEP.
-    * constructor.
-    * constructor. assumption.
-    * constructor.
-    * constructor. assumption.
-  Qed.
+  Proof. dependent destruction STEP; constructor; try assumption. Qed.
 
   Lemma ss_ss_composition (c c' c'' : conf) (s1 s2 : stmt)
         (STEP1 : c -- s1 -->> c'') (STEP2 : c'' -- s2 -->> c') :
@@ -495,21 +475,11 @@ Module SmallStep.
   Proof.
     constructor; intros.
     * dependent induction H.
-      - constructor. constructor.
-      - constructor. constructor. assumption.
-      - constructor. constructor.
-      - constructor. constructor. assumption.
+
+      all: try by constructor; constructor; try assumption.
+      all: try by dependent destruction IHbs_int; econstructor; econstructor; eassumption.
+
       - apply (ss_ss_composition _ _ _ _ _ IHbs_int1 IHbs_int2).
-      - dependent destruction IHbs_int.
-        + apply (ss_int_Step _ s0 _ (s, i, o)). apply ss_If_True. assumption.
-          constructor. assumption.
-        + apply (ss_int_Step _ s0 _ (s, i, o)). apply ss_If_True. assumption.
-          apply (ss_int_Step _ s' _ c'). assumption. assumption.
-      - dependent destruction IHbs_int.
-        + apply (ss_int_Step _ s0 _ (s, i, o)). apply ss_If_False. assumption.
-          constructor. assumption.
-        + apply (ss_int_Step _ s0 _ (s, i, o)). apply ss_If_False. assumption.
-          apply (ss_int_Step _ s' _ c'). assumption. assumption.
       - dependent destruction IHbs_int1.
         + apply (ss_int_Step _ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END) _ (st, i, o)).
           apply ss_While. apply (ss_int_Step _ (s ;; WHILE e DO s END) _ (st, i, o) _).
@@ -524,12 +494,8 @@ Module SmallStep.
         apply ss_While. apply (ss_int_Step _ SKIP _ (st, i, o)). constructor. assumption.
         constructor. constructor.
     * dependent induction H.
-      - dependent destruction H.
-        + constructor.
-        + constructor. assumption.
-        + constructor.
-        + constructor. assumption.
-      - apply (ss_bs_step _ _ _ _ _ H IHss_int).
+      - dependent destruction H; constructor; try assumption.
+      - eapply ss_bs_step. eassumption. eassumption.
   Qed.
 
 End SmallStep.
@@ -662,19 +628,13 @@ Lemma cps_bs_gen (S : stmt) (c c' : conf) (S1 k : cont)
   c == S ==> c'.
 Proof.
     dependent induction EXEC generalizing S.
-    * dependent destruction DEF.
-    * dependent destruction k; dependent destruction DEF.
-      - dependent destruction EXEC. constructor.
-      - apply (bs_Seq _ c). constructor. apply IHEXEC. reflexivity.
-    * dependent destruction k; dependent destruction DEF.
-      - dependent destruction EXEC. constructor. assumption.
-      - apply (bs_Seq _ (s [x <- n], i, o)). constructor. assumption. apply IHEXEC. reflexivity.
-    * dependent destruction k; dependent destruction DEF.
-      - dependent destruction EXEC. constructor.
-      - apply (bs_Seq _ (s [x <- z], i, o)). constructor. apply IHEXEC. reflexivity.
-    * dependent destruction k; dependent destruction DEF.
-      - dependent destruction EXEC. constructor. assumption.
-      - apply (bs_Seq _ (s, i, z :: o)). constructor. assumption. apply IHEXEC. reflexivity.
+
+    dependent destruction DEF.
+    all: try by dependent destruction k; dependent destruction DEF;
+        [ dependent destruction EXEC; econstructor
+        | econstructor; [ constructor | apply IHEXEC; reflexivity ]
+        ].
+
     * dependent destruction k; dependent destruction DEF.
       - apply IHEXEC. reflexivity.
       - apply SmokeTest.seq_assoc. apply IHEXEC. reflexivity.
@@ -700,11 +660,6 @@ Proof.
         + dependent destruction H. dependent destruction H0.
           apply (bs_Seq _ c'). apply (bs_While_True _ _ _ c). assumption. assumption.
           assumption. assumption.
-    * dependent destruction k; dependent destruction DEF.
-      - dependent destruction EXEC. constructor. assumption.
-      - assert (H : (st, i, o) == s ==> c').
-        + apply IHEXEC. reflexivity.
-        + apply (bs_Seq _ (st, i, o)). constructor. assumption. assumption.
 Qed.
 
 Lemma cps_bs (s1 s2 : stmt) (c c' : conf) (STEP : !s2 |- c -- !s1 --> c'):
@@ -721,33 +676,13 @@ Lemma cps_cont_to_seq c1 c2 k1 k2 k3
   (k3 |- c1 -- k1 @ k2 --> c2).
 Proof.
     dependent induction STEP; dependent destruction k2.
-    * assert (H : k3 = KEmpty).
-      - dependent destruction k3; try auto; try inversion x.
-      - dependent destruction H. constructor.
-    * assert (H : k3 = KEmpty).
-      - dependent destruction k3; try auto; try inversion x.
-      - dependent destruction H.
-    * constructor. assumption.
-    * constructor. constructor. assumption.
-    * apply (cps_Assign _ _ _ _ _ _ _ n). assumption. assumption.
-    * constructor. apply (cps_Assign _ _ _ _ _ _ _ n). assumption. assumption.
-    * constructor. assumption.
-    * constructor. constructor. assumption.
-    * apply (cps_Write _ _ _ _ _ _ z). assumption. assumption.
-    * constructor. apply (cps_Write _ _ _ _ _ _ z). assumption. assumption.
-    * constructor. apply (IHSTEP KEmpty). reflexivity.
-    * constructor. constructor. apply (IHSTEP KEmpty). reflexivity.
-    * apply cps_If_True. assumption. apply (IHSTEP KEmpty). reflexivity.
-    * constructor. apply cps_If_True. assumption. apply (IHSTEP KEmpty). reflexivity.
-    * apply cps_If_False. assumption. apply (IHSTEP KEmpty). reflexivity.
-    * constructor. apply cps_If_False. assumption. apply (IHSTEP KEmpty). reflexivity.
-    * apply cps_While_True. assumption. apply (IHSTEP KEmpty).
-      rewrite Kapp_neutral_left. rewrite Kapp_neutral_left.
-      reflexivity.
-    * constructor. apply cps_While_True. assumption. apply (IHSTEP KEmpty).
-      rewrite Kapp_neutral_left. reflexivity.
-    * apply cps_While_False. assumption. assumption.
-    * constructor. apply cps_While_False. assumption. assumption.
+
+    all: try by econstructor; try econstructor; eassumption; try eassumption.
+
+    all: try by assert (H : k3 = KEmpty);
+        [ dependent destruction k3; try auto; try inversion x
+        | dependent destruction H; try constructor
+        ].
 Qed.
 
 Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
@@ -756,17 +691,15 @@ Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
   k |- c1 -- !(s) --> c3.
 Proof.
     dependent induction EXEC generalizing k.
-    * assumption.
-    * dependent destruction STEP. apply (cps_Assign _ _ _ _ _ _ _ z). assumption. assumption.
-    * dependent destruction STEP. constructor. assumption.
-    * dependent destruction STEP. apply (cps_Write _ _ _ _ _ _ z). assumption. assumption.
+
+    assumption.
+    all: try by dependent destruction STEP; econstructor; try econstructor; try eassumption.
+    all: try by econstructor; [ eassumption | apply IHEXEC; assumption ].
+
     * constructor. apply IHEXEC1. constructor. apply cps_cont_to_seq. apply IHEXEC2.
       rewrite Kapp_neutral_right. assumption.
-    * apply cps_If_True. assumption. apply IHEXEC. assumption.
-    * apply cps_If_False. assumption. apply IHEXEC. assumption.
     * apply cps_While_True. assumption. apply IHEXEC1. constructor. apply cps_cont_to_seq.
       apply IHEXEC2. rewrite Kapp_neutral_right. assumption.
-    * apply cps_While_False. assumption. dependent destruction STEP. assumption.
 Qed.
 
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :

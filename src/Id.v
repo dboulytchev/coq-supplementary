@@ -106,19 +106,21 @@ Qed.
 Lemma le_lt_eq_id_dec : forall id1 id2 : id,
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
 Proof.
-    intros. destruct (lt_eq_lt_id_dec id1 id2). destruct s.
-    right. destruct l. constructor. lia.
-    left. assumption.
-    left. dependent destruction H. dependent destruction l. lia.
+    intros. destruct (lt_eq_lt_id_dec id1 id2).
+    * destruct s.
+      - right. destruct l. constructor. lia.
+      - left. assumption.
+    * left. dependent destruction H. dependent destruction l. lia.
 Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
 Proof.
-    intros. destruct (lt_eq_lt_id_dec id1 id2). destruct s.
-    right. destruct l. constructor. lia.
-    contradiction.
-    left. destruct l. constructor. lia.
+    intros. destruct (lt_eq_lt_id_dec id1 id2).
+    * destruct s.
+      - right. destruct l. constructor. lia.
+      - contradiction.
+    * left. destruct l. constructor. lia.
 Qed.
 
 Lemma eq_gt_id_false : forall id1 id2 : id,
