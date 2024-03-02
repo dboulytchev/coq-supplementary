@@ -687,14 +687,62 @@ Module SmallStep.
     destruct H.
     inversion HV.
     inversion H.
-    rewrite <- H2 in H0. discriminate.
-    rewrite <- H2 in H0. discriminate.
-    rewrite <- H2 in H0. discriminate.
-    rewrite <- H2 in H0. discriminate.
+    all: rewrite <- H2 in H0; discriminate.
   Qed.
 
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
-  Proof. admit. Admitted.
+  Proof.
+    unfold not.
+    intros.
+    remember ([(Id 1, Z.one); (Id 2, Z.two)] : state Z) as st.
+    remember (Var (Id 1)) as l.
+    remember (Var (Id 2)) as r.
+    remember (Nat 1) as l'.
+    remember (Nat 2) as r'.
+    remember (l [+] r) as e.
+    remember (l' [+] r) as e'.
+    remember (l [+] r') as e''.
+
+    assert (EQ: e' = e'').
+    apply (H e e' e'' st).
+    {
+      rewrite Heqst.
+      rewrite Heqe.
+      rewrite Heqe'.
+      rewrite Heql.
+      rewrite Heql'.
+      apply ss_Left.
+      apply ss_Var.
+      apply st_binds_hd.
+    }
+    {
+      rewrite Heqst.
+      rewrite Heqe.
+      rewrite Heqe''.
+      rewrite Heqr.
+      rewrite Heqr'.
+      apply ss_Right.
+      apply ss_Var.
+      apply st_binds_tl.
+      unfold not.
+      intro.
+      inversion H0.
+      apply st_binds_hd.
+    }
+
+    assert (NE: e' <> e'').
+    {
+      rewrite Heqe'.
+      rewrite Heqe''.
+      rewrite Heql.
+      rewrite Heql'.
+      rewrite Heqr.
+      rewrite Heqr'.
+      discriminate.
+    }
+
+    apply (NE EQ).
+  Qed.
 
   Lemma ss_deterministic_step (e e' : expr)
                          (s    : state Z)
