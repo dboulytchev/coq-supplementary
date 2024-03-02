@@ -27,7 +27,7 @@ Inductive bop : Type :=
 (* Type of arithmetic expressions *)
 Inductive expr : Type :=
 | Nat : Z -> expr
-| Var : id  -> expr              
+| Var : id  -> expr
 | Bop : bop -> expr -> expr -> expr.
 
 (* Supplementary notation *)
@@ -46,7 +46,7 @@ Notation "x '[&]'  y" := (Bop And x y) (at level 38, left associativity).
 Notation "x '[\/]' y" := (Bop Or  x y) (at level 38, left associativity).
 
 Definition zbool (x : Z) : Prop := x = Z.one \/ x = Z.zero.
-  
+
 Definition zor (x y : Z) : Z :=
   if Z_le_gt_dec (Z.of_nat 1) (x + y) then Z.one else Z.zero.
 
@@ -54,7 +54,7 @@ Reserved Notation "[| e |] st => z" (at level 0).
 Notation "st / x => y" := (st_binds Z st x y) (at level 0).
 
 (* Big-step evaluation relation *)
-Inductive eval : expr -> state Z -> Z -> Prop := 
+Inductive eval : expr -> state Z -> Z -> Prop :=
   bs_Nat  : forall (s : state Z) (n : Z), [| Nat n |] s => n
 
 | bs_Var  : forall (s : state Z) (i : id) (z : Z) (VAR : s / i => z),
@@ -93,7 +93,7 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (OP : Z.le za zb),
     [| a [<=] b |] s => Z.one
 
-| bs_Le_F : forall (s : state Z) (a b : expr) (za zb : Z) 
+| bs_Le_F : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
                    (OP : Z.gt za zb),
@@ -172,19 +172,28 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (BOOLA : zbool za)
                    (BOOLB : zbool zb),
     [| a [\/] b |] s => (zor za zb)
-where "[| e |] st => z" := (eval e st z). 
+where "[| e |] st => z" := (eval e st z).
 
 #[export] Hint Constructors eval.
 
 Module SmokeTest.
-            
+
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. Admitted.
-  
+  Proof. apply bs_Nat. Qed.
+
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. Admitted.
+  Proof.
+    inversion HH.
+    inversion VALB.
+    assert (G': Z.mul za 2 = Z.add za za).
+    lia.
+    rewrite G'.
+    apply (bs_Add s e e za za).
+    apply VALA.
+    apply VALA.
+  Qed.
 
 End SmokeTest.
 
@@ -204,14 +213,14 @@ Proof. admit. Admitted.
 Reserved Notation "x ? e" (at level 0).
 
 (* Set of variables is an expression *)
-Inductive V : expr -> id -> Prop := 
+Inductive V : expr -> id -> Prop :=
   v_Var : forall (id : id), id ? (Var id)
 | v_Bop : forall (id : id) (a b : expr) (op : bop), id ? a \/ id ? b -> id ? (Bop op a b)
 where "x ? e" := (V e x).
 
 (* If an expression is defined in some state, then each its' variable is
    defined in that state
- *)      
+ *)
 Lemma defined_expression
       (e : expr) (s : state Z) (z : Z) (id : id)
       (RED : [| e |] s => z)
@@ -228,7 +237,7 @@ Lemma undefined_variable (e : expr) (s : state Z) (id : id)
 Proof. admit. Admitted.
 
 (* The evaluation relation is deterministic *)
-Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
+Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z)
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
 Proof. admit. Admitted.
@@ -245,7 +254,7 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
 Proof. admit. Admitted.
 
 Definition equivalent (e1 e2 : expr) : Prop :=
-  forall (n : Z) (s : state Z), 
+  forall (n : Z) (s : state Z),
     [| e1 |] s => n <-> [| e2 |] s => n.
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
@@ -264,12 +273,12 @@ Inductive Context : Type :=
 | BopL : bop -> Context -> expr -> Context
 | BopR : bop -> expr -> Context -> Context.
 
-Fixpoint plug (C : Context) (e : expr) : expr := 
+Fixpoint plug (C : Context) (e : expr) : expr :=
   match C with
   | Hole => e
   | BopL b C e1 => Bop b (plug C e) e1
   | BopR b e1 C => Bop b e1 (plug C e)
-  end.  
+  end.
 
 Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
 
@@ -305,7 +314,7 @@ Module SmallStep.
   | ss_Bop   : forall (s       : state Z)
                       (zl zr z : Z)
                       (op      : bop)
-                      (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))      
+                      (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))
   where "st |- e --> e'" := (ss_eval st e e').
 
   Lemma no_step_from_value (e : expr) (HV: is_value e) : forall s, ~ exists e', (s |- e --> e').
@@ -313,7 +322,7 @@ Module SmallStep.
 
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
   Proof. admit. Admitted.
-  
+
   Lemma ss_deterministic_step (e e' : expr)
                          (s    : state Z)
                          (z z' : Z)
@@ -325,5 +334,5 @@ Module SmallStep.
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
   Proof. admit. Admitted.
-  
+
 End SmallStep.
