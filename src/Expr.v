@@ -338,7 +338,115 @@ Qed.
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z)
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z2.
+  generalize dependent z1.
+  induction e.
+  {
+    intros.
+    inversion E1.
+    inversion E2.
+    rewrite <- H2.
+    rewrite <- H5.
+    reflexivity.
+  }
+  {
+    intros.
+    inversion E1.
+    inversion E2.
+    eapply (state_deterministic Z s i).
+    apply VAR.
+    apply VAR0.
+  }
+  intros.
+
+  destruct b.
+
+  all: try by
+    inversion E1;
+    inversion E2;
+    rewrite (IHe1 za VALA za0 VALA0);
+    rewrite (IHe2 zb VALB zb0 VALB0);
+    reflexivity.
+  {
+    inversion E1.
+    inversion E2.
+    reflexivity.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    inversion E2.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    reflexivity.
+  }
+  {
+    inversion E1.
+    inversion E2.
+    reflexivity.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    inversion E2.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    reflexivity.
+  }
+  {
+    inversion E1.
+    inversion E2.
+    reflexivity.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    inversion E2.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    reflexivity.
+  }
+  {
+    inversion E1.
+    inversion E2.
+    reflexivity.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    inversion E2.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    reflexivity.
+  }
+  {
+    inversion E1.
+    inversion E2.
+    reflexivity.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    inversion E2.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    reflexivity.
+  }
+  {
+    inversion E1.
+    inversion E2.
+    reflexivity.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    inversion E2.
+    rewrite (IHe1 za VALA za0 VALA0) in OP.
+    rewrite (IHe2 zb VALB zb0 VALB0) in OP.
+    contradiction.
+    reflexivity.
+  }
+Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
