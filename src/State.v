@@ -11,7 +11,7 @@ From hahn Require Import HahnBase.
 Section S.
 
   Variable A : Set.
-
+  
   Definition state := list (id * A). 
 
   Reserved Notation "st / x => y" (at level 0).
@@ -24,11 +24,31 @@ Section S.
   Definition update (st : state) (id : id) (a : A) : state := (id, a) :: st.
 
   Notation "st [ x '<-' y ]" := (update st x y) (at level 0).
+  
+  (* Functional version of binding-in-a-state relation *)
+  Fixpoint st_eval (st : state) (x : id) : option A :=
+    match st with
+    | (x', a) :: st' =>
+        if id_eq_dec x' x then Some a else st_eval st' x
+    | [] => None
+    end.
+ 
+  (* State a prove a lemma which claims that st_eval and
+     st_binds are actually define the same relation.
+   *)
 
-  Lemma state_deterministic (st : state) (x : id) (n m : A)
-        (SN : st / x => n)
-        (SM : st / x => m) :
+  Lemma state_deterministic' (st : state) (x : id) (n m : option A)
+    (SN : st_eval st x = n)
+    (SM : st_eval st x = m) :
     n = m.
+  Proof using Type.
+    subst n. subst m. reflexivity.
+  Qed.
+    
+  Lemma state_deterministic (st : state) (x : id) (n m : A)   
+    (SN : st / x => n)
+    (SM : st / x => m) :
+    n = m. 
   Proof. induction st.
     - inversion SN.
     - inversion SN.
@@ -42,7 +62,7 @@ Section S.
           revert H2. subst x. contradiction.
         * auto. 
   Qed.
-    
+  
   Lemma update_eq (st : state) (x : id) (n : A) :
     st [x <- n] / x => n.
   Proof. intros. apply st_binds_hd. Qed.

@@ -57,7 +57,7 @@ Ltac prove_with th :=
     | H: ?n <= ?m |- {Id ?n i<= Id ?m} + {_}               => left
     end;
   try (constructor; assumption); congruence.
-
+    
 Lemma lt_eq_lt_id_dec: forall (id1 id2 : id), {id1 i< id2} + {id1 = id2} + {id2 i< id1}.
 Proof . 
   intros. destruct id1. destruct id2.
