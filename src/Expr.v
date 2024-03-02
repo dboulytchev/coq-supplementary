@@ -298,7 +298,41 @@ Qed.
 Lemma undefined_variable (e : expr) (s : state Z) (id : id)
       (ID : id ? e) (UNDEF : forall (z : Z), ~ (s / id => z)) :
   forall (z : Z), ~ ([| e |] s => z).
-Proof. admit. Admitted.
+Proof.
+  unfold not.
+  induction e.
+  { inversion ID. }
+  {
+    inversion ID.
+    intros.
+    inversion H.
+    apply (UNDEF z).
+    apply VAR.
+  }
+  intros.
+  inversion ID.
+  inversion H4.
+  {
+    assert (G': exists z, [| e1 |] s => z).
+    eapply strictness.
+    apply subexpr_left.
+    apply subexpr_refl.
+    apply H.
+    destruct G'.
+    apply (IHe1 H5 x).
+    apply H6.
+  }
+  {
+    assert (G': exists z, [| e2 |] s => z).
+    eapply strictness.
+    apply subexpr_right.
+    apply subexpr_refl.
+    apply H.
+    destruct G'.
+    apply (IHe2 H5 x).
+    apply H6.
+  }
+Qed.
 
 (* The evaluation relation is deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z)
