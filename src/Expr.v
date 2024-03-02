@@ -474,14 +474,38 @@ Definition equivalent (e1 e2 : expr) : Prop :=
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
 Lemma eq_refl (e : expr): e ~~ e.
-Proof. admit. Admitted.
+Proof.
+  split.
+  intro.
+  apply H.
+  intro.
+  apply H.
+Qed.
 
 Lemma eq_symm (e1 e2 : expr) (EQ : e1 ~~ e2): e2 ~~ e1.
-Proof. admit. Admitted.
+Proof.
+  split.
+  intro.
+  apply EQ.
+  apply H.
+  intro.
+  apply EQ.
+  apply H.
+Qed.
 
 Lemma eq_trans (e1 e2 e3 : expr) (EQ1 : e1 ~~ e2) (EQ2 : e2 ~~ e3):
   e1 ~~ e3.
-Proof. admit. Admitted.
+Proof.
+  split.
+  intro.
+  apply EQ2.
+  apply EQ1.
+  apply H.
+  intro.
+  apply EQ1.
+  apply EQ2.
+  apply H.
+Qed.
 
 Inductive Context : Type :=
 | Hole : Context
