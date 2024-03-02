@@ -394,7 +394,79 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
           equivalent_states s1 s2 id)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  induction e.
+  {
+    intros.
+    inversion EV.
+    apply bs_Nat.
+  }
+  {
+    intros.
+    inversion EV.
+    eapply bs_Var.
+    apply (FV i).
+    apply v_Var.
+    apply VAR.
+  }
+
+  assert (Sub1: forall i b e1 e2, i ? e1 -> i ? (Bop b e1 e2)).
+  intros.
+  apply v_Bop.
+  left.
+  apply H.
+
+  assert (Sub2: forall i b e1 e2, i ? e2 -> i ? (Bop b e1 e2)).
+  intros.
+  apply v_Bop.
+  right.
+  apply H.
+
+  assert (IHe1': forall z, [| e1 |] s1 => z -> [| e1 |] s2 => z).
+  intros.
+  eapply IHe1.
+  intros.
+  eapply FV.
+  apply Sub1.
+  apply ID.
+  apply H.
+
+  assert (IHe2': forall z, [| e2 |] s1 => z -> [| e2 |] s2 => z).
+  intros.
+  eapply IHe2.
+  intros.
+  eapply FV.
+  apply Sub2.
+  apply ID.
+  apply H.
+
+  intros.
+  inversion EV.
+
+  apply bs_Add. apply IHe1'. apply VALA. apply IHe2'. apply VALB.
+  apply bs_Sub. apply IHe1'. apply VALA. apply IHe2'. apply VALB.
+  apply bs_Mul. apply IHe1'. apply VALA. apply IHe2'. apply VALB.
+
+  apply bs_Div. apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply NZERO.
+  apply bs_Mod. apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply NZERO.
+
+  apply (bs_Le_T s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Le_F s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Lt_T s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Lt_F s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Ge_T s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Ge_F s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Gt_T s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Gt_F s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Eq_T s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Eq_F s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Ne_T s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+  apply (bs_Ne_F s2 e1 e2 za zb). apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply OP.
+
+  apply bs_And. apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply BOOLA. apply BOOLB.
+  apply bs_Or. apply IHe1'. apply VALA. apply IHe2'. apply VALB. apply BOOLA. apply BOOLB.
+Qed.
 
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z),
