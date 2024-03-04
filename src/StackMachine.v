@@ -198,7 +198,22 @@ Module StraightLine.
         (VAL : [| e |] st => n)
         (EXEC: (n::s, st, i, o) -- p --> c) :        
     (s, st, i, o) -- (compile_expr e) ++ p --> c.
-  Proof. admit. Admitted.
+  Proof.
+    revert VAL EXEC. revert n. revert s. revert p. induction e; intros.
+    - simpl. 
+      assert ([|Nat z|] st => (z)). {auto. }
+      remember (eval_deterministic (Nat z) st n z VAL H).
+      subst z. 
+      apply sm_Const. assumption.
+    - eapply sm_Load with (z := n).
+      + inversion VAL. assumption.
+      + assumption.
+    - simpl.
+      inversion VAL.
+      + rewrite <- app_assoc.
+        apply (IHe1) with (n := za). assumption.
+        specialize (IHe2 ([B Add]) (za :: s) zb VALB).
+  all: admit. Admitted.
 
   #[export] Hint Resolve compiled_expr_correct_cont.
   

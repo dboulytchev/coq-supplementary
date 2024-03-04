@@ -3,6 +3,7 @@ Import ListNotations.
 Require Import Lia.
 
 Require Import BinInt ZArith_dec Zorder ZArith.
+Require Import Coq.Program.Equality.
 Require Export Id.
 Require Export State.
 Require Export Expr.
@@ -124,9 +125,16 @@ Module SmokeTest.
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof.
-    admit.
-  Admitted.
+  Proof. 
+    dependent induction EXE.
+    - specialize (IHEXE2 e s st i o).
+      assert (WHILE e DO s END = WHILE e DO s END). 
+        {reflexivity. }
+      assert ((st, i, o) ~= (st, i, o)). 
+        { auto. }
+      apply (IHEXE2 H H0).
+    - assumption.    
+  Qed.
   
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
@@ -145,7 +153,27 @@ Module SmokeTest.
   Lemma while_eq (e : expr) (s1 s2 : stmt)
         (EQ : s1 ~~~ s2) :
     WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-  Proof. admit. Admitted.
+  Proof.
+    split; intros.
+    - dependent induction H.
+      + eapply bs_While_True.
+        * assumption.
+        * destruct (EQ ((st, i, o)) c').
+          apply (H1 H).
+        * specialize (IHbs_int2 e s1 EQ). 
+          apply IHbs_int2. reflexivity.
+      + apply bs_While_False.
+        assumption.
+    - dependent induction H.
+      + eapply bs_While_True.
+        * assumption.
+        * destruct (EQ ((st, i, o)) c').
+          apply (H2 H).
+        * specialize (IHbs_int2 e s2 EQ). 
+          apply IHbs_int2. reflexivity.
+      + apply bs_While_False.
+        assumption.
+  Qed.
   
   (* Loops with the constant true condition don't terminate *)
   (* Exercise 4.8 from Winskel's *)
@@ -241,8 +269,10 @@ Qed.
 Lemma eq_congruence_while
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-Proof. admit. Admitted.
-
+Proof. 
+  apply SmokeTest.while_eq. assumption.
+Qed.
+    
 Lemma eq_congruence (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   ((s  ;; s1) ~~~ (s  ;; s2)) /\
   ((s1 ;; s ) ~~~ (s2 ;; s )) /\
@@ -327,8 +357,21 @@ Proof. revert EXEC1 EXEC2. revert c c1 c2. induction s; intros.
         assert (i0 = i). { subst c. injection H8. auto. }
         subst s4. subst o0. subst i0. 
         apply (IHs2 ((s, i, o)) c1 c2 STEP STEP0).
-- admit.
-Admitted.
+- dependent induction EXEC1.
+  apply (IHEXEC1_2 s) with (e := e).
+  + assumption.
+  + reflexivity.
+  + inversion EXEC2.
+    * specialize (IHs ((st, i, o)) c'0 c' STEP EXEC1_1).
+      subst c'0. assumption.
+    * remember (eval_deterministic e st Z.zero Z.one CVAL0 CVAL).
+      discriminate.
+  + symmetry.
+    inversion EXEC2.
+    * remember (eval_deterministic e st Z.zero Z.one CVAL CVAL0).
+      discriminate.
+    * reflexivity.
+Qed.
 
 (* Contextual equivalence *)
 Inductive Context : Type :=
@@ -366,7 +409,59 @@ Ltac by_eq_congruence e s s1 s2 H :=
   repeat (match goal with H: _ /\ _ |- _ => inversion_clear H end); assumption.
     
 Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
-Proof. admit. Admitted.
+Proof.
+  split; intros.
+  - constructor; revert c c'. 
+    + induction C.
+      * simpl. apply H.
+      * simpl. intros. 
+        inversion H0.
+        specialize (IHC c c'0 STEP1).
+        eapply (bs_Seq). eassumption. assumption.
+      * simpl. intros. inversion H0.
+        specialize (IHC c'0 c' STEP2).
+        eapply (bs_Seq). eassumption. assumption.
+      * simpl. intros. inversion H0.
+        ++  specialize (IHC ((s0, i, o)) c' STEP).
+            apply bs_If_True. assumption. assumption.
+        ++  apply bs_If_False. assumption. assumption.
+      * simpl. intros. inversion H0.
+        ++  apply bs_If_True. assumption. assumption.
+        ++  specialize (IHC ((s0, i, o)) c' STEP).
+            apply bs_If_False. assumption. assumption.
+      * simpl. intros.
+        dependent induction H0.
+        ++ eapply bs_While_True with (c' := c').
+          -- assumption.
+          -- apply (IHC ((st, i, o)) c' H0_).
+          -- apply (IHbs_int2 s1 H e C IHC). reflexivity.
+        ++ apply bs_While_False. assumption.
+    + induction C.
+      * simpl. apply H.
+      * simpl. intros. 
+        inversion H0.
+        specialize (IHC c c'0 STEP1).
+        eapply (bs_Seq). eassumption. assumption.
+      * simpl. intros. inversion H0.
+        specialize (IHC c'0 c' STEP2).
+        eapply (bs_Seq). eassumption. assumption.
+      * simpl. intros. inversion H0.
+        ++  specialize (IHC ((s0, i, o)) c' STEP).
+            apply bs_If_True. assumption. assumption.
+        ++  apply bs_If_False. assumption. assumption.
+      * simpl. intros. inversion H0.
+        ++  apply bs_If_True. assumption. assumption.
+        ++  specialize (IHC ((s0, i, o)) c' STEP).
+            apply bs_If_False. assumption. assumption.
+      * simpl. intros.
+        dependent induction H0.
+        ++ eapply bs_While_True with (c' := c').
+          -- assumption.
+          -- apply (IHC ((st, i, o)) c' H0_).
+          -- apply (IHbs_int2 s2 H e C IHC). reflexivity.
+        ++ apply bs_While_False. assumption.
+  - remember (H Hole). simpl in b. assumption.
+Qed.
 
 
 (* Small-step semantics *)
@@ -415,31 +510,168 @@ Module SmallStep.
         (EXEC2 : c -- s --> c'') :
     c' = c''.
   Proof.
-  all: admit. Admitted.
+    revert EXEC1 EXEC2. revert c c' c''. induction s; intros.
+    - inversion EXEC1. inversion EXEC2. reflexivity.
+    - inversion EXEC1. inversion EXEC2.
+      assert (s0 = s). {subst c. injection H6. auto. }
+      subst s0.
+      assert (z0 = z). { 
+        apply (eval_deterministic e s). 
+        assumption. assumption.
+      } subst z0. 
+      assert (i0 = i1). {subst c. injection H6. auto. } 
+      subst i0.
+      assert (o0 = o). {subst c. injection H6. auto. }
+      subst o0. reflexivity.
+    - inversion EXEC1. inversion EXEC2.
+      assert (s0 = s). {subst c. injection H4. auto. }
+      subst s0.
+      assert (z0 = z). {
+        subst c. injection H4. auto. 
+      } subst z0. 
+      assert (i0 = i1). {subst c. injection H4. auto. } 
+      subst i0.
+      assert (o0 = o). {subst c. injection H4. auto. }
+      subst o0. reflexivity.
+    - inversion EXEC1. inversion EXEC2.
+      assert (s0 = s). {subst c. injection H4. auto. }
+      subst s0.
+      assert (z0 = z). { 
+        apply (eval_deterministic e s). 
+        assumption. assumption.
+      } subst z0. 
+      assert (i0 = i). {subst c. injection H4. auto. } 
+      subst i0.
+      assert (o0 = o). {subst c. injection H4. auto. }
+      subst o0. reflexivity.
+    - inversion EXEC1.
+      + inversion EXEC2;
+        remember (IHs1 c _ _ SSTEP0 SSTEP).
+        * injection e. intros. subst c'0. reflexivity.
+        * discriminate e.
+      + inversion EXEC2; remember (IHs1 c _ _ SSTEP0 SSTEP).
+        * discriminate e.
+        * injection e. intros. subst s1'. subst c'0. reflexivity.
+    - inversion EXEC1.
+      + inversion EXEC2; subst c; injection H8; intros.
+        * subst o. subst i. subst s. reflexivity.
+        * subst s4. discriminate (eval_deterministic e s Z.one Z.zero SCVAL SCVAL0).
+      + inversion EXEC2; subst c; injection H8; intros.
+        * subst s4. discriminate (eval_deterministic e s Z.one Z.zero SCVAL0 SCVAL).
+        * subst o. subst i. subst s. reflexivity.
+    - dependent induction EXEC1. inversion EXEC2.
+      reflexivity.
+  Qed.
   
   Lemma ss_int_deterministic (c c' c'' : conf) (s : stmt)
         (STEP1 : c -- s -->> c') (STEP2 : c -- s -->> c'') :
     c' = c''.
-  Proof. admit. Admitted.
+  Proof.
+    induction STEP1. 
+    - inversion STEP2. 
+      + injection (ss_int_step_deterministic s c ((None, c')) ((None, c''))). 
+        auto. assumption. assumption.
+      + discriminate (ss_int_step_deterministic s c ((None, c')) ((Some s', c'0))).
+        assumption. assumption.
+    - inversion STEP2.
+      + discriminate (ss_int_step_deterministic s c ((None, c'')) ((Some s', c'))).
+        assumption. assumption.
+      + remember (ss_int_step_deterministic s c ((Some s', c')) ((Some s'0, c'0)) H H0).
+        injection e. intros. subst s'0. subst c'0.
+        apply IHSTEP1. assumption.
+  Qed.
   
   Lemma ss_bs_base (s : stmt) (c c' : conf) (STEP : c -- s --> (None, c')) :
     c == s ==> c'.
-  Proof. admit. Admitted.
+  Proof.
+    inversion STEP.
+    - apply bs_Skip.
+    - apply bs_Assign. assumption.
+    - apply bs_Read.
+    - apply bs_Write. assumption.
+  Qed.   
 
   Lemma ss_ss_composition (c c' c'' : conf) (s1 s2 : stmt)
         (STEP1 : c -- s1 -->> c'') (STEP2 : c'' -- s2 -->> c') :
     c -- s1 ;; s2 -->> c'. 
-  Proof. admit. Admitted.
+  Proof. 
+    induction STEP1.
+    - eapply ss_int_Step.
+      eapply ss_Seq_Compl.
+      eassumption.
+      assumption.
+    - eapply ss_int_Step.
+      eapply ss_Seq_InCompl.
+      eassumption.
+      apply IHSTEP1.
+      assumption.
+  Qed.
   
   Lemma ss_bs_step (c c' c'' : conf) (s s' : stmt)
         (STEP : c -- s --> (Some s', c'))
         (EXEC : c' == s' ==> c'') :
     c == s ==> c''.
-  Proof. admit. Admitted.
-  
+  Proof.
+    revert EXEC STEP. revert s' c c' c''. induction s; intros.
+    - inversion STEP.
+    - inversion STEP.
+    - inversion STEP.
+    - inversion STEP.
+    - inversion STEP.
+      + remember (ss_bs_base s1 c c' SSTEP).
+        eapply bs_Seq. eassumption. assumption.
+      + subst s'. inversion EXEC.
+        specialize (IHs1 s1' c c' c'1 STEP1 SSTEP).
+        eapply bs_Seq. eassumption. eassumption.
+    - inversion STEP.
+      + apply bs_If_True. assumption.
+        subst c'. assumption.
+      + apply bs_If_False. assumption.
+        subst c'. assumption.
+    - dependent induction STEP.
+      inversion EXEC. 
+      + inversion STEP. 
+        apply bs_While_True with (c' := c'1).
+        assumption.
+        assumption.
+        assumption.
+      + inversion STEP.
+        apply bs_While_False.
+        assumption.
+  Qed.
+        
   Theorem bs_ss_eq (s : stmt) (c c' : conf) :
     c == s ==> c' <-> c -- s -->> c'.
-  Proof. admit. Admitted.
+  Proof. 
+    split.
+    - intros. induction  H.
+      + apply ss_int_Base. apply ss_Skip.
+      + apply ss_int_Base. apply ss_Assign. assumption.
+      + apply ss_int_Base. apply ss_Read.
+      + apply ss_int_Base. apply ss_Write. assumption.
+      + eapply ss_ss_composition. eassumption. assumption.
+      + eapply ss_int_Step.
+        * apply ss_If_True. assumption.
+        * assumption.
+      + eapply ss_int_Step.
+        * apply ss_If_False. assumption.
+        * assumption.
+      + eapply ss_int_Step.
+        * apply ss_While.
+        * eapply ss_int_Step.
+          ++ apply ss_If_True. assumption.
+          ++ inversion H0.
+            ** eapply ss_ss_composition. eassumption. assumption.
+            ** eapply ss_ss_composition. eassumption. subst c''. assumption.
+      + eapply ss_int_Step.
+        * eapply ss_While.
+        * eapply ss_int_Step.
+          ++ apply ss_If_False. assumption.
+          ++ apply ss_int_Base. apply ss_Skip.
+    - intros. induction H.
+      + apply ss_bs_base. assumption.
+      + eapply ss_bs_step. eassumption. assumption.
+  Qed.
   
 End SmallStep.
 
