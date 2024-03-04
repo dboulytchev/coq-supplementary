@@ -209,11 +209,33 @@ Module StraightLine.
       + inversion VAL. assumption.
       + assumption.
     - simpl.
-      inversion VAL.
-      + rewrite <- app_assoc.
-        apply (IHe1) with (n := za). assumption.
-        specialize (IHe2 ([B Add]) (za :: s) zb VALB).
-  all: admit. Admitted.
+      inversion VAL;
+        rewrite <- app_assoc;
+        rewrite <- app_assoc;
+        apply (IHe1) with (n := za); auto;
+        apply (IHe2) with (n := zb); auto.
+        + apply sm_Add. assumption. rewrite -> H4. assumption. 
+        + apply sm_Sub. assumption. rewrite -> H4. assumption. 
+        + apply sm_Mul. rewrite -> H4. assumption. 
+        + apply sm_Div. assumption. rewrite -> H4. assumption. 
+        + apply sm_Mod. assumption. rewrite -> H4. assumption. 
+        + apply sm_Le_T. assumption. rewrite -> H4. assumption. 
+        + apply sm_Le_F. assumption. rewrite -> H4. assumption.
+        + apply sm_Lt_T. assumption. rewrite -> H4. assumption. 
+        + apply sm_Lt_F. assumption. rewrite -> H4. assumption.
+        + apply sm_Ge_T. assumption. rewrite -> H4. assumption. 
+        + apply sm_Ge_F. assumption. rewrite -> H4. assumption.
+        + apply sm_Gt_T. assumption. rewrite -> H4. assumption. 
+        + apply sm_Gt_F. assumption. rewrite -> H4. assumption.
+        + apply sm_Eq_T. assumption. rewrite -> H4. assumption. 
+        + apply sm_Eq_F. assumption. rewrite -> H4. assumption.
+        + apply sm_Ne_T. assumption. rewrite -> H4. assumption. 
+        + apply sm_Ne_F. assumption. rewrite -> H4. assumption.
+        + apply sm_And. assumption. assumption.
+          rewrite -> H4. assumption.
+        + apply sm_Or. assumption. assumption.
+          rewrite -> H4. assumption.
+  Qed.
 
   #[export] Hint Resolve compiled_expr_correct_cont.
   
@@ -221,25 +243,164 @@ Module StraightLine.
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
         (VAL : [| e |] st => n) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o).
-  Proof. admit. Admitted.
+  Proof.
+    remember (@nil insn) as p.
+    remember ((n :: s, st, i, o)) as c.
+    assert (c -- p --> c). {
+      rewrite -> Heqp.
+      apply sm_End.
+      assumption.
+    } 
+    remember (compiled_expr_correct_cont e st s i o n p c VAL).  
+    assert (((n :: s, st, i, o)) -- [] --> (c)).
+    { subst c. subst p. assumption. }
+    assert (compile_expr e ++ p = compile_expr e). {
+      assert (forall (l : list insn),
+      l ++ nil = l). 
+      {
+          intros. induction l.
+          - reflexivity.
+          - simpl. rewrite -> IHl. reflexivity.  
+      }
+      subst p. apply ( H1 (compile_expr e)).
+    }
+    rewrite <- H1.
+    eapply compiled_expr_correct_cont.
+    eassumption.
+    subst p. assumption.
+  Qed.
   
   Lemma compiled_expr_not_incorrect_cont
         (e : expr) (st : state Z) (s i o : list Z) (p : prog) (c : conf)
         (EXEC : (s, st, i, o) -- compile_expr e ++ p --> c) :
     exists (n : Z), [| e |] st => n /\ (n :: s, st, i, o) -- p --> c.
-  Proof. admit. Admitted.
-  
+  Proof.
+    revert EXEC. revert p. revert s. induction e; intros.
+    - simpl in EXEC.
+      econstructor. split.
+      + apply (bs_Nat).
+      + inversion EXEC. assumption.
+    - simpl in EXEC.
+      inversion EXEC.
+      econstructor. split.
+      + constructor. eassumption.
+      + assumption.
+    - simpl in EXEC.
+      rewrite <- app_assoc in EXEC.
+      rewrite <- app_assoc in EXEC.
+      specialize (IHe1 s (compile_expr e2 ++ [B b] ++ p) EXEC).
+      destruct IHe1. destruct H. 
+      specialize (IHe2 (x :: s) ([B b] ++ p) H0).
+      destruct IHe2. destruct H1. 
+      simpl in H2. 
+      destruct b.
+      + inversion H2. econstructor. split.
+        apply bs_Add. eassumption. eassumption.
+        assumption.
+      + inversion H2. econstructor. split.
+        apply bs_Sub. eassumption. eassumption.
+        assumption.
+      + inversion H2. econstructor. split.
+        apply bs_Mul. eassumption. eassumption.
+        assumption.
+      + inversion H2. econstructor. split.
+        apply bs_Div. eassumption. eassumption.
+        assumption. assumption.
+      + inversion H2. econstructor. split.
+        apply bs_Mod. eassumption. eassumption.
+        assumption. assumption.
+      + inversion H2. 
+        * econstructor. split.
+          eapply bs_Le_T. eassumption. eassumption.
+          assumption. assumption.
+        * econstructor. split. 
+          eapply bs_Le_F. eassumption. eassumption.
+          assumption. assumption.
+      + inversion H2. 
+        * econstructor. split.
+          eapply bs_Lt_T. eassumption. eassumption.
+          assumption. assumption.
+        * econstructor. split. 
+          eapply bs_Lt_F. eassumption. eassumption.
+          assumption. assumption.
+      + inversion H2. 
+        * econstructor. split.
+          eapply bs_Ge_T. eassumption. eassumption.
+          assumption. assumption.
+        * econstructor. split. 
+          eapply bs_Ge_F. eassumption. eassumption.
+          assumption. assumption.
+      + inversion H2. 
+        * econstructor. split.
+          eapply bs_Gt_T. eassumption. eassumption.
+          assumption. assumption.
+        * econstructor. split. 
+          eapply bs_Gt_F. eassumption. eassumption.
+          assumption. assumption.
+      + inversion H2. 
+        * econstructor. split.
+          eapply bs_Eq_T. eassumption. eassumption.
+          assumption. assumption.
+        * econstructor. split. 
+          eapply bs_Eq_F. eassumption. eassumption.
+          assumption. assumption.
+      + inversion H2. 
+        * econstructor. split.
+          eapply bs_Ne_T. eassumption. eassumption.
+          assumption. assumption.
+        * econstructor. split. 
+          eapply bs_Ne_F. eassumption. eassumption.
+          assumption. assumption.
+      + inversion H2. econstructor. split.
+        apply bs_And. eassumption. eassumption.
+        assumption. assumption.
+        assumption.
+      + inversion H2. econstructor. split.
+        apply bs_Or. eassumption. eassumption.
+        assumption. assumption.
+        assumption.
+  Qed.
+    
   Lemma compiled_expr_not_incorrect
         (e : expr) (st : state Z)
         (s i o : list Z) (n : Z)
         (EXEC : (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o)) :
     [| e |] st => n.
-  Proof. admit. Admitted.
-  
+  Proof.
+    remember (@nil insn) as p.
+    remember ((n :: s, st, i, o)) as c.
+    assert (c -- p --> c). {
+      rewrite -> Heqp.
+      apply sm_End.
+      assumption.
+    } 
+    remember (compiled_expr_not_incorrect_cont e st s i o p c).  
+    assert (compile_expr e ++ p = compile_expr e). {
+      assert (forall (l : list insn),
+      l ++ nil = l). 
+      {
+          intros. induction l.
+          - reflexivity.
+          - simpl. rewrite -> IHl. reflexivity.  
+      }
+      subst p. apply ( H0 (compile_expr e)).
+    }
+    rewrite <- H0 in EXEC.
+    remember (e0 EXEC).
+    destruct e1. destruct a.
+    subst c. subst p. 
+    inversion s0.
+    subst x. assumption.
+  Qed.
+
   Lemma expr_compiler_correct
         (e : expr) (st : state Z) (s i o : list Z) (n : Z) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o) <-> [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof.
+    split. 
+    - apply compiled_expr_not_incorrect.
+    - apply compiled_expr_correct.
+  Qed.
   
   Fixpoint compile (s : stmt) (H : StraightLine s) : prog :=
     match H with
@@ -256,30 +417,120 @@ Module StraightLine.
         (H : (st, i, o) == p ==> (st', i', o')) (q : prog) (c : conf)
         (EXEC : ([], st', i', o') -- q --> c) :
     ([], st, i, o) -- (compile p Sp) ++ q --> c.
-  Proof. admit. Admitted.
-  
+  Proof.
+    revert H EXEC. revert q st st' i o i' o'. induction Sp; intros; simpl.
+    - rewrite <- app_assoc.
+      inversion H. 
+      eapply (compiled_expr_correct_cont). eassumption.
+      simpl. apply sm_Store. subst st'.
+      assumption.
+    - inversion H. subst i. apply sm_Read.
+      apply sm_Store. subst st'. assumption.
+    - rewrite <- app_assoc.
+      inversion H.
+      eapply compiled_expr_correct_cont. eassumption.
+      apply sm_Write. subst o'. assumption.
+    - inversion H. assumption.
+    - rewrite <- app_assoc.
+      inversion H. destruct c'. destruct p.
+      apply (IHSp1 (compile s2 Sp2 ++ q) st s4 i o l0 l). assumption.
+      apply (IHSp2 q s4 st' l0 l i' o'). assumption.
+      assumption.
+  Qed.
+
   Lemma compiled_straightline_correct
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : (st, i, o) == p ==> (st', i', o')) :
     ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof.
+    remember (@nil insn) as q.
+    remember ((@nil Z, st', i, o)) as c.
+
+    assert (compile p Sp ++ q = compile p Sp). {
+      assert (forall (l : list insn),
+      l ++ nil = l). 
+      {
+          intros. induction l.
+          - reflexivity.
+          - simpl. rewrite -> IHl. reflexivity.  
+      }
+      subst q. apply H.
+    }
+    rewrite <- H.
+    remember (compiled_straightline_correct_cont p Sp st st' nil i o nil i' o' EXEC q (([], st', i', o'))).
+    assert ((([], st', i', o')) -- q --> (([], st', i', o'))). {
+      rewrite -> Heqq.
+      apply (sm_End nil).
+    } 
+    apply (s H0).
+  Qed.
+
   
   Lemma compiled_straightline_not_incorrect_cont
         (p : stmt) (Sp : StraightLine p) (st : state Z) (i o : list Z) (q : prog) (c : conf)
         (EXEC: ([], st, i, o) -- (compile p Sp) ++ q --> c) :
     exists (st' : state Z) (i' o' : list Z), (st, i, o) == p ==> (st', i', o') /\ ([], st', i', o') -- q --> c.
-  Proof. admit. Admitted.
-  
+  Proof. 
+    revert EXEC. revert q. revert i o st c. induction Sp; intros; simpl in EXEC.
+    - rewrite <- app_assoc in EXEC.
+      remember (compiled_expr_not_incorrect_cont e st nil i o ([S x] ++ q) c EXEC).
+      inversion e0. destruct H.
+      inversion H0.
+      econstructor. econstructor. econstructor.
+      split. apply bs_Assign. eassumption. assumption.
+    - inversion EXEC. inversion EXEC0.
+      repeat econstructor. assumption.
+    - rewrite <- app_assoc in EXEC.
+      remember (compiled_expr_not_incorrect_cont e st nil i o ([W] ++ q) c EXEC).
+      inversion e0. destruct H.
+      repeat econstructor.
+      eassumption.
+      inversion H0. assumption.
+    - repeat econstructor. assumption.
+    - rewrite <- app_assoc in EXEC.
+      specialize (IHSp1 i o st c (compile s2 Sp2 ++ q) EXEC).
+      inversion IHSp1. inversion H. inversion H0. inversion H1.
+      specialize (IHSp2 x0 x1 x c q H3).
+      inversion IHSp2. inversion H4. inversion H5. inversion H6.
+      repeat econstructor. eassumption.
+      eassumption. assumption.
+  Qed.
+
   Lemma compiled_straightline_not_incorrect
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : ([], st, i, o) -- compile p Sp --> ([], st', i', o')) :
     (st, i, o) == p ==> (st', i', o').
-  Proof. admit. Admitted.
+  Proof.
+    remember (@nil insn) as q.
+    remember ((@nil Z, st', i, o)) as c.
+
+
+
+    assert (compile p Sp ++ q = compile p Sp). {
+      assert (forall (l : list insn),
+      l ++ nil = l). 
+      {
+          intros. induction l.
+          - reflexivity.
+          - simpl. rewrite -> IHl. reflexivity.  
+      }
+      subst q. apply H.
+    }
+    rewrite <- H in EXEC.
+    remember (compiled_straightline_not_incorrect_cont p Sp st i o q (([], st', i', o')) EXEC).
+    destruct e. destruct e. destruct e. destruct a.
+    subst q. inversion s. subst c0. subst x. subst x0. subst x1.
+    assumption.
+  Qed.
   
   Theorem straightline_compiler_correct
           (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z) :
     (st, i, o) == p ==> (st', i', o') <-> ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof.
+    split.
+    - apply compiled_straightline_correct.
+    - apply compiled_straightline_not_incorrect.
+  Qed.
   
 End StraightLine.
   
