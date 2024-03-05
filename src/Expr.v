@@ -3,6 +3,9 @@ Require Export Id.
 Require Export State.
 Require Export Lia.
 
+Require Import List.
+Import ListNotations.
+
 From hahn Require Import HahnBase.
 
 (* Type of binary operators *)
@@ -46,7 +49,7 @@ Definition zbool (x : Z) : Prop := x = Z.one \/ x = Z.zero.
   
 Definition zor (x y : Z) : Z :=
   if Z_le_gt_dec (Z.of_nat 1) (x + y) then Z.one else Z.zero.
-   
+
 Reserved Notation "[| e |] st => z" (at level 0).
 Notation "st / x => y" := (st_binds Z st x y) (at level 0).
 
@@ -173,30 +176,6 @@ where "[| e |] st => z" := (eval e st z).
 
 #[export] Hint Constructors eval.
 
-(*
-Module SmallStep.
-
-  Inductive R : Set := Expr : expr -> R | Num : Z -> R.
-    
-  Inductive ss_eval : expr -> state Z -> R -> Prop :=
-    ss_Nat          : forall (s : state Z) (n     : Z), ss_eval (Nat n) s (Num n)
-  | ss_Var          : forall (s : state Z) (i     : id) (z : Z) (VAR : s / i => z), ss_eval (Var i) s (Num z)
-
-  | ss_Or           : forall (s : state Z) (b : expr), ss_eval ((Nat Z.one)  [\/] b) s (Num Z.one)                                                                | ss_And          : forall (s : state Z) (b : expr), ss_eval ((Nat Z.zero) [&] b) s (Num Z.zero)                                                                                            
-  | ss_Bop          : forall (o : bop) (s : state Z) (za zb zc : Z) (EVAL : [|Bop o (Nat za) (Nat zb)|] s => zc) (OP : o <> Or /\ o <> And),
-                        ss_eval (Bop o (Nat za) (Nat zb)) s (Num zc)
-                                                                
-  | ss_Bop_RCompl   : forall (o : bop) (s : state Z) (za zb : Z) (b    : expr) (EVALB : ss_eval b s (Num  zb)),
-                        ss_eval (Bop o (Nat za) b) s (Expr (Bop o (Nat za) (Nat zb)))
-  | ss_Bop_RIncompl : forall (o : bop) (s : state Z) (za    : Z) (b b' : expr) (EVALB : ss_eval b s (Expr b')),
-                        ss_eval (Bop o (Nat za) b) s (Expr (Bop o (Nat za) b'))
-  | ss_Bop_LCompl   : forall (o : bop) (s : state Z) (za    : Z) (a b  : expr) (EVALA : ss_eval a s (Num  za)),
-                        ss_eval (Bop o a b) s (Expr (Bop o (Nat za) b))
-  | ss_Bop_LIncompl : forall (o : bop) (s : state Z) (a b a' : expr)           (EVALA : ss_eval a s (Expr a')),
-                        ss_eval (Bop o a b) s (Expr (Bop o a' b)).    
-
-End SmallStep.
-*)
 Module SmokeTest.
             
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
@@ -209,6 +188,19 @@ Module SmokeTest.
 
 End SmokeTest.
 
+(* A relation of one expression being of a subexpression of another *)
+Reserved Notation "e1 << e2" (at level 0).
+
+Inductive subexpr : expr -> expr -> Prop :=
+  subexpr_refl : forall e : expr, e << e
+| subexpr_left : forall e e' e'' : expr, forall op : bop, e << e' -> e << (Bop op e' e'')
+| subexpr_right : forall e e' e'' : expr, forall op : bop, e << e'' -> e << (Bop op e' e'')
+where "e1 << e2" := (subexpr e1 e2).
+
+Lemma strictness (e e' : expr) (HSub : e' << e) (st : state Z) (z : Z) (HV : [| e |] st => z) :
+  exists z' : Z, [| e' |] st => z'.
+Proof. admit. Admitted.
+
 Reserved Notation "x ? e" (at level 0).
 
 (* Set of variables is an expression *)
@@ -219,14 +211,13 @@ where "x ? e" := (V e x).
 
 (* If an expression is defined in some state, then each its' variable is
    defined in that state
- *)
-      
+ *)      
 Lemma defined_expression
       (e : expr) (s : state Z) (z : Z) (id : id)
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. Admitted.
+Proof. admit. Admitted.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -277,7 +268,7 @@ Fixpoint plug (C : Context) (e : expr) : expr :=
   match C with
   | Hole => e
   | BopL b C e1 => Bop b (plug C e) e1
-  | BopR b e1 C => Bop b (plug C e) e1
+  | BopR b e1 C => Bop b e1 (plug C e)
   end.  
 
 Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
@@ -317,9 +308,9 @@ Module SmallStep.
                       (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))      
   where "st |- e --> e'" := (ss_eval st e e').
 
-  Lemma no_step_from_value (e : expr) (HV: is_value e) : ~ forall s, exists e', (s |- e --> e').
+  Lemma no_step_from_value (e : expr) (HV: is_value e) : forall s, ~ exists e', (s |- e --> e').
   Proof. admit. Admitted.
-  
+
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
   Proof. admit. Admitted.
   
@@ -334,14 +325,5 @@ Module SmallStep.
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
   Proof. admit. Admitted.
-
-
-(*
-  s |- e -> .... -> Nat z
-       \
-        \-> .... -> Nat z
-
-  s |- e -> .... -> e'  
-*)
   
 End SmallStep.
