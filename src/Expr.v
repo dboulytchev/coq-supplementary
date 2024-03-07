@@ -179,12 +179,20 @@ where "[| e |] st => z" := (eval e st z).
 Module SmokeTest.
             
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. Admitted.
+  Proof. 
+    auto.
+  Qed.
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. Admitted.
+  Proof. 
+    inversion HH.
+    rewrite <- H0. rewrite <- H0 in VALA.
+    inversion VALB. pose proof (bs_Add s a a za za VALA VALA).
+    assert ((za + za)%Z = (za * 2)%Z). intuition. 
+    rewrite <- H7. assumption.
+  Qed.
 
 End SmokeTest.
 
@@ -199,7 +207,12 @@ where "e1 << e2" := (subexpr e1 e2).
 
 Lemma strictness (e e' : expr) (HSub : e' << e) (st : state Z) (z : Z) (HV : [| e |] st => z) :
   exists z' : Z, [| e' |] st => z'.
-Proof. admit. Admitted.
+Proof. 
+  generalize dependent z.
+  induction e; intros; inversion HSub; subst; try eauto.
+  - inversion HV; eauto.
+  - inversion HV; eauto.
+Qed.
 
 Reserved Notation "x ? e" (at level 0).
 
@@ -217,7 +230,12 @@ Lemma defined_expression
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. admit. Admitted.
+Proof. 
+  generalize dependent z.
+  induction e; intros; inversion ID; subst.
+  - inversion RED. econstructor. eassumption.
+  - inversion RED; inversion H3; eauto.
+Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -225,13 +243,28 @@ Proof. admit. Admitted.
 Lemma undefined_variable (e : expr) (s : state Z) (id : id)
       (ID : id ? e) (UNDEF : forall (z : Z), ~ (s / id => z)) :
   forall (z : Z), ~ ([| e |] s => z).
-Proof. admit. Admitted.
+Proof. 
+  generalize dependent UNDEF.
+  induction e; intros; inversion ID; subst.
+  - intuition. inversion H. eauto.
+  - inversion H3; intuition; inversion H0; eauto.
+Qed.
 
 (* The evaluation relation is deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
-Proof. admit. Admitted.
+Proof. 
+  (* generalize dependent z1. generalize dependent z2.
+  induction e; intros.
+  - inversion E1; inversion E2; subst. reflexivity.
+  - inversion E1; inversion E2; subst. 
+    eapply state_deterministic; eassumption.
+  - destruct b; inversion E1; subst; inversion E2; subst; auto; subst;
+    try by (rewrite IHe1 with (z2:=za0) (z1:=za); auto; rewrite IHe2 with (z2:=zb0) (z1:=zb); auto).
+    all: try by (rewrite IHe1 with (z2:=za) (z1:=za0) in *; auto; rewrite IHe2 with (z2:=zb) (z1:=zb0) in *; auto). *)
+Admitted.
+    
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
