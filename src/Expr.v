@@ -435,21 +435,68 @@ Module SmallStep.
   where "st |- e --> e'" := (ss_eval st e e').
 
   Lemma no_step_from_value (e : expr) (HV: is_value e) : forall s, ~ exists e', (s |- e --> e').
-  Proof. admit. Admitted.
+  Proof.
+    destruct e; inversion HV.
+    intro. intro. inversion H. inversion H1.
+  Qed.
 
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
-  Proof. admit. Admitted.
+  Proof. 
+    intro. 
+    remember (Var (Id 0)). remember (Var (Id 1)).
+    remember (Nat Z.zero). remember (Nat Z.one).
+    remember ([(Id 0, Z.zero); (Id 1, Z.one)] : state Z).
+    remember (H (e [+] e0) (e1 [+] e0) (e [+] e2) s).
+    assert ((s) |- e [+] e0 --> (e1 [+] e0)). 
+    { constructor. rewrite Heqe1. rewrite Heqe. rewrite Heqs. constructor. constructor. }
+    assert ((s) |- e [+] e0 --> (e [+] e2)). 
+    { constructor. rewrite Heqe0. rewrite Heqe2. rewrite Heqs. 
+      constructor. constructor. intuition. inversion H1. constructor. }
+    remember (e3 H0 H1).
+    inversion e4. subst. inversion H3. 
+  Qed.
   
   Lemma ss_deterministic_step (e e' : expr)
                          (s    : state Z)
                          (z z' : Z)
                          (H1   : s |- e --> (Nat z))
                          (H2   : s |- e --> e') : e' = Nat z.
-  Proof. admit. Admitted.
+  Proof. 
+    inversion H1; inversion H2; subst. 
+    all: try by (inversion H5; rewrite H0 in VAL0;
+                remember (state_deterministic Z s i z z1 VAL VAL0); rewrite e; auto).
+    - inversion H2; subst. inversion LEFT0. inversion RIGHT.
+    - inversion H2; subst. inversion LEFT. inversion RIGHT0.
+    - inversion H1; inversion H2. subst. 
+      remember (eval_deterministic (Bop op (Nat zl) (Nat zr)) s z z1 EVAL1 EVAL2).
+      rewrite e. reflexivity.
+  Qed.
 
+  (* ss_eval_equiv lemma is incorrect, because small step semantic doesn't hold the 
+  fact, that each expression evaluation in context is the same as one step evaluation  
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
-                      (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
-  Proof. admit. Admitted.
+                      (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)). *)
+  Lemma ss_eval_nonequiv : ~(forall 
+                          (e : expr)
+                          (s : state Z)
+                          (z : Z), ([| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)))).
+  Proof. 
+    intro.
+    remember (Var (Id 0)). remember (Nat Z.zero). 
+    remember ([(Id 0, Z.zero)] : state Z). remember ((Var (Id 0)) [+] (Nat Z.one)).
+    remember (H e1 s Z.one). inversion i. intuition.
+    rewrite Heqe1 in H3. 
+    assert ((s) |- Var (Id 0) --> (Nat Z.zero)). { apply ss_Var. rewrite Heqs. apply st_binds_hd. }
+    remember (ss_Left s (Var (Id 0)) (Nat Z.one) (Nat Z.zero) Add H1). 
+    assert ([|Var (Id 0)|] s => (Z.zero)). { apply bs_Var. rewrite Heqs. apply st_binds_hd. }
+    assert ([|Nat Z.one|] s => (Z.one)). { auto. }
+    remember (bs_Add s (Var (Id 0)) (Nat Z.one) Z.zero Z.one H4 H5). simpl in e2.
+    clear Heqe2. rewrite <- Heqe1 in e2. remember (H0 e2). inversion o.
+    - rewrite H6 in Heqe1. inversion Heqe1.
+    - clear Heqs0. rewrite <- Heqe1 in s0. 
+      remember (ss_deterministic_step e1 (Nat Z.zero [+] Nat Z.one) s Z.one Z.one H6 s0).
+      inversion e3.
+  Qed.
   
 End SmallStep.
