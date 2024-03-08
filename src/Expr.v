@@ -232,7 +232,18 @@ Lemma defined_expression
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent RED.
+  generalize dependent s.
+  generalize dependent z.
+  generalize dependent e.
+  intros e ID.
+  induction e; intros z' s RED.
+  - inversion ID.
+  - inversion ID; subst; inversion RED; subst; exists z'; assumption.
+  - inversion ID; inversion RED; subst;
+    try (destruct H3; [ apply (IHe1 H _ _ VALA) | apply (IHe2 H _ _ VALB)  ]).
+Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -240,13 +251,45 @@ Proof. admit. Admitted.
 Lemma undefined_variable (e : expr) (s : state Z) (id : id)
       (ID : id ? e) (UNDEF : forall (z : Z), ~ (s / id => z)) :
   forall (z : Z), ~ ([| e |] s => z).
-Proof. admit. Admitted.
+Proof.
+  induction e; intros z'.
+  - intros H. inversion H; subst; inversion ID.
+  - intros H.
+    inversion ID; subst.
+    inversion H; subst.
+    apply UNDEF in VAR. assumption.
+  - inversion ID; subst.
+    intros H.
+    inversion H; subst; unfold not in *;
+     try (destruct H3;
+          [apply (IHe1 H0 _ VALA) | apply (IHe2 H0 _ VALB) ];
+          assumption).
+Qed.
 
 (* The evaluation relation is deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z)
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z1.
+  generalize dependent z2.
+
+  induction e; intros z2 H2 z1 H1.
+  - inversion H1; subst.
+    inversion H2; subst.
+    reflexivity.
+  - inversion H1; subst.
+    inversion H2; subst.
+     apply (state_deterministic _ s i z1 z2); assumption.
+  - inversion H1; subst;
+    inversion H2; subst ;
+    destruct (IHe1 za VALA za0 VALA0);
+    destruct (IHe2 zb VALB zb0 VALB0);
+    try reflexivity;
+    try Lia.lia;
+    try (apply OP0 in OP; destruct OP);
+    try (apply OP in OP0; destruct OP0).
+Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
@@ -257,7 +300,54 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
           equivalent_states s1 s2 id)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  induction e; intros z' H.
+  - inversion H; subst. apply bs_Nat.
+  - inversion H; subst.
+    specialize FV with i.
+
+    assert (HFV: (i) ? (Var i)). { apply v_Var. }
+
+    apply FV in HFV.
+    unfold equivalent_states in HFV.
+    apply HFV in VAR.
+
+    apply bs_Var.
+    assumption.
+  - inversion H; subst;
+
+    try (apply IHe1 in VALA;
+        apply IHe2 in VALB;
+        try (constructor; assumption);
+
+        (* rework *)
+        try (apply bs_Le_T with (za := za) (zb := zb); assumption);
+        try (apply bs_Le_F with (za := za) (zb := zb); assumption);
+
+        try (apply bs_Lt_T with (za := za) (zb := zb); assumption);
+        try (apply bs_Lt_F with (za := za) (zb := zb); assumption);
+
+        try (apply bs_Ge_T with (za := za) (zb := zb); assumption);
+        try (apply bs_Ge_F with (za := za) (zb := zb); assumption);
+
+        try (apply bs_Gt_T with (za := za) (zb := zb); assumption);
+        try (apply bs_Gt_F with (za := za) (zb := zb); assumption);
+
+        try (apply bs_Eq_T with (za := za) (zb := zb); assumption);
+        try (apply bs_Eq_F with (za := za) (zb := zb); assumption);
+
+        try (apply bs_Ne_T with (za := za) (zb := zb); assumption);
+        try (apply bs_Ne_F with (za := za) (zb := zb); assumption);
+
+        intros id;
+        intros H';
+        specialize FV with id;
+        apply FV;
+        constructor;
+        [ right | left | right];
+        assumption).
+Qed.
 
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z),
