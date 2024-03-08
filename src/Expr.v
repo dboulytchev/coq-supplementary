@@ -255,16 +255,21 @@ Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z)
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
 Proof. 
-  (* generalize dependent z1. generalize dependent z2.
+  generalize dependent z1. generalize dependent z2.
   induction e; intros.
   - inversion E1; inversion E2; subst. reflexivity.
   - inversion E1; inversion E2; subst. 
     eapply state_deterministic; eassumption.
   - destruct b; inversion E1; subst; inversion E2; subst; auto; subst;
-    try by (rewrite IHe1 with (z2:=za0) (z1:=za); auto; rewrite IHe2 with (z2:=zb0) (z1:=zb); auto).
-    all: try by (rewrite IHe1 with (z2:=za) (z1:=za0) in *; auto; rewrite IHe2 with (z2:=zb) (z1:=zb0) in *; auto). *)
-Admitted.
-    
+    try (rewrite IHe1 with (z2:=za0) (z1:=za); 
+            try reflexivity; try assumption; 
+            rewrite IHe2 with (z2:=zb0) (z1:=zb); 
+            try reflexivity; try assumption);
+    by (rewrite IHe1 with (z2:=za) (z1:=za0) in *;
+        try reflexivity; try assumption;
+        rewrite IHe2 with (z2:=zb) (z1:=zb0) in *;
+        try reflexivity; try assumption).
+Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
@@ -275,7 +280,21 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
           equivalent_states s1 s2 id)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. admit. Admitted.
+Proof. 
+  generalize dependent z. induction e; intros.
+  - inversion EV; subst; auto.
+  - assert (i ? (Var i)). { constructor. }
+    remember (FV i H).
+    assert (s2 / i => z). { inversion EV. remember (e z). inversion i1. auto. }
+    auto.
+  - destruct b; inversion EV; subst.
+    all: do 2
+    match goal with
+    | H: [|?e|] ?s => (?z) |- _ => 
+      try (eapply IHe1 in H); try (eapply IHe2 in H);
+      [ |intros; apply FV; constructor; intuition]
+    end; auto; eauto.
+Qed.
 
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z), 
@@ -283,14 +302,21 @@ Definition equivalent (e1 e2 : expr) : Prop :=
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
 Lemma eq_refl (e : expr): e ~~ e.
-Proof. admit. Admitted.
+Proof. 
+  constructor. auto. auto.
+Qed.
 
 Lemma eq_symm (e1 e2 : expr) (EQ : e1 ~~ e2): e2 ~~ e1.
-Proof. admit. Admitted.
+Proof. 
+  constructor; remember (EQ n s); destruct i; assumption.
+Qed.
 
 Lemma eq_trans (e1 e2 e3 : expr) (EQ1 : e1 ~~ e2) (EQ2 : e2 ~~ e3):
   e1 ~~ e3.
-Proof. admit. Admitted.
+Proof. 
+  constructor; remember (EQ1 n s); remember (EQ2 n s); 
+  destruct i; destruct i0; auto.
+Qed.
 
 Inductive Context : Type :=
 | Hole : Context
@@ -313,7 +339,74 @@ Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
 
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
-Proof. admit. Admitted.
+Proof. 
+  constructor; constructor; intro;
+  generalize dependent n. 
+  - induction C; intro; remember (H n s); 
+    destruct i; auto; simpl; destruct b; intro; 
+    inversion H0; subst. 
+    all: try by (simpl; subst; 
+                remember (IHC za VALA); auto).
+    all: try (remember (IHC za VALA); auto).
+    all: try (remember (IHC zb VALB); auto).
+    * remember (bs_Le_T s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Le_F s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Lt_T s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Lt_F s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Ge_T s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Ge_F s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Gt_T s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Gt_F s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Eq_T s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Eq_F s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Ne_T s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Ne_F s (C <~ e2) e za zb e4 VALB OP). assumption.
+    * remember (bs_Le_T s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Le_F s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Lt_T s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Lt_F s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Ge_T s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Ge_F s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Gt_T s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Gt_F s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Eq_T s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Eq_F s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Ne_T s e (C <~ e2) za zb VALA e4 OP). assumption.
+    * remember (bs_Ne_F s e (C <~ e2) za zb VALA e4 OP). assumption.
+  - induction C; intro; intro; simpl; auto.
+    { remember (H n s). destruct i. auto. }
+    all: simpl in H0; destruct b; inversion H0; subst.
+    all: try (remember (IHC za VALA); auto).
+    all: try (remember (IHC zb VALB); auto).
+    * remember (bs_Le_T s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Le_F s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Lt_T s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Lt_F s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Ge_T s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Ge_F s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Gt_T s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Gt_F s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Eq_T s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Eq_F s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Ne_T s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Ne_F s (C <~ e1) e za zb e0 VALB OP). assumption.
+    * remember (bs_Le_T s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Le_F s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Lt_T s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Lt_F s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Ge_T s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Ge_F s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Gt_T s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Gt_F s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Eq_T s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Eq_F s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Ne_T s e (C <~ e1) za zb VALA e0 OP). assumption.
+    * remember (bs_Ne_F s e (C <~ e1) za zb VALA e0 OP). assumption.
+  - remember (H Hole). simpl in e. 
+    intro. remember (e n s). destruct i. assumption.
+  - remember (H Hole). simpl in e. 
+    intro. remember (e n s). destruct i. assumption.
+Qed.
 
 Module SmallStep.
 
