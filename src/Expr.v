@@ -482,23 +482,99 @@ Module SmallStep.
   Lemma normal_form_is_not_a_value : ~ forall (e : expr), normal_form e -> is_value e.
   Proof. admit. Admitted.
 
-  Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
-  Proof. admit. Admitted.
+  Lemma no_step_from_value (e : expr) (HV: is_value e) : forall s, ~ exists e', (s |- e --> e').
+  Proof.
+    intros s H.
 
-  Lemma ss_deterministic_step (e e' : expr)
-                         (s    : state Z)
-                         (z z' : Z)
-                         (H1   : s |- e --> (Nat z))
-                         (H2   : s |- e --> e') : e' = Nat z.
-  Proof. admit. Admitted.
+    inversion HV; subst.
+    destruct H.
+    inversion H.
+  Qed.
+
+Definition zero_sum_contra: expr :=
+  let z := Nat Z.zero in
+  let z_sum := z [+] z in
+  z_sum [+] z_sum.
 
   Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
   Proof. admit. Admitted.
 
-  Lemma ss_eval_equiv (e : expr)
-                      (s : state Z)
-                      (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
-  Proof. admit. Admitted.
+Definition zero_sum_result_l: expr :=
+  let z := Nat Z.zero in
+  let z_sum := z [+] z in
+  z [+] z_sum.
+
+Definition zero_sum_result_r: expr :=
+  let z := Nat Z.zero in
+  let z_sum := z [+] z in
+  z_sum [+] z .
+
+Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z),
+  s |- e --> e' -> s |- e --> e'' -> e' = e''.
+Proof.
+  unfold not.
+  intros H.
+
+  specialize H with
+    (e := zero_sum_contra)
+    (e' := zero_sum_result_l)
+    (e'' := zero_sum_result_r)
+    (s := []).
+
+  (* duplication TODO *)
+  assert (Hl: ([]) |- zero_sum_contra --> (zero_sum_result_l)).
+    { unfold zero_sum_contra, zero_sum_result_l.
+      apply ss_Left.
+      apply ss_Bop.
+
+      replace ([|Nat Z.zero [+] Nat Z.zero|] [] => (Z.zero))
+        with  ([|Nat Z.zero [+] Nat Z.zero|] [] => (Z.add Z.zero Z.zero)).
+
+
+      + apply bs_Add; apply bs_Nat.
+      + reflexivity. }
+
+  assert (Hr: ([]) |- zero_sum_contra --> (zero_sum_result_r)).
+    { unfold zero_sum_contra, zero_sum_result_l.
+      apply ss_Right.
+      apply ss_Bop.
+
+      replace ([|Nat Z.zero [+] Nat Z.zero|] [] => (Z.zero))
+        with  ([|Nat Z.zero [+] Nat Z.zero|] [] => (Z.add Z.zero Z.zero)).
+
+
+      + apply bs_Add; apply bs_Nat.
+      + reflexivity. }
+
+  apply H in Hl.
+  - discriminate.
+  - assumption.
+Qed.
+
+Lemma ss_deterministic_step (e e' : expr)
+                        (s    : state Z)
+                        (z z' : Z)
+                        (H1   : s |- e --> (Nat z))
+                        (H2   : s |- e --> e') : e' = Nat z.
+Proof.
+  inversion H1; subst.
+  inversion H2; subst.
+
+
+  - destruct (state_deterministic _ _ _ _ _ VAL VAL0). reflexivity.
+  - inversion H2; subst.
+    + inversion LEFT.
+    + inversion RIGHT.
+    + Print eval_deterministic.
+
+      destruct (eval_deterministic  _ _ _ _ EVAL EVAL0).
+      reflexivity.
+Qed.
+
+Lemma ss_eval_equiv (e : expr)
+                    (s : state Z)
+                    (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
+Proof. admit. Admitted.
 
 End SmallStep.
 
