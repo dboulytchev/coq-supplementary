@@ -6,8 +6,6 @@ Require Import Lia.
 Require Export Arith Arith.EqNat.
 Require Export Id.
 
-From hahn Require Import HahnBase.
-
 Section S.
 
   Variable A : Set.

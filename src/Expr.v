@@ -7,8 +7,6 @@ Require Export Lia.
 Require Import List.
 Import ListNotations.
 
-From hahn Require Import HahnBase.
-
 (* Type of binary operators *)
 Inductive bop : Type :=
 | Add : bop
@@ -28,7 +26,7 @@ Inductive bop : Type :=
 (* Type of arithmetic expressions *)
 Inductive expr : Type :=
 | Nat : Z -> expr
-| Var : id  -> expr              
+| Var : id  -> expr
 | Bop : bop -> expr -> expr -> expr.
 
 (* Supplementary notation *)
@@ -47,7 +45,7 @@ Notation "x '[&]'  y" := (Bop And x y) (at level 38, left associativity).
 Notation "x '[\/]' y" := (Bop Or  x y) (at level 38, left associativity).
 
 Definition zbool (x : Z) : Prop := x = Z.one \/ x = Z.zero.
-  
+
 Definition zor (x y : Z) : Z :=
   if Z_le_gt_dec (Z.of_nat 1) (x + y) then Z.one else Z.zero.
 
@@ -55,7 +53,7 @@ Reserved Notation "[| e |] st => z" (at level 0).
 Notation "st / x => y" := (st_binds Z st x y) (at level 0).
 
 (* Big-step evaluation relation *)
-Inductive eval : expr -> state Z -> Z -> Prop := 
+Inductive eval : expr -> state Z -> Z -> Prop :=
   bs_Nat  : forall (s : state Z) (n : Z), [| Nat n |] s => n
 
 | bs_Var  : forall (s : state Z) (i : id) (z : Z) (VAR : s / i => z),
@@ -94,7 +92,7 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (OP : Z.le za zb),
     [| a [<=] b |] s => Z.one
 
-| bs_Le_F : forall (s : state Z) (a b : expr) (za zb : Z) 
+| bs_Le_F : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
                    (OP : Z.gt za zb),
@@ -135,7 +133,7 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (VALB : [| b |] s => zb)
                    (OP : Z.le za zb),
     [| a [>] b |] s => Z.zero
-                         
+
 | bs_Eq_T : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
@@ -173,19 +171,30 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (BOOLA : zbool za)
                    (BOOLB : zbool zb),
     [| a [\/] b |] s => (zor za zb)
-where "[| e |] st => z" := (eval e st z). 
+where "[| e |] st => z" := (eval e st z).
 
 #[export] Hint Constructors eval : core.
 
 Module SmokeTest.
 
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. admit. Admitted.
-  
+  Proof. apply bs_Nat. Qed.
+
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. admit. Admitted.
+  Proof.
+    inversion HH; subst.
+    inversion VALB; subst.
+    Search (?x * ?y = ?y * ?x).
+    rewrite Z.mul_comm.
+
+    assert (HEE: [|e [+] e|] s => (za + za)).
+      { apply (bs_Add s e e za za); assumption. }
+
+    rewrite Z.add_diag in HEE.
+    assumption.
+  Qed.
 
 End SmokeTest.
 
@@ -205,14 +214,14 @@ Proof. admit. Admitted.
 Reserved Notation "x ? e" (at level 0).
 
 (* Set of variables is an expression *)
-Inductive V : expr -> id -> Prop := 
+Inductive V : expr -> id -> Prop :=
   v_Var : forall (id : id), id ? (Var id)
 | v_Bop : forall (id : id) (a b : expr) (op : bop), id ? a \/ id ? b -> id ? (Bop op a b)
 where "x ? e" := (V e x).
 
 (* If an expression is defined in some state, then each its' variable is
    defined in that state
- *)      
+ *)
 Lemma defined_expression
       (e : expr) (s : state Z) (z : Z) (id : id)
       (RED : [| e |] s => z)
@@ -229,7 +238,7 @@ Lemma undefined_variable (e : expr) (s : state Z) (id : id)
 Proof. admit. Admitted.
 
 (* The evaluation relation is deterministic *)
-Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
+Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z)
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
 Proof. admit. Admitted.
@@ -246,7 +255,7 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
 Proof. admit. Admitted.
 
 Definition equivalent (e1 e2 : expr) : Prop :=
-  forall (n : Z) (s : state Z), 
+  forall (n : Z) (s : state Z),
     [| e1 |] s => n <-> [| e2 |] s => n.
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
@@ -265,12 +274,12 @@ Inductive Context : Type :=
 | BopL : bop -> Context -> expr -> Context
 | BopR : bop -> expr -> Context -> Context.
 
-Fixpoint plug (C : Context) (e : expr) : expr := 
+Fixpoint plug (C : Context) (e : expr) : expr :=
   match C with
   | Hole => e
   | BopL b C e1 => Bop b (plug C e) e1
   | BopR b e1 C => Bop b e1 (plug C e)
-  end.  
+  end.
 
 Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
 
@@ -288,7 +297,7 @@ Module SmallStep.
 
   Inductive is_value : expr -> Prop :=
     isv_Intro : forall n, is_value (Nat n).
-               
+
   Reserved Notation "st |- e --> e'" (at level 0).
 
   Inductive ss_step : state Z -> expr -> expr -> Prop :=
@@ -307,7 +316,7 @@ Module SmallStep.
   | ss_Bop   : forall (s       : state Z)
                       (zl zr z : Z)
                       (op      : bop)
-                      (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))      
+                      (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))
   where "st |- e --> e'" := (ss_step st e e').
 
   Reserved Notation "st |- e -->> e'" (at level 0).
@@ -320,47 +329,47 @@ Module SmallStep.
                      (HStep : s |- e --> e')
                      (Heval: s |- e' -->> e''), s |- e -->> e''
   where "st |- e -->> e'"  := (ss_eval st e e').
-  
+
   Definition normal_form (e : expr) : Prop :=
-    forall s, ~ exists e', (s |- e --> e').   
+    forall s, ~ exists e', (s |- e --> e').
 
   Lemma value_is_normal_form (e : expr) (HV: is_value e) : normal_form e.
   Proof. admit. Admitted.
 
   Lemma normal_form_is_not_a_value : ~ forall (e : expr), normal_form e -> is_value e.
   Proof. admit. Admitted.
-  
+
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
   Proof. admit. Admitted.
-  
+
   Lemma ss_deterministic_step (e e' : expr)
                          (s    : state Z)
                          (z z' : Z)
                          (H1   : s |- e --> (Nat z))
                          (H2   : s |- e --> e') : e' = Nat z.
   Proof. admit. Admitted.
-  
+
   Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
   Proof. admit. Admitted.
-  
+
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
   Proof. admit. Admitted.
-  
+
 End SmallStep.
 
 Module Renaming.
-  
+
   Definition renaming := { f : id -> id | Bijective f }.
-  
+
   Fixpoint rename_id (r : renaming) (x : id) : id :=
     match r with
       exist _ f _ => f x
     end.
 
   Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.
-  
+
   Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
   Proof. admit. Admitted.
 
@@ -369,9 +378,9 @@ Module Renaming.
 
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with
-    | Var x => Var (rename_id r x) 
+    | Var x => Var (rename_id r x)
     | Nat n => Nat n
-    | Bop op e1 e2 => Bop op (rename_expr r e1) (rename_expr r e2) 
+    | Bop op e1 e2 => Bop op (rename_expr r e1) (rename_expr r e2)
     end.
 
   Lemma re_rename_expr
@@ -379,7 +388,7 @@ Module Renaming.
     (Hinv : renamings_inv r r')
     (e    : expr) : rename_expr r (rename_expr r' e) = e.
   Proof. admit. Admitted.
-  
+
   Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
     match st with
     | [] => []
@@ -392,12 +401,12 @@ Module Renaming.
     (Hinv : renamings_inv r r')
     (st   : state Z) : rename_state r (rename_state r' st) = st.
   Proof. admit. Admitted.
-      
+
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
   Proof. admit. Admitted.
-  
+
   Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
   Proof. admit. Admitted.
-    
+
 End Renaming.
