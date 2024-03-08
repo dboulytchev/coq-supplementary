@@ -50,7 +50,13 @@ Section S.
     (SN : st / x => n)
     (SM : st / x => m) :
     n = m. 
-  Proof. admit. Admitted.
+  Proof. 
+    induction st.
+    - inversion SN.
+    - destruct a. inversion SN; subst.
+      * inversion SM; subst. reflexivity. intuition.
+      * inversion SM; subst; intuition.
+  Qed.
   
   Lemma update_eq (st : state) (x : id) (n : A) :
     st [x <- n] / x => n.
