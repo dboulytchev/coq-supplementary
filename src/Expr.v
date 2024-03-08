@@ -295,6 +295,29 @@ Qed.
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
   forall z : Z, s1 /id => z <-> s2 / id => z.
 
+  Ltac try_constrs za' zb' :=
+    (* constructro workaround *)
+    try (apply bs_Add);
+    try (apply bs_Sub);
+    try (apply bs_Mul);
+    try (apply bs_Div);
+    try (apply bs_Mod);
+    try (apply bs_And);
+    try (apply bs_Or);
+
+    try (apply bs_Le_T with (za := za') (zb := zb'));
+    try (apply bs_Le_F with (za := za') (zb := zb'));
+    try (apply bs_Lt_T with (za := za') (zb := zb'));
+    try (apply bs_Lt_F with (za := za') (zb := zb'));
+    try (apply bs_Ge_T with (za := za') (zb := zb'));
+    try (apply bs_Ge_F with (za := za') (zb := zb'));
+    try (apply bs_Gt_T with (za := za') (zb := zb'));
+    try (apply bs_Gt_F with (za := za') (zb := zb'));
+    try (apply bs_Eq_T with (za := za') (zb := zb'));
+    try (apply bs_Eq_F with (za := za') (zb := zb'));
+    try (apply bs_Ne_T with (za := za') (zb := zb'));
+    try (apply bs_Ne_F with (za := za') (zb := zb')).
+
 Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
       (FV : forall (id : id) (ID : id ? e),
           equivalent_states s1 s2 id)
@@ -319,26 +342,9 @@ Proof.
 
     try (apply IHe1 in VALA;
         apply IHe2 in VALB;
-        try (constructor; assumption);
 
-        (* rework *)
-        try (apply bs_Le_T with (za := za) (zb := zb); assumption);
-        try (apply bs_Le_F with (za := za) (zb := zb); assumption);
-
-        try (apply bs_Lt_T with (za := za) (zb := zb); assumption);
-        try (apply bs_Lt_F with (za := za) (zb := zb); assumption);
-
-        try (apply bs_Ge_T with (za := za) (zb := zb); assumption);
-        try (apply bs_Ge_F with (za := za) (zb := zb); assumption);
-
-        try (apply bs_Gt_T with (za := za) (zb := zb); assumption);
-        try (apply bs_Gt_F with (za := za) (zb := zb); assumption);
-
-        try (apply bs_Eq_T with (za := za) (zb := zb); assumption);
-        try (apply bs_Eq_F with (za := za) (zb := zb); assumption);
-
-        try (apply bs_Ne_T with (za := za) (zb := zb); assumption);
-        try (apply bs_Ne_F with (za := za) (zb := zb); assumption);
+        try_constrs za zb;
+        try assumption;
 
         intros id;
         intros H';
@@ -405,7 +411,30 @@ Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
 
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
-Proof. admit. Admitted.
+Proof.
+  split; unfold contextual_equivalent; intros H.
+  - intros C. induction C; unfold equivalent; split; intros H'; simpl in *.
+    (* TODO duplication *)
+    + apply H. assumption.
+    + apply H. assumption.
+    + inversion H'; subst; inversion H'; subst; apply IHC in VALA0;
+      try_constrs za0 zb0;
+      try assumption.
+    + inversion H'; subst; inversion H'; subst; apply IHC in VALA0;
+      try_constrs za0 zb0;
+      try assumption.
+    + inversion H'; subst; inversion H'; subst; apply IHC in VALB0;
+      try_constrs za0 zb0;
+      try assumption.
+    + inversion H'; subst; inversion H'; subst; apply IHC in VALB0;
+      try_constrs za0 zb0;
+      try assumption.
+  - unfold equivalent. split; intros H';
+      specialize H with Hole;
+      simpl in H;
+      apply H;
+      assumption.
+Qed.
 
 Module SmallStep.
 
