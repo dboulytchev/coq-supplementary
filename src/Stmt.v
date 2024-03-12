@@ -9,6 +9,8 @@ Require Export Expr.
 
 From hahn Require Import HahnBase.
 
+Require Import Coq.Program.Equality.
+
 (* AST for statements *)
 Inductive stmt : Type :=
 | SKIP  : stmt
@@ -121,13 +123,24 @@ Module SmokeTest.
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction EXE.
+    remember (IHEXE2 e s st i o). intuition.
+    auto.
+  Qed.
+    
   
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
     (WHILE (Nat 1) DO SKIP END) ~~~
     (COND (Nat 3) THEN SKIP ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof. 
+    intro. constructor.
+    { intro. dependent induction H. 
+      - intuition. inversion H. rewrite <- H4 in H1. assumption.
+      - inversion CVAL. }
+    intro. dependent induction H; inversion CVAL.
+  Qed.
   
   (* Loops with equivalent bodies are equivalent *)
   Lemma while_eq (e : expr) (s1 s2 : stmt)
@@ -139,7 +152,11 @@ Module SmokeTest.
   (* Exercise 4.8 from Winskel's *)
   Lemma while_true_undefined c s c' :
     ~ c == WHILE (Nat 1) DO s END ==> c'.
-  Proof. admit. Admitted.
+  Proof. 
+    intro. dependent induction H; subst.
+    remember (IHbs_int2 s). auto.
+    inversion CVAL.
+  Qed.
   
 End SmokeTest.
 
