@@ -90,12 +90,31 @@ Module SmokeTest.
   (* Associativity of sequential composition *)
   Lemma seq_assoc (s1 s2 s3 : stmt) :
     ((s1 ;; s2) ;; s3) ~~~ (s1 ;; (s2 ;; s3)).
-  Proof. admit. Admitted.
+  Proof. 
+    intros. intro. intro. 
+    constructor; intro; seq_inversion; seq_inversion.
+    all: try (remember (bs_Seq c'1 c'0 c' s2 s3 STEP3 STEP2)).
+    all: try (remember (bs_Seq c c'0 c'1 s1 s2 STEP1 STEP0)).
+    all: by (econstructor; eauto; eassumption). 
+  Qed.
   
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof.
+    intro. intro.
+    constructor; intro.
+    { inversion H; subst. 
+      assert (((st, i, o)) == s;; (WHILE e DO s END) ==> (c')).
+      { econstructor. eauto. eassumption. }
+      remember (bs_If_True st i o c' e (s;; (WHILE e DO s END)) SKIP CVAL H0). assumption.
+      assert (((st, i, o)) == SKIP ==> (st, i, o)).
+      { constructor. }
+      remember (bs_If_False st i o (st, i, o) e (s;; (WHILE e DO s END)) SKIP CVAL H0). assumption. }
+    inversion H; subst.
+    seq_inversion. remember (bs_While_True s0 i o c'0 c' e s CVAL STEP1 STEP2). assumption.
+    inversion STEP. subst. remember (bs_While_False s0 i o e s CVAL). assumption.
+  Qed.
       
   (* Terminating loop invariant *)
   Lemma while_false (e : expr) (s : stmt) (st : state Z)
