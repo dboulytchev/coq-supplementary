@@ -146,16 +146,42 @@ Module SmokeTest.
   Lemma while_eq (e : expr) (s1 s2 : stmt)
         (EQ : s1 ~~~ s2) :
     WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-  Proof. admit. Admitted.
+  Proof. 
+    intro. intro. constructor; intro.
+    * remember (WHILE e DO s1 END) as H' in H.
+      induction H; try discriminate; subst.
+      { remember (IHbs_int2 HeqH'). apply while_unfolds. remember (while_unfolds e s2 (st, i, o) c'').
+        destruct i0. assert (s = s1). { inversion HeqH'. reflexivity. } assert (e = e0). { inversion HeqH'. reflexivity. }
+        assert (((st, i, o)) == s2 ==> (c')). 
+        { remember (EQ (st, i, o) c'). destruct i0. rewrite -> H1 in H. remember (b2 H). assumption. }
+        assert ((st, i, o) ==  s2;; (WHILE e DO s2 END) ==> c'').
+        { remember (bs_Seq (st, i, o) c' c'' s2 (WHILE e DO s2 END)). eapply bs_Seq. eassumption. assumption. }
+        eapply (bs_If_True). rewrite <- H2 in CVAL. assumption. assumption. }
+      apply while_unfolds. eapply (bs_If_False). assert (s = s1). { inversion HeqH'. reflexivity. } assert (e = e0). { inversion HeqH'. reflexivity. }
+      rewrite <- H0 in CVAL. assumption. constructor.
+    * remember (WHILE e DO s2 END) as H' in H.
+      induction H; try discriminate; subst.
+      { remember (IHbs_int2 HeqH'). apply while_unfolds. remember (while_unfolds e s1 (st, i, o) c'').
+        destruct i0. assert (s = s2). { inversion HeqH'. reflexivity. } assert (e = e0). { inversion HeqH'. reflexivity. }
+        assert (((st, i, o)) == s1 ==> (c')). 
+        { remember (EQ (st, i, o) c'). destruct i0. rewrite -> H1 in H. remember (b3 H). assumption. }
+        assert ((st, i, o) ==  s1;; (WHILE e DO s1 END) ==> c'').
+        { remember (bs_Seq (st, i, o) c' c'' s1 (WHILE e DO s1 END)). eapply bs_Seq. eassumption. assumption. }
+        eapply (bs_If_True). rewrite <- H2 in CVAL. assumption. assumption. }
+      apply while_unfolds. eapply (bs_If_False). assert (s = s2). { inversion HeqH'. reflexivity. } assert (e = e0). { inversion HeqH'. reflexivity. }
+      rewrite <- H0 in CVAL. assumption. constructor.
+    Qed.
   
   (* Loops with the constant true condition don't terminate *)
   (* Exercise 4.8 from Winskel's *)
   Lemma while_true_undefined c s c' :
     ~ c == WHILE (Nat 1) DO s END ==> c'.
   Proof. 
-    intro. dependent induction H; subst.
-    remember (IHbs_int2 s). auto.
-    inversion CVAL.
+    intro.
+    remember (WHILE Nat 1 DO s END) as H' in H.
+    induction H; try discriminate.
+    remember (IHbs_int2 HeqH'). assumption.
+    inversion HeqH'. rewrite -> H0 in CVAL. inversion CVAL.
   Qed.
   
 End SmokeTest.
