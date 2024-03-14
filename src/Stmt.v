@@ -485,7 +485,17 @@ Ltac by_eq_congruence e s s1 s2 H :=
   repeat (match goal with H: _ /\ _ |- _ => inversion_clear H end); assumption.
 
 Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
-Proof. admit. Admitted.
+Proof.
+  split.
+  - unfold bs_equivalent.
+    intros H.
+    unfold contextual_equivalent.
+    intros C.
+    induction C;
+    unfold bs_equivalent in *;simpl; try (apply eq_congruence; unfold bs_equivalent); try assumption; try apply (Nat Z.one).
+  - intros H.
+    unfold contextual_equivalent in H. specialize H with Hole. simpl in H. assumption.
+Qed.
 
 (* Small-step semantics *)
 Module SmallStep.
@@ -499,6 +509,7 @@ Module SmallStep.
       (s, i, o) -- x ::= e --> (None, (s [x <- z], i, o))
   | ss_Read        : forall (s : state Z) (i o : list Z) (x : id) (z : Z),
       (s, z::i, o) -- READ x --> (None, (s [x <- z], i, o))
+      (* TODO what about big step expr eval *)
   | ss_Write       : forall (s : state Z) (i o : list Z) (e : expr) (z : Z)
                             (SVAL : [| e |] s => z),
       (s, i, o) -- WRITE e --> (None, (s, i, z::o))
@@ -532,31 +543,201 @@ Module SmallStep.
         (EXEC1 : c -- s --> c')
         (EXEC2 : c -- s --> c'') :
     c' = c''.
-  Proof. admit. Admitted.
+  Proof.
+    generalize dependent c.
+    generalize dependent c'.
+    generalize dependent c''.
+
+    induction s; intros c'' c' c H1 H2; inversion H1; inversion H2; subst.
+    - subst. reflexivity.
+    - inversion H8. subst. destruct (eval_deterministic _ _ _ _ SVAL SVAL0). reflexivity.
+    - inversion H6; subst. reflexivity.
+    - inversion H6; subst. destruct (eval_deterministic _ _ _ _ SVAL SVAL0). reflexivity.
+    - assert (H'': ((None : option stmt), c'0) = (None, c'1)).
+       { apply IHs1 with c; assumption. }
+      inversion H''. subst. reflexivity.
+    - assert (HR: ((Some s1', c'1)) = ((None, c'0))).
+      { apply IHs1 with c; assumption. }
+      discriminate HR.
+    - assert (HR: ((Some s1', c'0)) = ((None, c'1))).
+      { apply IHs1 with c; assumption. }
+      discriminate HR.
+    - assert (HR: ((Some s1', c'0)) = ((Some s1'0, c'1))).
+      { apply IHs1 with c; assumption. }
+      inversion HR; subst. reflexivity.
+    - inversion H10; subst. reflexivity.
+    - inversion H10. subst.
+      assert( Z.one = Z.zero).
+      { apply (eval_deterministic _ _ _ _ SCVAL SCVAL0). }
+      discriminate H.
+    - inversion H10. subst.
+      assert( Z.zero = Z.one).
+      { apply (eval_deterministic _ _ _ _ SCVAL SCVAL0). }
+      discriminate H.
+    - inversion H10; subst. reflexivity.
+    - reflexivity.
+  Qed.
 
   Lemma ss_int_deterministic (c c' c'' : conf) (s : stmt)
         (STEP1 : c -- s -->> c') (STEP2 : c -- s -->> c'') :
     c' = c''.
-  Proof. admit. Admitted.
+  Proof.
+    generalize dependent c''.
+
+    induction STEP1.
+    - intros c'' H'.
+      inversion H'.
+
+      * assert ((None: option stmt, c') = (None, c'')).
+          { apply (ss_int_step_deterministic _ _ _ _ H H0). }
+        inversion H4. reflexivity.
+      * assert ((None: option stmt, c') = (Some s', c'0)).
+          { apply (ss_int_step_deterministic _ _ _ _ H H0). }
+        inversion H5.
+    - intros c''' H'.
+      inversion H'. subst.
+      * assert ((Some s', c') = (None, c''')).
+        { apply (ss_int_step_deterministic _ _ _ _ H H0). }
+        discriminate H1.
+      * subst.
+        assert ((Some s', c') = (Some s'0, c'0)).
+        { apply (ss_int_step_deterministic _ _ _ _ H H0). }
+        inversion H2. subst.
+        apply IHSTEP1.
+        assumption.
+  Qed.
 
   Lemma ss_bs_base (s : stmt) (c c' : conf) (STEP : c -- s --> (None, c')) :
     c == s ==> c'.
-  Proof. admit. Admitted.
+  Proof.
+    induction s; try ( now inversion STEP; subst; constructor).
+  Qed.
 
   Lemma ss_ss_composition (c c' c'' : conf) (s1 s2 : stmt)
         (STEP1 : c -- s1 -->> c'') (STEP2 : c'' -- s2 -->> c') :
     c -- s1 ;; s2 -->> c'.
-  Proof. admit. Admitted.
+  Proof.
+  generalize dependent s2.
+  generalize dependent c'.
+
+  induction STEP1.
+
+  - intros c'' s2 H'.
+
+    assert ( c -- s;; s2 --> (Some s2, c')).
+      { constructor. assumption. }
+    assert (c -- s -->> c').
+      { constructor. assumption. }
+
+    apply (ss_int_Step) with s2 c'; assumption.
+  - intros cg s2 H'.
+
+    assert (c -- s -->> c'').
+      { apply (ss_int_Step) with s' c'; assumption. }
+    assert( c -- s;; s2 --> (Some (s';; s2), c')).
+      { constructor. assumption. }
+
+    apply ss_int_Step with (s';; s2) c'.
+    + assumption.
+    + apply IHSTEP1; assumption.
+  Qed.
 
   Lemma ss_bs_step (c c' c'' : conf) (s s' : stmt)
         (STEP : c -- s --> (Some s', c'))
         (EXEC : c' == s' ==> c'') :
     c == s ==> c''.
-  Proof. admit. Admitted.
+  Proof.
+    generalize dependent s'.
+    generalize dependent c.
+    generalize dependent c'.
+    generalize dependent c''.
+
+    induction s; intros c'' c' c s' H H'; try now inversion H.
+    - inversion H; subst.
+      + assert (c == s1 ==> c').
+          { apply ss_bs_base. assumption. }
+        apply bs_Seq with c'; assumption.
+      + inversion H'. subst.
+        assert (c == s1 ==> c'0).
+          { apply IHs1 with c' s1'; assumption. }
+        apply bs_Seq with c'0; assumption.
+    - inversion H; subst; inversion H'; subst; constructor; assumption.
+    - inversion H. rewrite <- H4 in H'. subst. inversion H'; subst.
+      + inversion H. apply SmokeTest.while_unfolds. assumption.
+      + apply SmokeTest.while_unfolds. assumption.
+  Qed.
 
   Theorem bs_ss_eq (s : stmt) (c c' : conf) :
     c == s ==> c' <-> c -- s -->> c'.
-  Proof. admit. Admitted.
+  Proof.
+    generalize dependent c.
+    generalize dependent c'.
+
+    split.
+(*
+  Inductive ss_int : stmt -> conf -> conf -> Prop :=
+    ss_int_Base : forall (s : stmt) (c c' : conf),
+                    c -- s --> (None, c') -> c -- s -->> c'
+  | ss_int_Step : forall (s s' : stmt) (c c' c'' : conf),
+                    c -- s --> (Some s', c') -> c' -- s' -->> c'' -> c -- s -->> c''
+  where "c1 -- s -->> c2" := (ss_int s c1 c2). *)
+
+    - intros H. induction H; subst;
+        try now constructor; constructor.
+        + apply ss_ss_composition with c'; assumption.
+        + apply (ss_int_Step (COND e THEN s1 ELSE s2 END) s1 (s, i, o) (s, i, o)).
+          * constructor. assumption.
+          * assumption.
+        + apply (ss_int_Step (COND e THEN s1 ELSE s2 END) s2 (s, i, o) (s, i, o)).
+          * constructor. assumption.
+          * assumption.
+        + apply (ss_int_Step (WHILE e DO s END) (COND e THEN s ;; WHILE e DO s END ELSE SKIP END) (st, i, o) (st, i, o) c'').
+          * constructor.
+          * apply (ss_int_Step (COND e THEN s;; (WHILE e DO s END) ELSE SKIP END) (s;; (WHILE e DO s END)) _ (st, i, o) _).
+            { constructor. assumption. }
+            { apply ss_ss_composition with c'; assumption. }
+        + apply (ss_int_Step (WHILE e DO s END) (COND e THEN s ;; WHILE e DO s END ELSE SKIP END) (st, i, o) (st, i, o) _).
+          * constructor.
+          * apply (ss_int_Step (COND e THEN s;; (WHILE e DO s END) ELSE SKIP END) (SKIP) _ (st, i, o) _).
+            { constructor. assumption. }
+            { constructor. constructor. }
+
+
+    - intros H.
+      induction H.
+      + apply ss_bs_base. assumption.
+      + inversion IHss_int; subst.
+        *
+
+
+
+
+
+
+    - generalize dependent c'.
+      generalize dependent c.
+      induction s; intros c c'; intros H.
+
+      + inversion H. inversion H0.
+        * subst. constructor.
+        * inversion H0.
+      + inversion H; subst.
+        * inversion H0. constructor. assumption.
+        * inversion H0.
+      + inversion H. subst.
+        * inversion H0. constructor.
+        * subst. inversion H0.
+      + inversion H.
+        * inversion H0. constructor. assumption.
+        * inversion H0.
+      + inversion H.
+        * apply ss_bs_base. assumption.
+        * subst. inversion H0. subst.
+
+
+
+
+  Qed.
 
 End SmallStep.
 
