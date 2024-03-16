@@ -189,26 +189,56 @@ End SmokeTest.
 (* Semantic equivalence is a congruence *)
 Lemma eq_congruence_seq_r (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (s  ;; s1) ~~~ (s  ;; s2).
-Proof. admit. Admitted.
+Proof. 
+  constructor; intro; seq_inversion; 
+  remember (EQ c'0 c'); destruct i.
+  all: try (apply b in STEP2; remember (bs_Seq c c'0 c' s s2 STEP1 STEP2)).
+  all: try (apply b0 in STEP2; remember (bs_Seq c c'0 c' s s1 STEP1 STEP2)).
+  all: assumption.
+Qed.
 
 Lemma eq_congruence_seq_l (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (s1 ;; s) ~~~ (s2 ;; s).
-Proof. admit. Admitted.
+Proof. 
+  constructor; intro; seq_inversion; 
+  remember (EQ c c'0); destruct i.
+  all: try (apply b in STEP1; remember (bs_Seq c c'0 c' s2 s STEP1 STEP2)).
+  all: try (apply b0 in STEP1; remember (bs_Seq c c'0 c' s1 s STEP1 STEP2)).
+  all: assumption.
+Qed.
 
 Lemma eq_congruence_cond_else
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   COND e THEN s  ELSE s1 END ~~~ COND e THEN s  ELSE s2 END.
-Proof. admit. Admitted.
+Proof. 
+  constructor; intro; inversion H; subst.
+  { remember (bs_If_True s0 i o c' e s s2 CVAL STEP). assumption. }
+  { remember (EQ (s0, i, o) c'). destruct i0. apply b in STEP. 
+    remember (bs_If_False s0 i o c' e s s2 CVAL STEP). assumption. }
+  { remember (bs_If_True s0 i o c' e s s1 CVAL STEP). assumption. }
+  { remember (EQ (s0, i, o) c'). destruct i0. apply b0 in STEP. 
+    remember (bs_If_False s0 i o c' e s s1 CVAL STEP). assumption. }
+Qed.
 
 Lemma eq_congruence_cond_then
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   COND e THEN s1 ELSE s END ~~~ COND e THEN s2 ELSE s END.
-Proof. admit. Admitted.
+Proof. 
+  constructor; intro; inversion H; subst.
+  { remember (EQ (s0, i, o) c'). destruct i0. apply b in STEP. 
+    remember (bs_If_True s0 i o c' e s2 s CVAL STEP). assumption. }
+  { remember (bs_If_False s0 i o c' e s2 s CVAL STEP). assumption. }
+  { remember (EQ (s0, i, o) c'). destruct i0. apply b0 in STEP. 
+    remember (bs_If_True s0 i o c' e s1 s CVAL STEP). assumption. }
+  { remember (bs_If_False s0 i o c' e s1 s CVAL STEP). assumption. }
+Qed.
 
 Lemma eq_congruence_while
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-Proof. admit. Admitted.
+Proof.
+  eapply (SmokeTest.while_eq). assumption.
+Qed.
 
 Lemma eq_congruence (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   ((s  ;; s1) ~~~ (s  ;; s2)) /\
@@ -216,7 +246,13 @@ Lemma eq_congruence (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (COND e THEN s  ELSE s1 END ~~~ COND e THEN s  ELSE s2 END) /\
   (COND e THEN s1 ELSE s  END ~~~ COND e THEN s2 ELSE s  END) /\
   (WHILE e DO s1 END ~~~ WHILE e DO s2 END).
-Proof. admit. Admitted.
+Proof. 
+  split. eapply (eq_congruence_seq_r). assumption.
+  split. eapply (eq_congruence_seq_l). assumption.
+  split. eapply (eq_congruence_cond_else). assumption.
+  split. eapply (eq_congruence_cond_then). assumption.
+  eapply (eq_congruence_while). assumption. assumption.
+Qed.
 
 (* Big-step semantics is deterministic *)
 Ltac by_eval_deterministic :=
