@@ -271,7 +271,25 @@ Ltac eval_zero_not_one :=
 Lemma bs_int_deterministic (c c1 c2 : conf) (s : stmt)
       (EXEC1 : c == s ==> c1) (EXEC2 : c == s ==> c2) :
   c1 = c2.
-Proof. admit. Admitted.
+Proof. 
+  dependent induction EXEC1 in c2.
+  all: try by (inv EXEC2; trivial).
+  all: try by (inversion EXEC2; remember (eval_deterministic e s z z0 VAL VAL0); rewrite e1; trivial).
+  { inv EXEC2. apply IHEXEC1_1 in STEP1. subst. auto. }
+  { inv EXEC2. apply IHEXEC1 in STEP. assumption. 
+    remember (eval_deterministic e s Z.zero Z.one CVAL0 CVAL). 
+    assert (Z.zero <> Z.one) as ZNEQO. { intro. inversion H. } contradiction. }
+  { inv EXEC2. remember (eval_deterministic e s Z.zero Z.one CVAL CVAL0).
+    assert (Z.zero <> Z.one) as ZNEQO. { intro. inversion H. } contradiction.
+    apply IHEXEC1 in STEP. assumption. }
+  { inv EXEC2. 
+    apply IHEXEC1_1 in STEP. rewrite <- STEP in WSTEP. 
+    apply IHEXEC1_2 in WSTEP. assumption.
+    remember (eval_deterministic e st Z.zero Z.one CVAL0 CVAL).
+    assert (Z.zero <> Z.one) as ZNEQO. { intro. inversion H. } contradiction. }
+  inv EXEC2. remember (eval_deterministic e st Z.zero Z.one CVAL CVAL0).
+  assert (Z.zero <> Z.one) as ZNEQO. { intro. inversion H. } contradiction.
+Qed.
 
 (* Contextual equivalence *)
 Inductive Context : Type :=
@@ -309,8 +327,17 @@ Ltac by_eq_congruence e s s1 s2 H :=
   repeat (match goal with H: _ /\ _ |- _ => inversion_clear H end); assumption.
     
 Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
-Proof. admit. Admitted.
-
+Proof. 
+  constructor; intro.
+  { intro. dependent induction C.
+    * eassumption. 
+    * eapply eq_congruence_seq_l. eassumption.
+    * eapply eq_congruence_seq_r. eassumption.
+    * eapply eq_congruence_cond_then. eassumption. 
+    * eapply eq_congruence_cond_else. eassumption.
+    * eapply eq_congruence_while. assumption. auto. }
+  apply (H Hole).
+Qed.
 
 (* Small-step semantics *)
 Module SmallStep.
