@@ -59,26 +59,68 @@ Ltac prove_with th :=
   try (constructor; assumption); congruence.
     
 Lemma lt_eq_lt_id_dec: forall (id1 id2 : id), {id1 i< id2} + {id1 = id2} + {id2 i< id1}.
-Proof. prove_with lt_eq_lt_dec. Qed.
+Proof.
+  intros.
+  destruct id1 as [n1]. destruct id2 as [n2].
+  remember (lt_eq_lt_dec n1 n2). inversion s as [fst | snd].
+  - inversion fst.
+    + left. left. constructor. assumption.
+    + left. right. rewrite H. reflexivity.
+  - right. constructor. assumption.
+Qed.
 
 Lemma gt_eq_gt_id_dec: forall (id1 id2 : id), {id1 i> id2} + {id1 = id2} + {id2 i> id1}.
-Proof. prove_with gt_eq_gt_dec. Qed.
+Proof.  
+  intros.
+  destruct id1 as [n1]. destruct id2 as [n2].
+  remember (gt_eq_gt_dec n1 n2). inversion s as [fst | snd].
+  - destruct fst as [l | r].
+    + right. constructor. assumption.
+    + left. right. rewrite r. reflexivity.
+  - left. left. constructor. assumption.
+Qed.
 
 Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
-Proof. prove_with le_gt_dec. Qed.
+Proof. 
+  intros.
+  destruct id1 as [n1]. destruct id2 as [n2].
+  remember (le_gt_dec n1 n2). inversion s as [fst | snd].
+  - left. constructor. assumption.
+  - right. constructor. assumption.
+Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. prove_with Nat.eq_dec. Qed.
+Proof. 
+  intros.
+  destruct id1 as [n1]. destruct id2 as [n2].
+  remember (Nat.eq_dec n1 n2). inversion s as [fst | snd].
+  - left. rewrite fst. reflexivity.
+  - right. injection. assumption.
+Qed.  
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof. intros. remember (id_eq_dec x x). destruct s.
+  - reflexivity.
+  - contradiction.
+Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof. intros. remember (id_eq_dec x y). destruct s as [fst | snd].
+  - contradiction.
+  - reflexivity.
+Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intro id1. intro id2.
+  destruct id1 as [n1]. destruct id2 as [n2].
+  intros. inversion H. subst. inversion H0. subst.
+  destruct (Nat.lt_irrefl n1).
+  apply (Nat.lt_trans n1 n2 n1). 
+  - assumption.
+  - assumption.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
