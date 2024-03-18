@@ -124,16 +124,51 @@ Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros id1 id2 H1 H2.
+  destruct id1 as [n1]. destruct id2 as [n2].
+  inversion H1. subst. inversion H2. subst. lia.
+Qed.
+
+Lemma lt_iff_gt_id: forall id1 id2 : id,
+  id1 i< id2 <-> id2 i> id1.
+Proof.
+  intros id1 id2.
+  destruct id1 as [n1]. destruct id2 as [n2]. split.
+  - intros. inversion H. subst. constructor. lia.
+  - intros. inversion H. subst. constructor. lia.
+Qed.
+
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros id1 id2.
+  destruct (lt_eq_lt_id_dec id1 id2).
+  - inversion s.
+    + right. apply lt_iff_gt_id. assumption.
+    + left. assumption.
+  - right. apply lt_iff_gt_id. apply (le_gt_id_false id2 id1) in H. 
+    + exfalso. assumption.
+    + apply lt_iff_gt_id in l. assumption.
+Qed. 
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (lt_eq_lt_id_dec  id1 id2).
+  - inversion s.
+    + right. apply lt_iff_gt_id. assumption.
+    + apply H in H0. exfalso. assumption.
+  - left. apply lt_iff_gt_id. assumption.
+Qed.
     
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros id1 id2 H1 H2.
+  destruct id1 as [n1]. destruct id2 as [n2].
+  inversion H1. inversion H2. subst. lia.
+Qed.
+
