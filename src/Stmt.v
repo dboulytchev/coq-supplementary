@@ -384,21 +384,42 @@ Module SmallStep.
         (EXEC1 : c -- s --> c')
         (EXEC2 : c -- s --> c'') :
     c' = c''.
-  Proof. admit. Admitted.
-  
+  Proof. 
+    dependent induction s; dependent destruction EXEC1; dependent destruction EXEC2.
+    all: try by reflexivity.
+    all: try by (dependent induction EXEC1; inv EXEC2).
+    all: try by (remember (IHs1 _ _ _ EXEC1 EXEC2) as Peq; inv Peq).
+    all: try by (remember (eval_deterministic _ _ _ _ SCVAL SCVAL0)).
+    all: try by (remember (eval_deterministic _ _ _ _ SVAL SVAL0) as Zeq; rewrite Zeq; reflexivity).
+  Qed.
+
   Lemma ss_int_deterministic (c c' c'' : conf) (s : stmt)
         (STEP1 : c -- s -->> c') (STEP2 : c -- s -->> c'') :
     c' = c''.
-  Proof. admit. Admitted.
-  
+  Proof. 
+    dependent induction s; dependent induction STEP1; dependent induction STEP2.
+    all: try by inv H.  
+    all: try by (remember (ss_int_step_deterministic _ _ _ _ H H0) as Peq; inv Peq).
+    remember (ss_int_step_deterministic _ _ _ _ H H0) as Peq; inv Peq.
+  Admitted.
+
   Lemma ss_bs_base (s : stmt) (c c' : conf) (STEP : c -- s --> (None, c')) :
     c == s ==> c'.
-  Proof. admit. Admitted.
+  Proof. 
+    inv STEP; constructor; assumption.
+  Qed.
 
   Lemma ss_ss_composition (c c' c'' : conf) (s1 s2 : stmt)
         (STEP1 : c -- s1 -->> c'') (STEP2 : c'' -- s2 -->> c') :
     c -- s1 ;; s2 -->> c'. 
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction STEP1.
+    1: eapply (ss_int_Step _ s2 _ c'0). 
+    3: eapply (ss_int_Step _ (s';; s2) _ c'0). 
+    all: try (econstructor; assumption).
+    2: remember (IHSTEP1 STEP2).
+    all: assumption.
+  Qed.
   
   Lemma ss_bs_step (c c' c'' : conf) (s s' : stmt)
         (STEP : c -- s --> (Some s', c'))
