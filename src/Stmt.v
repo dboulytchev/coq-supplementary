@@ -34,41 +34,119 @@ Reserved Notation "c1 '==' s '==>' c2" (at level 0).
 Notation "st [ x '<-' y ]" := (update Z st x y) (at level 0).
 
 Inductive bs_int : stmt -> conf -> conf -> Prop := 
-| bs_Skip        : forall (c : conf),
-    c == SKIP ==> c 
+| bs_Skip        : forall (c : conf), c == SKIP ==> c 
 | bs_Assign      : forall (s : state Z) (i o : list Z) (x : id) (e : expr) (z : Z)
                           (VAL : [| e |] s => z),
-    (s, i, o) == x ::= e ==> (s [x <- z], i, o)
+                          (s, i, o) == x ::= e ==> (s [x <- z], i, o)
 | bs_Read        : forall (s : state Z) (i o : list Z) (x : id) (z : Z),
-    (s, z::i, o) == READ x ==> (s [x <- z], i, o)
+                          (s, z::i, o) == READ x ==> (s [x <- z], i, o)
 | bs_Write       : forall (s : state Z) (i o : list Z) (e : expr) (z : Z)
                           (VAL : [| e |] s => z),
-    (s, i, o) == WRITE e ==> (s, i, z::o)
+                          (s, i, o) == WRITE e ==> (s, i, z::o)
 | bs_Seq         : forall (c c' c'' : conf) (s1 s2 : stmt)
                           (STEP1 : c == s1 ==> c') (STEP2 : c' == s2 ==> c''),
-    c ==  s1 ;; s2 ==> c''
+                          c ==  s1 ;; s2 ==> c''
 | bs_If_True     : forall (s : state Z) (i o : list Z) (c' : conf) (e : expr) (s1 s2 : stmt)
-                     (CVAL : [| e |] s => Z.one)
-                     (STEP : (s, i, o) == s1 ==> c'),
-    (s, i, o) == COND e THEN s1 ELSE s2 END ==> c'
+                          (CVAL : [| e |] s => Z.one)
+                          (STEP : (s, i, o) == s1 ==> c'),
+                          (s, i, o) == COND e THEN s1 ELSE s2 END ==> c'
 | bs_If_False    : forall (s : state Z) (i o : list Z) (c' : conf) (e : expr) (s1 s2 : stmt)
-                     (CVAL : [| e |] s => Z.zero)
-                     (STEP : (s, i, o) == s2 ==> c'),
-    (s, i, o) == COND e THEN s1 ELSE s2 END ==> c'
+                          (CVAL : [| e |] s => Z.zero)
+                          (STEP : (s, i, o) == s2 ==> c'),
+                          (s, i, o) == COND e THEN s1 ELSE s2 END ==> c'
 | bs_While_True  : forall (st : state Z) (i o : list Z) (c' c'' : conf) (e : expr) (s : stmt)
                           (CVAL  : [| e |] st => Z.one)
                           (STEP  : (st, i, o) == s ==> c')
                           (WSTEP : c' == WHILE e DO s END ==> c''),
-    (st, i, o) == WHILE e DO s END ==> c''
+                          (st, i, o) == WHILE e DO s END ==> c''
 | bs_While_False : forall (st : state Z) (i o : list Z) (e : expr) (s : stmt)
                           (CVAL : [| e |] st => Z.zero),
-    (st, i, o) == WHILE e DO s END ==> (st, i, o)
+                          (st, i, o) == WHILE e DO s END ==> (st, i, o)
 where "c1 == s ==> c2" := (bs_int s c1 c2).
+
+(* "Surface" semantics *)
+Definition eval (s : stmt) (i o : list Z) : Prop :=
+  exists st, ([], i, []) == s ==> (st, [], o).
+
+Notation "<| s |> i => o" := (eval s i o) (at level 0).
+
+(* "Surface" equivalence *)
+Definition eval_equivalent (s1 s2 : stmt) : Prop :=
+  forall (i o : list Z),  <| s1 |> i => o <-> <| s2 |> i => o.
+
+Notation "s1 ~e~ s2" := (eval_equivalent s1 s2) (at level 0).
+
+Definition var_substitution := id -> id.
+
+Definition injective (r : var_substitution) : Prop :=
+  forall (x y : id), x <> y -> r x <> r y.
+
+(*Lemma var_renaming_inverse (s : var_substitution) (HI : injective s) :
+  exists (s' : var_substitution),  injective s' /\ (forall (i :id),  s' (s i) = i /\ s (s' i) = i).
+Proof.
+  unfold injective in HI.
+*)
+
+
+  
+
+(* Contextual equivalence *)
+Inductive Context : Type :=
+| Hole 
+| SeqL   : Context -> stmt -> Context
+| SeqR   : stmt -> Context -> Context
+| IfThen : expr -> Context -> stmt -> Context
+| IfElse : expr -> stmt -> Context -> Context
+| WhileC : expr -> Context -> Context.
+
+(* Plugging a statement into a context *)
+Fixpoint plug (C : Context) (s : stmt) : stmt := 
+  match C with
+  | Hole => s
+  | SeqL     C  s1 => Seq (plug C s) s1
+  | SeqR     s1 C  => Seq s1 (plug C s) 
+  | IfThen e C  s1 => If e (plug C s) s1
+  | IfElse e s1 C  => If e s1 (plug C s)
+  | WhileC   e  C  => While e (plug C s)
+  end.  
+
+Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
+
+(* Contextual equivalence *)
+Definition contextual_equivalent (s1 s2 : stmt) :=
+  forall (C : Context), (C <~ s1) ~e~ (C <~ s2).
+
+Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
+
+Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
+Proof.
+  unfold contextual_equivalent in H. specialize (H Hole). simpl in H. assumption.
+Qed.
+
+Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
+Proof.
+  exists (Id 0 ::= Var (Id 1)).
+  exists (Id 1 ::= Var (Id 0)).
+  split.
+  { unfold eval_equivalent. intros. unfold eval. split.
+    all: intro; inversion_clear H; inversion H0; inversion VAL; inversion VAR.
+  }
+  { intro. unfold contextual_equivalent in H.
+    specialize (H (SeqR (Id 0 ::= Nat Z.zero) Hole)).
+    simpl in H.
+    unfold eval_equivalent in H.
+    specialize (H ([]) ([])). inversion_clear H.
+    assert (A: <| (Id 0 ::= Nat Z.zero);; (Id 1 ::= Var (Id 0)) |> [] => ([])).
+      repeat econstructor.
+      specialize (H1 A).
+      inversion_clear H1. inversion_clear H. inversion STEP1. subst c'. inversion STEP2. inversion VAL0.
+      inversion VAR. inversion H20.
+  }
+Qed.
 
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
-  forall (c c' : conf),
-    c == s1 ==> c' <-> c == s2 ==> c'.
+  forall (c c' : conf), c == s1 ==> c' <-> c == s2 ==> c'.
 
 Notation "s1 '~~~' s2" := (bs_equivalent s1 s2) (at level 0).
 
@@ -95,20 +173,40 @@ Module SmokeTest.
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent. intros. split; intro.
+    { inversion H.
+      { constructor. assumption. seq_apply. }
+      { apply bs_If_False. assumption. constructor. }
+    }
+    { inversion H.
+      { seq_inversion. apply bs_While_True with (c':=c'1); assumption. }
+      { inversion STEP. constructor. assumption. }
+    }
+  Qed.
       
   (* Terminating loop invariant *)
   Lemma while_false (e : expr) (s : stmt) (st : state Z)
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof. admit. Admitted.
-  
+  Proof.
+    remember (WHILE e DO s END).
+    remember (st, i, o).
+    induction EXE; try (discriminate Heqs0). 
+    { auto. }
+    { inversion Heqp. subst st0. inversion Heqs0. subst e0. assumption. }
+  Qed.
+    
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
     (WHILE (Nat 1) DO SKIP END) ~~~
     (COND (Nat 3) THEN SKIP ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent. intros. split; intro; destruct c'. destruct p.
+    { remember (while_false (Nat 1) SKIP s l0 l c). clear Heqe. specialize (e H). inversion e. }
+    { inversion H; inversion CVAL. }
+  Qed.
   
   (* Loops with equivalent bodies are equivalent *)
   Lemma while_eq (e : expr) (s1 s2 : stmt)
@@ -144,7 +242,7 @@ Lemma eq_congruence_cond_then
 Proof. admit. Admitted.
 
 Lemma eq_congruence_while
-      (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
+      (e : expr) (s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   WHILE e DO s1 END ~~~ WHILE e DO s2 END.
 Proof. admit. Admitted.
 
@@ -175,34 +273,6 @@ Lemma bs_int_deterministic (c c1 c2 : conf) (s : stmt)
   c1 = c2.
 Proof. admit. Admitted.
 
-(* Contextual equivalence *)
-Inductive Context : Type :=
-| Hole 
-| SeqL   : Context -> stmt -> Context
-| SeqR   : stmt -> Context -> Context
-| IfThen : expr -> Context -> stmt -> Context
-| IfElse : expr -> stmt -> Context -> Context
-| WhileC : expr -> Context -> Context.
-
-(* Plugging a statement into a context *)
-Fixpoint plug (C : Context) (s : stmt) : stmt := 
-  match C with
-  | Hole => s
-  | SeqL     C  s1 => Seq (plug C s) s1
-  | SeqR     s1 C  => Seq s1 (plug C s) 
-  | IfThen e C  s1 => If e (plug C s) s1
-  | IfElse e s1 C  => If e s1 (plug C s)
-  | WhileC   e  C  => While e (plug C s)
-  end.  
-
-Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
-
-(* Contextual equivalence *)
-Definition contextual_equivalent (s1 s2 : stmt) :=
-  forall (C : Context), (C <~ s1) ~~~ (C <~ s2).
-Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2)
-                            (at level 42, no associativity).
-
 (* Contextual equivalence is equivalent to the semantic one *)
 (* TODO: no longer needed *)
 Ltac by_eq_congruence e s s1 s2 H :=
@@ -212,7 +282,6 @@ Ltac by_eq_congruence e s s1 s2 H :=
     
 Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
 Proof. admit. Admitted.
-
 
 (* Small-step semantics *)
 Module SmallStep.
