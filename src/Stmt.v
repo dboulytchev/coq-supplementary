@@ -76,20 +76,6 @@ Definition eval_equivalent (s1 s2 : stmt) : Prop :=
 
 Notation "s1 ~e~ s2" := (eval_equivalent s1 s2) (at level 0).
 
-Definition var_substitution := id -> id.
-
-Definition injective (r : var_substitution) : Prop :=
-  forall (x y : id), x <> y -> r x <> r y.
-
-(*Lemma var_renaming_inverse (s : var_substitution) (HI : injective s) :
-  exists (s' : var_substitution),  injective s' /\ (forall (i :id),  s' (s i) = i /\ s (s' i) = i).
-Proof.
-  unfold injective in HI.
-*)
-
-
-  
-
 (* Contextual equivalence *)
 Inductive Context : Type :=
 | Hole 
@@ -119,30 +105,10 @@ Definition contextual_equivalent (s1 s2 : stmt) :=
 Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
-Proof.
-  unfold contextual_equivalent in H. specialize (H Hole). simpl in H. assumption.
-Qed.
+Proof. admit. Admitted.
 
 Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
-Proof.
-  exists (Id 0 ::= Var (Id 1)).
-  exists (Id 1 ::= Var (Id 0)).
-  split.
-  { unfold eval_equivalent. intros. unfold eval. split.
-    all: intro; inversion_clear H; inversion H0; inversion VAL; inversion VAR.
-  }
-  { intro. unfold contextual_equivalent in H.
-    specialize (H (SeqR (Id 0 ::= Nat Z.zero) Hole)).
-    simpl in H.
-    unfold eval_equivalent in H.
-    specialize (H ([]) ([])). inversion_clear H.
-    assert (A: <| (Id 0 ::= Nat Z.zero);; (Id 1 ::= Var (Id 0)) |> [] => ([])).
-      repeat econstructor.
-      specialize (H1 A).
-      inversion_clear H1. inversion_clear H. inversion STEP1. subst c'. inversion STEP2. inversion VAL0.
-      inversion VAR. inversion H20.
-  }
-Qed.
+Proof. admit. Admitted.
 
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
@@ -173,40 +139,20 @@ Module SmokeTest.
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof.
-    unfold bs_equivalent. intros. split; intro.
-    { inversion H.
-      { constructor. assumption. seq_apply. }
-      { apply bs_If_False. assumption. constructor. }
-    }
-    { inversion H.
-      { seq_inversion. apply bs_While_True with (c':=c'1); assumption. }
-      { inversion STEP. constructor. assumption. }
-    }
-  Qed.
+  Proof. admit. Admitted.
       
   (* Terminating loop invariant *)
   Lemma while_false (e : expr) (s : stmt) (st : state Z)
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof.
-    remember (WHILE e DO s END).
-    remember (st, i, o).
-    induction EXE; try (discriminate Heqs0). 
-    { auto. }
-    { inversion Heqp. subst st0. inversion Heqs0. subst e0. assumption. }
-  Qed.
-    
+  Proof. admit. Admitted.
+  
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
     (WHILE (Nat 1) DO SKIP END) ~~~
     (COND (Nat 3) THEN SKIP ELSE SKIP END).
-  Proof.
-    unfold bs_equivalent. intros. split; intro; destruct c'. destruct p.
-    { remember (while_false (Nat 1) SKIP s l0 l c). clear Heqe. specialize (e H). inversion e. }
-    { inversion H; inversion CVAL. }
-  Qed.
+  Proof. admit. Admitted.
   
   (* Loops with equivalent bodies are equivalent *)
   Lemma while_eq (e : expr) (s1 s2 : stmt)
@@ -355,6 +301,33 @@ Module SmallStep.
   Proof. admit. Admitted.
   
 End SmallStep.
+
+Module Renaming.
+
+  Definition renaming := Expr.Renaming.renaming.
+  
+  Fixpoint rename (r : renaming) (s : stmt) : stmt :=
+    match r with
+    | exist _ f _ =>
+        match s with
+        | SKIP                       => SKIP
+        | x ::= e                    => (f x) ::= Renaming.rename_expr r e
+        | READ x                     => READ (f x)
+        | WRITE e                    => WRITE (Renaming.rename_expr r e)
+        | s1 ;; s2                   => (rename r s1) ;; (rename r s2)
+        | COND e THEN s1 ELSE s2 END => COND (Renaming.rename_expr r e) THEN (rename r s1) ELSE (rename r s2) END
+        | WHILE e DO s END           => WHILE (Renaming.rename_expr r e) DO (rename r s) END             
+        end
+    end.
+
+  Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
+    Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
+  Proof. admit. Admitted.
+    
+  Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
+  Proof. admit. Admitted.
+    
+End Renaming.
 
 (* CPS semantics *)
 Inductive cont : Type := 
