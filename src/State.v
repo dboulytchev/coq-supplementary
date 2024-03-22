@@ -133,8 +133,7 @@ Section S.
       simpl in H.
       destruct (id_eq_dec x2 x1).
       + apply NEQ in e. destruct e.
-      + apply state_R_iff_fn.
-        assumption.
+      + apply state_R_iff_fn. assumption.
   Qed.
 
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :

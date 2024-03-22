@@ -486,13 +486,15 @@ Ltac by_eq_congruence e s s1 s2 H :=
 
 Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
 Proof.
-  split.
+split.
   - unfold bs_equivalent.
     intros H.
     unfold contextual_equivalent.
     intros C.
     induction C;
-    unfold bs_equivalent in *;simpl; try (apply eq_congruence; unfold bs_equivalent); try assumption; try apply (Nat Z.one).
+    unfold bs_equivalent in *;simpl;
+    try (apply eq_congruence; unfold bs_equivalent);
+    try assumption; try apply (Nat Z.one).
   - intros H.
     unfold contextual_equivalent in H. specialize H with Hole. simpl in H. assumption.
 Qed.
@@ -674,14 +676,6 @@ Module SmallStep.
     generalize dependent c'.
 
     split.
-(*
-  Inductive ss_int : stmt -> conf -> conf -> Prop :=
-    ss_int_Base : forall (s : stmt) (c c' : conf),
-                    c -- s --> (None, c') -> c -- s -->> c'
-  | ss_int_Step : forall (s s' : stmt) (c c' c'' : conf),
-                    c -- s --> (Some s', c') -> c' -- s' -->> c'' -> c -- s -->> c''
-  where "c1 -- s -->> c2" := (ss_int s c1 c2). *)
-
     - intros H. induction H; subst;
         try now constructor; constructor.
         + apply ss_ss_composition with c'; assumption.
@@ -701,43 +695,11 @@ Module SmallStep.
           * apply (ss_int_Step (COND e THEN s;; (WHILE e DO s END) ELSE SKIP END) (SKIP) _ (st, i, o) _).
             { constructor. assumption. }
             { constructor. constructor. }
-
-
     - intros H.
       induction H.
       + apply ss_bs_base. assumption.
-      + inversion IHss_int; subst.
-        *
-
-
-
-
-
-
-    - generalize dependent c'.
-      generalize dependent c.
-      induction s; intros c c'; intros H.
-
-      + inversion H. inversion H0.
-        * subst. constructor.
-        * inversion H0.
-      + inversion H; subst.
-        * inversion H0. constructor. assumption.
-        * inversion H0.
-      + inversion H. subst.
-        * inversion H0. constructor.
-        * subst. inversion H0.
-      + inversion H.
-        * inversion H0. constructor. assumption.
-        * inversion H0.
-      + inversion H.
-        * apply ss_bs_base. assumption.
-        * subst. inversion H0. subst.
-
-
-
-
-  Qed.
+      + apply (ss_bs_step _ _ _ _ _ H IHss_int).
+Qed.
 
 End SmallStep.
 
@@ -800,8 +762,8 @@ Inductive cont : Type :=
 Definition Kapp (l r : cont) : cont :=
   match (l, r) with
   | (KStmt ls, KStmt rs) => KStmt (ls ;; rs)
-  | (KEmpty  , _       ) => r
-  | (_       , _       ) => l
+  | (KEmpty, _       ) => r
+  | (_     , KEmpty  ) => l
   end.
 
 Notation "'!' s" := (KStmt s) (at level 0).
@@ -858,30 +820,217 @@ Ltac cps_bs_gen_helper k H HH :=
   [inversion EXEC; subst | eapply bs_Seq; eauto];
   apply HH; auto.
 
+Lemma if_seq_comm: forall c1 c2 e s1 s2 scomm,
+  c1 == COND e THEN s1 ELSE s2 END;; scomm ==> c2 <->
+    c1 == COND e THEN s1;; scomm ELSE s2;;scomm END ==> c2.
+Proof.
+  intros c1 c2 e s1 s2 scomm.
+  split; intros H.
+  - inversion H; subst.
+    inversion STEP1; subst.
+    + apply bs_If_True.
+      * assumption.
+      * econstructor; eassumption.
+    + apply bs_If_False.
+      * assumption.
+      * econstructor; eassumption.
+  - inversion H; subst; inversion STEP; subst; apply bs_Seq with c'.
+      * apply bs_If_True; assumption.
+      * assumption.
+      * apply bs_If_False; assumption.
+      * assumption.
+Qed.
+
+Lemma while_unfold_seq : forall c1 c2 e st sttail,
+  c1 == WHILE e DO st END;; sttail ==> c2 <->
+    c1 == (COND e THEN (st ;; WHILE e DO st END) ELSE SKIP END);; sttail ==> c2.
+Proof.
+  intros.
+  split; intros H.
+  - inversion H; subst.
+    apply SmokeTest.while_unfolds in STEP1; apply bs_Seq with c'; assumption.
+  - inversion H; subst.
+    apply SmokeTest.while_unfolds in STEP1; apply bs_Seq with  c'; assumption.
+Qed.
+
+Lemma skip_left_elim: forall c1 c2 st,
+  c1 == SKIP;; st ==> c2 <-> c1 == st ==> c2.
+Proof.
+  intros.
+  split; intros H.
+  - inversion H; subst. inversion STEP1. assumption.
+  - apply bs_Seq with c1.
+    * constructor.
+    * auto.
+Qed.
+
 Lemma cps_bs_gen (S : stmt) (c c' : conf) (S1 k : cont)
       (EXEC : k |- c -- S1 --> c') (DEF : !S = S1 @ k):
   c == S ==> c'.
-Proof. admit. Admitted.
+Proof.
+  (* remember ((k) |- c -- S1 --> (c')) as scont eqn: Econt. *)
+  generalize dependent S.
+  induction EXEC; intros S H.
+  - inversion H.
+  - destruct k.
+    + unfold Kapp in *. inversion H; inversion EXEC; subst. constructor.
+    + inversion H.
+      apply bs_Seq with c.
+      * apply bs_Skip.
+      * apply IHEXEC. unfold Kapp. reflexivity.
+  - destruct k.
+    + unfold Kapp in *. inversion H. inversion EXEC. subst. constructor. assumption.
+    + unfold Kapp in *. inversion_clear H; subst.
+      apply bs_Seq with ((s) [x <- n], i, o).
+      * constructor. assumption.
+      * auto.
+  - destruct k.
+    + unfold Kapp in *.
+      inversion EXEC; subst.
+      inversion_clear H; subst.
+      constructor.
+    + unfold Kapp in *. inversion H; subst.
+      apply bs_Seq with ((s) [x <- z], i, o).
+      * constructor.
+      * apply IHEXEC. reflexivity.
+  - destruct k.
+    + unfold Kapp in *.
+      inversion EXEC; subst.
+      inversion_clear H; subst.
+      constructor. assumption.
+    + unfold Kapp in *. inversion H; subst.
+      apply bs_Seq with ((s, i, z :: o)).
+      * constructor. assumption.
+      * apply IHEXEC. reflexivity.
+  - destruct k. unfold Kapp in *.
+    + inversion H; subst. apply IHEXEC. reflexivity.
+    + inversion_clear H. apply SmokeTest.seq_assoc.  apply IHEXEC. unfold Kapp. reflexivity.
+  - destruct k; unfold Kapp in *.
+    +  inversion H; subst. apply bs_If_True; try assumption. apply IHEXEC. reflexivity.
+    + inversion H; subst.
+      apply if_seq_comm.
+      apply bs_If_True; try assumption.
+      apply IHEXEC. reflexivity.
+  - destruct k. unfold Kapp in *. inversion H.
+    + subst. apply bs_If_False.
+      * assumption.
+      * apply IHEXEC. reflexivity.
+    + inversion H. subst. apply if_seq_comm. apply bs_If_False.
+      * assumption.
+      * apply IHEXEC. unfold Kapp in *. reflexivity.
+  - destruct k. unfold Kapp in *. inversion H; subst.
+    + apply SmokeTest.while_unfolds.
+      apply bs_If_True.
+        * assumption.
+        * apply IHEXEC. reflexivity.
+    + inversion H.
+      apply while_unfold_seq.
+      apply if_seq_comm.
+      apply bs_If_True.
+      * assumption.
+      * unfold Kapp in *. apply SmokeTest.seq_assoc.
+        apply IHEXEC. reflexivity.
+  - destruct k.
+    + unfold Kapp in *.
+      inversion_clear H.
+      inversion EXEC.
+      apply bs_While_False.
+      assumption.
+    + unfold Kapp in *.
+      inversion_clear H.
+      apply while_unfold_seq.
+      apply if_seq_comm.
+      apply bs_If_False.
+      * assumption.
+      * apply skip_left_elim.
+        apply IHEXEC. reflexivity.
+Qed.
 
 Lemma cps_bs (s1 s2 : stmt) (c c' : conf) (STEP : !s2 |- c -- !s1 --> c'):
    c == s1 ;; s2 ==> c'.
-Proof. admit. Admitted.
+Proof.
+  apply cps_bs_gen with !s1 !s2.
+  - assumption.
+  - reflexivity.
+Qed.
 
 Lemma cps_int_to_bs_int (c c' : conf) (s : stmt)
       (STEP : KEmpty |- c -- !(s) --> c') :
   c == s ==> c'.
-Proof. admit. Admitted.
+Proof.
+generalize dependent c'.
+generalize dependent c.
+
+induction s; intros c c' STEP; inversion STEP; subst.
+- inversion CSTEP; subst; constructor.
+- inversion CSTEP; subst. constructor. assumption.
+- inversion CSTEP. subst. constructor.
+- inversion CSTEP. subst. constructor. auto.
+- unfold Kapp in *. apply cps_bs. assumption.
+- apply bs_If_True; [ assumption | auto ].
+- apply bs_If_False; [ assumption | auto ].
+- unfold Kapp in *.
+  apply SmokeTest.while_unfolds.
+  apply bs_If_True.
+    + assumption.
+    + apply cps_bs. assumption.
+- inversion CSTEP. apply bs_While_False. assumption.
+Qed.
 
 Lemma cps_cont_to_seq c1 c2 k1 k2 k3
       (STEP : (k2 @ k3 |- c1 -- k1 --> c2)) :
   (k3 |- c1 -- k1 @ k2 --> c2).
-Proof. admit. Admitted.
+Proof.
+  inversion STEP; subst.
+  6: { destruct k2; destruct k3; unfold Kapp in *;
+        try now auto.
+        - constructor. unfold Kapp in *. assumption.
+        - constructor. unfold Kapp in *. assumption.
+        }
+
+  - destruct k2.
+    + unfold Kapp in *. assumption.
+    + destruct k3; inversion H0.
+  - destruct k2; unfold Kapp in *.
+    + assumption.
+    + destruct k3.
+      * unfold Kapp in *; constructor; unfold Kapp in *. assumption.
+      * constructor. unfold Kapp in *. assumption.
+  - destruct k2; destruct k3; unfold Kapp in *.
+    + inversion  CSTEP; subst. auto.
+    + assumption.
+    + constructor; unfold Kapp in *; assumption.
+    + constructor; unfold Kapp in *; assumption.
+  - destruct k2, k3. unfold Kapp in *.
+    + assumption.
+    + assumption.
+    + constructor. unfold Kapp in *. assumption.
+    + constructor. unfold Kapp in *. assumption.
+  - destruct k2, k3; unfold Kapp in *;
+    try now assumption.
+    all: constructor; unfold Kapp; assumption.
+  - destruct k2, k3; unfold Kapp in *;
+    try now assumption.
+    all: constructor; unfold Kapp; assumption.
+  - destruct k2, k3; unfold Kapp in *;
+    try now assumption.
+    all: constructor; unfold Kapp; assumption.
+  - destruct k2, k3; unfold Kapp in *;
+    try now assumption.
+    all: constructor; unfold Kapp; assumption.
+  - destruct k2, k3; unfold Kapp in *;
+    try now assumption.
+    all: constructor; unfold Kapp; assumption.
+Qed.
+
 
 Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
       (EXEC : c1 == s ==> c2)
       (STEP : k |- c2 -- !(SKIP) --> c3) :
   k |- c1 -- !(s) --> c3.
-Proof. admit. Admitted.
+Proof.
+  admit. (* TODO *)
+Admitted.
 
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
