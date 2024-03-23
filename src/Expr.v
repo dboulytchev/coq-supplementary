@@ -4,6 +4,7 @@ Require Export Id.
 Require Export State.
 Require Export Lia.
 
+Require Import Coq.Program.Equality.
 Require Import List.
 Import ListNotations.
 
@@ -435,6 +436,8 @@ Module SmallStep.
                       (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))      
   where "st |- e --> e'" := (ss_step st e e').
 
+  #[export] Hint Constructors ss_step.
+
   Reserved Notation "st |- e -->> e'" (at level 0).
 
   Inductive ss_eval : state Z -> expr -> expr -> Prop :=
@@ -445,16 +448,29 @@ Module SmallStep.
                      (HStep : s |- e --> e')
                      (Heval: s |- e' -->> e''), s |- e -->> e''
   where "st |- e -->> e'"  := (ss_eval st e e').
-  
+
+  #[export] Hint Constructors ss_eval.
+
   Definition normal_form (e : expr) : Prop :=
     forall s, ~ exists e', (s |- e --> e').   
 
   Lemma value_is_normal_form (e : expr) (HV: is_value e) : normal_form e.
-  Proof. admit. Admitted.
+  Proof. 
+    inv HV. intro. intro. inv H. inv H0.
+  Qed.
 
   Lemma normal_form_is_not_a_value : ~ forall (e : expr), normal_form e -> is_value e.
-  Proof. admit. Admitted.
-  
+  Proof. 
+    assert (normal_form ((Nat 10) [\/] (Nat 20))) as NF. 
+    { intro. intro. inv H. inv H0.
+      * inv LEFT.
+      * inv RIGHT.
+      * inv EVAL. inv VALA. inv VALB. inv BOOLA. }
+    intro.
+    remember (H ((Nat 10) [\/] (Nat 20)) NF).
+    inv i.
+  Qed.
+
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
   Proof. 
     intro. 
@@ -488,8 +504,13 @@ Module SmallStep.
   Qed.
   
   Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
-  Proof. admit. Admitted.
-  
+  Proof. 
+    dependent induction e' generalizing e. 
+    * constructor.
+    * dependent induction Heval. remember (IHHeval i). auto.
+    * dependent induction Heval. remember (IHHeval b e'1 e'2 IHe'1 IHe'2). auto.
+  Qed.
+
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
