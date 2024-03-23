@@ -67,6 +67,8 @@ Inductive bs_int : stmt -> conf -> conf -> Prop :=
     (st, i, o) == WHILE e DO s END ==> (st, i, o)
 where "c1 == s ==> c2" := (bs_int s c1 c2).
 
+#[export] Hint Constructors bs_int.
+
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
   forall (c c' : conf),
@@ -370,6 +372,8 @@ Module SmallStep.
       c -- WHILE e DO s END --> (Some (COND e THEN s ;; WHILE e DO s END ELSE SKIP END), c)
   where "c1 -- s --> c2" := (ss_int_step s c1 c2).
 
+  #[export] Hint Constructors ss_int_step.
+
   Reserved Notation "c1 '--' s '-->>' c2" (at level 0).
 
   Inductive ss_int : stmt -> conf -> conf -> Prop :=
@@ -378,6 +382,8 @@ Module SmallStep.
   | ss_int_Step : forall (s s' : stmt) (c c' c'' : conf),
                     c -- s --> (Some s', c') -> c' -- s' -->> c'' -> c -- s -->> c'' 
   where "c1 -- s -->> c2" := (ss_int s c1 c2).
+
+  #[export] Hint Constructors ss_int.
 
   Lemma ss_int_step_deterministic (s : stmt)
         (c : conf) (c' c'' : option stmt * conf) 
@@ -397,11 +403,10 @@ Module SmallStep.
         (STEP1 : c -- s -->> c') (STEP2 : c -- s -->> c'') :
     c' = c''.
   Proof. 
-    dependent induction s; dependent induction STEP1; dependent induction STEP2.
-    all: try by inv H.  
-    all: try by (remember (ss_int_step_deterministic _ _ _ _ H H0) as Peq; inv Peq).
-    remember (ss_int_step_deterministic _ _ _ _ H H0) as Peq; inv Peq.
-  Admitted.
+    dependent induction STEP1; dependent destruction STEP2.
+    all: (remember (ss_int_step_deterministic _ _ _ _ H H0) as Peq; inv Peq).
+    remember (IHSTEP1 STEP2). assumption.
+  Qed.
 
   Lemma ss_bs_base (s : stmt) (c c' : conf) (STEP : c -- s --> (None, c')) :
     c == s ==> c'.
@@ -426,11 +431,20 @@ Module SmallStep.
         (EXEC : c' == s' ==> c'') :
     c == s ==> c''.
   Proof. admit. Admitted.
-  
+
   Theorem bs_ss_eq (s : stmt) (c c' : conf) :
     c == s ==> c' <-> c -- s -->> c'.
-  Proof. admit. Admitted.
-  
+  Proof.
+    split; intro.
+    { dependent induction s. 
+      all: try by (constructor; inv H; auto).
+      { inv H. remember (IHs1 _ _ STEP1). remember (IHs2 _ _ STEP2). 
+        remember (ss_ss_composition _ _ _ _ _ s s0). assumption. }
+      inv H. remember (IHs1 _ _ STEP). eauto.
+      remember (IHs2 _ _ STEP). eauto.
+      admit. }
+    Admitted.
+    
 End SmallStep.
 
 (* CPS semantics *)
