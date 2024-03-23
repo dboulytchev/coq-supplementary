@@ -22,10 +22,6 @@ Inductive gt_id : id -> id -> Prop :=
   gt_conv : forall n m, n > m -> (Id n) i> (Id m)
 where "n i> m" := (gt_id n m).   
 
-Notation "n i<= m" := (le_id n m).
-Notation "n i>  m" := (gt_id n m).
-Notation "n i<  m" := (lt_id n m).
-
 Ltac prove_with th :=
   intros; 
   repeat (match goal with H: id |- _ => destruct H end); 
