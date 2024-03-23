@@ -297,7 +297,7 @@ Proof.
   split. eapply (eq_congruence_seq_l). assumption.
   split. eapply (eq_congruence_cond_else). assumption.
   split. eapply (eq_congruence_cond_then). assumption.
-  eapply (eq_congruence_while). assumption. assumption.
+  eapply (eq_congruence_while). assumption.
 Qed.
 
 (* Big-step semantics is deterministic *)

@@ -195,7 +195,9 @@ Module SmokeTest.
     assumption.
   Qed.
 
-  Reserved Notation "e1 << e2" (at level 0).
+End SmokeTest.
+
+Reserved Notation "e1 << e2" (at level 0).
 
 Inductive subexpr : expr -> expr -> Prop :=
   subexpr_refl : forall e : expr, e << e
