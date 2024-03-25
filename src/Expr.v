@@ -385,10 +385,23 @@ Module SmallStep.
     forall s, ~ exists e', (s |- e --> e').
 
   Lemma value_is_normal_form (e : expr) (HV: is_value e) : normal_form e.
-  Proof. admit. Admitted.
+  Proof.
+    dependent destruction HV.
+    intro. intro.
+    dependent destruction H.
+    dependent destruction H.
+  Qed.
 
   Lemma normal_form_is_not_a_value : ~ forall (e : expr), normal_form e -> is_value e.
-  Proof. admit. Admitted.
+  Proof.
+    intro.
+    assert (H1 : is_value (Nat 1 [/] Nat 0)).
+    * eapply H. intro. intro. dependent destruction H0. dependent destruction H0.
+      - dependent destruction H0.
+      - dependent destruction H0.
+      - dependent destruction EVAL. dependent destruction EVAL2. apply NZERO. reflexivity.
+    * inversion H1.
+  Qed.
 
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z),
     s |- e --> e' -> s |- e --> e'' -> e' = e''.
@@ -421,27 +434,151 @@ Module SmallStep.
   Qed.
 
   Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
-  Proof. admit. Admitted.
+  Proof. dependent induction Heval. constructor. eassumption. Qed.
+
+  Lemma ss_eval_lift1 (e1 e1' e2 : expr)
+                     (s : state Z)
+                     (op : bop)
+                     (z : Z)
+                     (H1 : s |- e1 -->> e1')
+                     (H2 : s |- Bop op e1' e2 -->> (Nat z))
+                : s |- Bop op e1 e2 -->> (Nat z).
+  Proof.
+    dependent induction H1.
+    * assumption.
+    * econstructor.
+      - eapply ss_Left. eassumption.
+      - eapply IHss_eval. eassumption.
+  Qed.
+
+  Lemma ss_eval_lift2 (e1 e2 e2' : expr)
+                     (s : state Z)
+                     (op : bop)
+                     (z : Z)
+                     (H1 : s |- e2 -->> e2')
+                     (H2 : s |- Bop op e1 e2' -->> (Nat z))
+                : s |- Bop op e1 e2 -->> (Nat z).
+  Proof.
+    dependent induction H1.
+    * assumption.
+    * econstructor.
+      - eapply ss_Right. eassumption.
+      - eapply IHss_eval. eassumption.
+  Qed.
+
+  Lemma ss_eval_lift (e1 e1' e2 e2' : expr)
+                     (s : state Z)
+                     (op : bop)
+                     (z : Z)
+                     (H1 : s |- e1 -->> e1')
+                     (H2 : s |- e2 -->> e2')
+                     (H3 : s |- Bop op e1' e2' -->> (Nat z))
+                : s |- Bop op e1 e2 -->> (Nat z).
+  Proof. eapply ss_eval_lift1. eassumption. eapply ss_eval_lift2. eassumption. eassumption. Qed.
+
+  Lemma ss_eval_lift' (e1 e2 : expr)
+                     (s : state Z)
+                     (op : bop)
+                     (z z1 z2 : Z)
+                     (H1 : s |- e1 -->> (Nat z1))
+                     (H2 : s |- e2 -->> (Nat z2))
+                     (H3 : [| Bop op (Nat z1) (Nat z2) |] s => z)
+                : s |- Bop op e1 e2 -->> (Nat z).
+  Proof.
+    eapply ss_eval_lift; try by eassumption. econstructor.
+    * eapply ss_Bop. eassumption.
+    * econstructor.
+  Qed.
+
+  Lemma ss_eval_concat (e1 e2 e3 : expr)
+                       (s : state Z)
+                       (H1 : s |- e1 -->> e2)
+                       (H2 : s |- e2 -->> e3)
+                : s |- e1 -->> e3.
+  Proof.
+    dependent induction H1.
+    * assumption.
+    * econstructor.
+      - eassumption.
+      - eapply IHss_eval. assumption.
+  Qed.
+
+  Lemma ss_eval_left (e1 e2 : expr)
+                     (s : state Z)
+                     (z : Z)
+                     (op : bop)
+                     (H : s |- Bop op e1 e2 -->> (Nat z))
+                : exists z1, s |- e1 -->> (Nat z1) /\ s |- Bop op (Nat z1) e2 -->> (Nat z).
+  Proof.
+    dependent induction H. dependent destruction HStep.
+    * assert (Hl : exists z', s |- l' -->> (Nat z') /\ s |- Bop op (Nat z') e2 -->> (Nat z)).
+      - eapply IHss_eval. reflexivity. reflexivity.
+      - dependent destruction Hl. dependent destruction H0. exists x. econstructor.
+        + econstructor; eassumption.
+        + assumption.
+    * specialize (IHss_eval e1 r' z op).
+      assert (Hl : exists z1, s |- e1 -->> (Nat z1) /\ s |- Bop op (Nat z1) r' -->> (Nat z)).
+      - eapply IHss_eval; reflexivity.
+      - dependent destruction Hl. dependent destruction H0. exists x. constructor.
+        + assumption.
+        + econstructor; try eapply ss_Right; eassumption.
+    * exists zl. econstructor.
+      - econstructor.
+      - econstructor; try eapply ss_Bop; eassumption.
+  Qed.
+
+  Lemma ss_eval_right (e1 e2 : expr)
+                      (s : state Z)
+                      (z : Z)
+                      (op : bop)
+                      (H : s |- Bop op e1 e2 -->> (Nat z))
+                : exists z2, s |- e2 -->> (Nat z2) /\ s |- Bop op e1 (Nat z2) -->> (Nat z).
+  Proof.
+    dependent induction H. dependent destruction HStep.
+    * specialize (IHss_eval l' e2 z op).
+      assert (Hr : exists z2, s |- e2 -->> (Nat z2) /\ s |- Bop op l' (Nat z2) -->> (Nat z)).
+      - eapply IHss_eval; reflexivity.
+      - dependent destruction Hr. dependent destruction H0. exists x. constructor.
+        + assumption.
+        + econstructor; try eapply ss_Left; eassumption.
+    * assert (Hr : exists z', s |- r' -->> (Nat z') /\ s |- Bop op e1 (Nat z') -->> (Nat z)).
+      - eapply IHss_eval. reflexivity. reflexivity.
+      - dependent destruction Hr. dependent destruction H0. exists x. constructor.
+        + econstructor; try eapply ss_Bop; eassumption.
+        + assumption.
+    * exists zr. econstructor.
+      - econstructor.
+      - econstructor; try eapply ss_Bop; eassumption.
+  Qed.
 
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
-  Proof. admit. Admitted.
-
-  Lemma ss_eval_not_equiv
-    : ~(forall (e : expr)
-               (s : state Z)
-               (z : Z), ([| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)))).
   Proof.
-    intro.
-    absurd (((Id 1, Zpos 1) :: nil) |- (Var (Id 1) [+] Nat 2) --> (Nat 3)).
-    * intro. inversion H0.
-    * destruct (H (Var (Id 1) [+] Nat 2) ((Id 1, Zpos 1) :: nil) (Zpos 3)).
-      - destruct H0.
-        + apply (bs_Add _ _ _ (Zpos 1) (Zpos 2)).
-          constructor. constructor. constructor.
-        + inversion H0.
-        + assumption.
+    constructor; intro.
+    * dependent induction H.
+      constructor.
+      econstructor. constructor. eassumption. constructor.
+      all: try by eapply ss_eval_lift'; (try by eassumption); econstructor; econstructor.
+      all: eapply ss_eval_lift'; (try by eassumption); econstructor;
+           (try by econstructor); eassumption.
+    * dependent induction e.
+      - dependent destruction H.
+        + constructor.
+        + dependent destruction H; inversion HStep.
+      - dependent destruction H. dependent destruction HStep. dependent destruction H.
+        + constructor. assumption.
+        + inversion HStep.
+      - specialize (ss_eval_left _ _ _ _ _ H). intro.
+        dependent destruction H0. dependent destruction H0.
+        specialize (ss_eval_right _ _ _ _ _ H1). intro.
+        dependent destruction H2. dependent destruction H2.
+        dependent destruction H3. dependent destruction HStep; try by inversion HStep.
+        dependent destruction EVAL; dependent destruction EVAL1;
+        dependent destruction EVAL2; dependent destruction H3.
+
+        all: try by inversion HStep.
+        all: try by econstructor; [ apply IHe1; eassumption | apply IHe2; eassumption | .. ].
   Qed.
 
 End SmallStep.
@@ -500,10 +637,36 @@ Module Renaming.
   Proof. admit. Admitted.
 
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
-  Proof. admit. Admitted.
+  Proof. inversion BH. inversion H. congruence. Qed.
 
-  Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
+  Lemma state_renaming_invariance (x : id) (st : state Z) (z : Z) (r : renaming)
+    : st / x => z <-> (rename_state r st) / rename_id r x => z.
+  Proof.
+    constructor; intro; (try by inversion H); dependent destruction r; dependent induction H.
+    * constructor.
+    * constructor.
+      - intro. apply H. eapply bijective_injective. eassumption. eassumption.
+      - eapply IHst_binds.
+    * dependent destruction st. inversion x. dependent destruction p.
+      dependent destruction x. rewrite (bijective_injective _ b _ _ x). constructor.
+    * dependent destruction st. inversion x. dependent destruction p.
+      dependent destruction x. simpl in H, H0, IHst_binds. constructor.
+      - intro. apply H. congruence.
+      - eapply IHst_binds; reflexivity.
+  Qed.
+
+  Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r : renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
-  Proof. admit. Admitted.
+  Proof.
+    constructor; intro.
+    * dependent induction H.
+      all: try by econstructor; [ apply IHeval1 | apply IHeval2 | .. ].
+      - constructor.
+      - constructor. apply state_renaming_invariance. assumption.
+    * dependent induction H; dependent destruction e; dependent destruction x.
+      all: try by econstructor; [ apply (IHeval1 _ _ r) | apply (IHeval2 _ _ r) | .. ]; eauto.
+      - constructor.
+      - constructor. eapply state_renaming_invariance. eassumption.
+  Qed.
 
 End Renaming.
