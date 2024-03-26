@@ -587,6 +587,9 @@ Module Renaming.
 
   Definition renaming := { f : id -> id | Bijective f }.
 
+  Definition inversion {A} {B} (f : A -> B) (g : B -> A)
+    := (forall x, f (g x) = x) /\ (forall y, g (f y) = y).
+
   Fixpoint rename_id (r : renaming) (x : id) : id :=
     match r with
       exist _ f _ => f x
@@ -605,6 +608,43 @@ Module Renaming.
     | (id, x) :: tl =>
         match r with exist _ f _ => (f id, x) :: rename_state r tl end
     end.
+
+  Lemma rename_expr_inversion (r r' : renaming) e (H : inversion (proj1_sig r) (proj1_sig r'))
+    : rename_expr r (rename_expr r' e) = e.
+  Proof.
+    destruct r, b, a, r', b, a.
+    simpl in H. destruct H.
+    dependent induction e; simpl.
+    - reflexivity.
+    - rewrite H. reflexivity.
+    - rewrite IHe1. rewrite IHe2. reflexivity. all: assumption.
+  Qed.
+
+  Lemma rename_expr_bijective (r : renaming) : Bijective (rename_expr r).
+  Proof.
+    destruct r, b, a.
+    exists (rename_expr (exist _ x0 (ex_intro _ _ (conj e0 e)))). constructor; intro.
+    * apply rename_expr_inversion. constructor; assumption.
+    * apply rename_expr_inversion. constructor; assumption.
+  Qed.
+
+  Lemma rename_state_inversion (r r' : renaming) st (H : inversion (proj1_sig r) (proj1_sig r'))
+    : rename_state r (rename_state r' st) = st.
+  Proof.
+    destruct r, b, a, r', b, a.
+    simpl in H. destruct H.
+    dependent induction st; simpl.
+    - reflexivity.
+    - destruct a; simpl. rewrite IHst. rewrite H. all: auto.
+  Qed.
+
+  Lemma rename_state_bijective (r : renaming) : Bijective (rename_state r).
+  Proof.
+    destruct r, b, a.
+    exists (rename_state (exist _ x0 (ex_intro _ _ (conj e0 e)))). constructor; intro.
+    * apply rename_state_inversion. constructor; assumption.
+    * apply rename_state_inversion. constructor; assumption.
+  Qed.
 
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
   Proof. inversion BH. inversion H. congruence. Qed.
