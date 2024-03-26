@@ -109,10 +109,26 @@ Definition contextual_equivalent (s1 s2 : stmt) :=
 Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
-Proof. admit. Admitted.
+Proof. eapply (H Hole). Qed.
 
 Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
-Proof. admit. Admitted.
+Proof.
+    exists ((Id 1) ::= Nat 1).
+    exists ((Id 1) ::= Nat 2).
+    constructor.
+    * constructor; intro.
+      - dependent destruction H. dependent destruction H. econstructor. constructor. constructor.
+      - dependent destruction H. dependent destruction H. econstructor. constructor. econstructor.
+    * intro. specialize (H (SeqL Hole (WRITE (Var (Id 1)))) nil ([1%Z])). dependent destruction H.
+      absurd (<| SeqL Hole (WRITE (Var (Id 1))) <~ Id 1 ::= Nat 2 |> [] => ([1%Z])).
+      - intro. dependent destruction H1. dependent destruction H1. dependent destruction H1_.
+        dependent destruction H1_0. dependent destruction VAL0. dependent destruction VAR.
+        + dependent destruction VAL.
+        + apply H1. reflexivity.
+      - apply H. econstructor. econstructor.
+        + constructor. constructor.
+        + constructor. constructor. constructor.
+Qed.
 
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
@@ -355,8 +371,6 @@ Proof.
       specialize (IHC l).
       assert (A: <| C <~ (Id 0 ::= Nat Z.zero) ;; (Id 0 ::= Nat Z.one) |> i => l
 
-
-
 Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
 Proof.
   split; intro H.
@@ -366,6 +380,222 @@ Proof.
     simpl in H. destruct c, c', p, p0.
     specialize (H l1 l0). inversion H.
  *)
+
+Lemma eq_forall_context s1 s2 C (H : s1 ~~~ s2) : (C <~ s1) ~~~ (C <~ s2).
+Proof.
+    dependent induction C; try specialize (IHC H).
+    * assumption.
+    * constructor; intro; dependent destruction H0.
+      all: try by econstructor; [ apply IHC; eassumption | assumption ].
+    * constructor; intro; dependent destruction H0.
+      all: try by econstructor; [ eassumption | apply IHC; assumption ].
+    * constructor; intro; dependent destruction H0.
+      all: try by apply bs_If_True; [ | apply IHC ].
+      all: try by apply bs_If_False; assumption; assumption.
+    * constructor; intro; dependent destruction H0.
+      all: try by apply bs_If_True; assumption; assumption.
+      all: try by apply bs_If_False; [ | apply IHC ].
+    * constructor; intro; dependent induction H0.
+      all: try by eapply bs_While_False; assumption.
+      all: eapply bs_While_True;
+        [ assumption
+        | apply IHC; eassumption
+        | eapply IHbs_int2; try eassumption; reflexivity
+        ].
+Qed.
+
+Lemma extra_input_lem s st st' i i' o o' (H : (st, i, o) == s ==> (st', i', o'))
+    : forall i'', (st, i ++ i'', o) == s ==> (st', i' ++ i'', o').
+Proof.
+    dependent induction H; intro.
+    * constructor.
+    * constructor. assumption.
+    * constructor.
+    * constructor. assumption.
+    * destruct c' as ((st'', i'''), o'').
+      specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      econstructor. apply IHbs_int1. apply IHbs_int2.
+    * specialize (IHbs_int _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      apply bs_If_True. assumption. apply IHbs_int.
+    * specialize (IHbs_int _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      apply bs_If_False. assumption. apply IHbs_int.
+    * destruct c' as ((st'', i'''), o'').
+      specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      eapply bs_While_True. assumption. apply IHbs_int1. apply IHbs_int2.
+    * eapply bs_While_False. assumption.
+Qed.
+
+Lemma extra_input s st st' i i' o o' : ((st, i, o) == s ==> (st', i', o')
+    <-> exists i'', i = i'' ++ i' /\ (st, i'', o) == s ==> (st', [], o')).
+Proof.
+    constructor; intro.
+    * dependent induction H.
+      - exists []. constructor; constructor.
+      - exists []. constructor; constructor. assumption.
+      - exists [z]. constructor; constructor.
+      - exists []. constructor; constructor. assumption.
+      - destruct c' as ((st'', i''), o'').
+        specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+        specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+        destruct IHbs_int1, H1, IHbs_int2, H3.
+        exists (x ++ x0). constructor.
+        + rewrite <- app_assoc, H1, H3. reflexivity.
+        + econstructor. apply extra_input_lem. eassumption. assumption.
+      - specialize (IHbs_int _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int, H0.
+        exists x. constructor. assumption. apply bs_If_True; assumption.
+      - specialize (IHbs_int _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int, H0.
+        exists x. constructor. assumption. apply bs_If_False; assumption.
+      - destruct c' as ((st'', i''), o'').
+        specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+        specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+        destruct IHbs_int1, H1, IHbs_int2, H3.
+        exists (x ++ x0). constructor.
+        + rewrite <- app_assoc, H1, H3. reflexivity.
+        + eapply bs_While_True. assumption. apply extra_input_lem. eassumption. eassumption.
+      - exists []. constructor; constructor. assumption.
+    * dependent destruction H. dependent destruction H. rewrite H.
+      eapply (extra_input_lem _ _ _ _ _ _ _ H0).
+Qed.
+
+Lemma extra_output_lem s st st' i i' o o' (H : (st, i, o) == s ==> (st', i', o'))
+    : forall o'', (st, i, o ++ o'') == s ==> (st', i', o' ++ o'').
+Proof.
+    dependent induction H; intro.
+    * constructor.
+    * constructor. assumption.
+    * constructor.
+    * constructor. assumption.
+    * destruct c' as ((st'', i''), o''').
+      specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      econstructor. apply IHbs_int1. apply IHbs_int2.
+    * specialize (IHbs_int _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      apply bs_If_True. assumption. apply IHbs_int.
+    * specialize (IHbs_int _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      apply bs_If_False. assumption. apply IHbs_int.
+    * destruct c' as ((st'', i''), o''').
+      specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+      eapply bs_While_True. assumption. apply IHbs_int1. apply IHbs_int2.
+    * eapply bs_While_False. assumption.
+Qed.
+
+Lemma extra_output s st st' i i' o o' : ((st, i, o) == s ==> (st', i', o')
+    <-> exists o'', o' = o'' ++ o /\ (st, i, []) == s ==> (st', i', o'')).
+Proof.
+    constructor; intro.
+    * dependent induction H.
+      - exists []. constructor; constructor.
+      - exists []. constructor; constructor. assumption.
+      - exists []. constructor; constructor.
+      - exists [z]. constructor; constructor. assumption.
+      - destruct c' as ((st'', i''), o'').
+        specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+        specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+        destruct IHbs_int1, H1, IHbs_int2, H3.
+        exists (x0 ++ x). constructor.
+        + rewrite <- app_assoc, H3, H1. reflexivity.
+        + econstructor. eassumption. apply (extra_output_lem _ _ _ _ _ _ _ H4).
+      - specialize (IHbs_int _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int, H0.
+        exists x. constructor. assumption. apply bs_If_True; assumption.
+      - specialize (IHbs_int _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int, H0.
+        exists x. constructor. assumption. apply bs_If_False; assumption.
+      - destruct c' as ((st'', i''), o'').
+        specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+        specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
+        destruct IHbs_int1, H1, IHbs_int2, H3.
+        exists (x0 ++ x). constructor.
+        + rewrite <- app_assoc, H3, H1. reflexivity.
+        + eapply bs_While_True. assumption. eassumption. apply (extra_output_lem _ _ _ _ _ _ _ H4).
+      - exists []. constructor; constructor. assumption.
+    * dependent destruction H. dependent destruction H. rewrite H.
+      eapply (extra_output_lem _ _ _ _ _ _ _ H0).
+Qed.
+
+Fixpoint populating_context (st : state Z) : Context :=
+match st with
+| [] => Hole
+| (v, x) :: st => SeqR (v ::= Nat x) (populating_context st)
+end.
+
+Lemma extra_state_lem s st st1 st' i i' o o' : (rev st ++ st1, i, o) == s ==> (st', i', o')
+    <-> (st1, i, o) == populating_context st <~ s ==> (st', i', o').
+Proof.
+    dependent induction st.
+    * constructor; auto.
+    * destruct a as (v, x). simpl. constructor; intro.
+      - econstructor. constructor. constructor. eapply IHst. rewrite <- app_assoc in H. apply H.
+      - rewrite <- app_assoc. dependent destruction H. dependent destruction H.
+        dependent destruction VAL. eapply IHst. assumption.
+Qed.
+
+Lemma extra_state s st st' i i' o o' : (st, i, o) == s ==> (st', i', o')
+    <-> ([], i, o) == populating_context (rev st) <~ s ==> (st', i', o').
+Proof.
+    specialize (extra_state_lem s (rev st) nil). intro.
+    rewrite app_nil_r, rev_involutive in H. apply H.
+Qed.
+
+Fixpoint dump_context (st : state Z) : Context :=
+match st with
+| [] => Hole
+| (v, _) :: st => SeqL (dump_context st) (WRITE (Var v))
+end.
+
+Fixpoint state_dump (st : state Z) : list Z :=
+match st with
+| [] => []
+| (_, x) :: st => x :: state_dump st
+end.
+
+Lemma state_dump_context s st st' i i' o o' : (st, i, o) == s ==> (st', i', o')
+    <-> exists st'', (st, i, o) == dump_context st' <~ s ==> (st'', i', state_dump st' ++ o').
+Proof. admit. Admitted.
+
+Fixpoint plug_context (C C' : Context) : Context :=
+match C with
+| Hole => C'
+| SeqL     C  s1 => SeqL (plug_context C C') s1
+| SeqR     s1 C  => SeqR s1 (plug_context C C')
+| IfThen e C  s1 => IfThen e (plug_context C C') s1
+| IfElse e s1 C  => IfElse e s1 (plug_context C C')
+| WhileC   e  C  => WhileC e (plug_context C C')
+end.
+
+Notation "C '<C~' C'" := (plug_context C C') (at level 43, no associativity).
+
+Lemma plug_context_plug C C' s : C <~ (C' <~ s) = C <C~ C' <~ s.
+Proof. dependent induction C; simpl; congruence. Qed.
+
+Lemma eq_eq_ceq s1 s2 : s1 ~~~ s2 <-> s1 ~c~ s2.
+Proof.
+    constructor; intro.
+    * constructor; intro; dependent destruction H0; econstructor.
+      - eapply eq_forall_context.
+        + intros c c'. symmetry. eapply H.
+        + eassumption.
+      - eapply eq_forall_context. eassumption. eassumption.
+    * intros c c'. destruct c as ((st, i), o), c' as ((st' , i') , o'). constructor; intro.
+      - specialize (proj1 (extra_input _ _ _ _ _ _ _) H0). intro. destruct H1, H1.
+        specialize (proj1 (extra_output _ _ _ _ _ _ _) H2). intro. destruct H3, H3.
+        specialize (proj1 (extra_state _ _ _ _ _ _ _) H4). intro.
+
+        specialize (proj1 (state_dump_context _ _ _ _ _ _ _ ) H5). intro.
+        rewrite plug_context_plug in H6. specialize (proj1 (H _ _ _) H6). intro.
+        apply extra_input. exists x. constructor. assumption.
+        apply extra_output. exists x0. constructor. assumption.
+        apply extra_state. apply state_dump_context. rewrite plug_context_plug. apply H7.
+      - specialize (proj1 (extra_input _ _ _ _ _ _ _) H0). intro. destruct H1, H1.
+        specialize (proj1 (extra_output _ _ _ _ _ _ _) H2). intro. destruct H3, H3.
+        specialize (proj1 (extra_state _ _ _ _ _ _ _) H4). intro.
+        specialize (proj1 (state_dump_context _ _ _ _ _ _ _ ) H5). intro.
+        rewrite plug_context_plug in H6. specialize (proj2 (H _ _ _) H6). intro.
+        apply extra_input. exists x. constructor. assumption.
+        apply extra_output. exists x0. constructor. assumption.
+        apply extra_state. apply state_dump_context. rewrite plug_context_plug. apply H7.
+Qed.
 
 (* Small-step semantics *)
 Module SmallStep.
@@ -520,34 +750,79 @@ Module Renaming.
     | WHILE e DO s END           => WHILE (Renaming.rename_expr r e) DO (rename r s) END
     end.
 
+  Lemma re_rename_conf
+    (r r' : Renaming.renaming)
+    (Hinv : Renaming.renamings_inv r r')
+    (c    : conf) : rename_conf r (rename_conf r' c) = c.
+  Proof. destruct c as ((st, i), o). simpl. rewrite Renaming.re_rename_state; auto. Qed.
+
   Lemma re_rename
     (r r' : Renaming.renaming)
     (Hinv : Renaming.renamings_inv r r')
     (s    : stmt) : rename r (rename r' s) = s.
-  Proof. admit. Admitted.
+  Proof. dependent induction s; simpl; try rewrite Renaming.re_rename_expr; congruence. Qed.
 
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
     Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
-  Proof. admit. Admitted.
+  Proof. dependent destruction r. constructor. Qed.
 
   #[export] Hint Resolve Renaming.eval_renaming_invariance : core.
+
+  Lemma renaming_invariant' s r c c' (H : c == s ==> c')
+    : (rename_conf r c) == rename r s ==> (rename_conf r c').
+  Proof.
+    destruct r, b, a. dependent induction H.
+    * constructor.
+    * constructor. rewrite <- Renaming.eval_renaming_invariance. assumption.
+    * constructor.
+    * constructor. rewrite <- Renaming.eval_renaming_invariance. assumption.
+    * econstructor; eassumption.
+    * eapply bs_If_True. apply Renaming.eval_renaming_invariance. assumption. assumption.
+    * eapply bs_If_False. apply Renaming.eval_renaming_invariance. assumption. assumption.
+    * eapply bs_While_True.
+      - apply Renaming.eval_renaming_invariance. assumption.
+      - eassumption.
+      - eassumption.
+    * eapply bs_While_False. apply Renaming.eval_renaming_invariance. assumption.
+  Qed.
+
+  Lemma renaming_invariant'' s r c c'
+    : c == s ==> c' <-> (rename_conf r c) == rename r s ==> (rename_conf r c').
+  Proof.
+    constructor; intro.
+    * apply renaming_invariant'. assumption.
+    * set (r' := Renaming.renaming_inv r). destruct r' as [r' Hinv].
+      erewrite <- (re_rename _ _ Hinv s).
+      erewrite <- (re_rename_conf _ _ Hinv c).
+      erewrite <- (re_rename_conf _ _ Hinv c').
+      apply renaming_invariant'. eassumption.
+  Qed.
 
   Lemma renaming_invariant_bs
     (s         : stmt)
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
-  Proof. admit. Admitted.
+  Proof. apply renaming_invariant''. assumption. Qed.
 
   Lemma renaming_invariant_bs_inv
     (s         : stmt)
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
-  Proof. admit. Admitted.
+  Proof. apply renaming_invariant'' in Hbs. assumption. Qed.
 
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
-  Proof. admit. Admitted.
+  Proof.
+    constructor; intro.
+    * destruct H. econstructor.
+      specialize (renaming_invariant' s r ([], i, []) (x, [], o)). intro.
+      specialize (H0 H). destruct r, b, a. simpl in H0. eassumption.
+    * set (r' := Renaming.renaming_inv r). destruct r' as [r' Hinv]. destruct H as [st].
+      specialize (renaming_invariant'' s r ([], i, []) (rename_conf r' (st, [], o))). intro.
+      destruct H0. rewrite re_rename_conf in H1. specialize (H1 H).
+      econstructor. apply H1. apply Renaming.renamings_symm. assumption.
+  Qed.
 
 End Renaming.
 
