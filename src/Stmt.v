@@ -544,15 +544,94 @@ match st with
 | (v, _) :: st => SeqL (dump_context st) (WRITE (Var v))
 end.
 
-Fixpoint state_dump (st : state Z) : list Z :=
+Fixpoint state_dump_ex (st : state Z) (f : id -> Z) : list Z :=
 match st with
 | [] => []
-| (_, x) :: st => x :: state_dump st
+| (v, x) :: st => f v :: state_dump_ex st f
 end.
 
-Lemma state_dump_context s st st' i i' o o' : (st, i, o) == s ==> (st', i', o')
-    <-> exists st'', (st, i, o) == dump_context st' <~ s ==> (st'', i', state_dump st' ++ o').
-Proof. admit. Admitted.
+Fixpoint lookup_state (st : state Z) (v : id) : Z :=
+match st with
+| [] => 0
+| (v', x) :: st => if id_eq_dec v v' then x else lookup_state st v
+end.
+
+Definition state_dump (st st' : state Z) : list Z := state_dump_ex st (lookup_state (st' ++ st)).
+
+Lemma state_expands s st st' i i' o o' (H : (st, i, o) == s ==> (st', i', o'))
+                                : exists st'', st' = st'' ++ st.
+Proof.
+    dependent induction H.
+
+    all: try by exists []; reflexivity.
+    all: try by exists [(x, z)]; reflexivity.
+    all: try by specialize (IHbs_int _ _ _ _ _ _ JMeq_refl JMeq_refl); assumption.
+
+    * destruct c' as ((st'', i''), o'').
+      specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int1.
+      specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int2.
+      exists (x0 ++ x). rewrite H2, H1. apply app_assoc.
+    * destruct c' as ((st'', i''), o'').
+      specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int1.
+      specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int2.
+      exists (x0 ++ x). rewrite H2, H1. apply app_assoc.
+Qed.
+
+Lemma lookup_state_lem st1 st2 v x
+    : (st1 ++ (v, x) :: st2) / v => (lookup_state (st1 ++ (v, x) :: st2) v).
+Proof.
+    dependent induction st1.
+    * simpl. destruct (id_eq_dec v v).
+      - constructor.
+      - absurd (v = v); auto.
+    * destruct a as (v', x'). simpl. destruct (id_eq_dec v v').
+      - rewrite e. constructor.
+      - constructor. assumption. apply IHst1; reflexivity.
+Qed.
+
+Lemma state_dump_context1 s st st' st1 i i' o o'
+        (H : (st, i, o) == s ==> (st1 ++ st', i', o'))
+    : exists st'', (forall v x, (st1 ++ st') / v => x -> st'' / v => x)
+        /\ (st, i, o) == dump_context st' <~ s ==> (st'', i', state_dump st' st1 ++ o').
+Proof.
+    dependent induction st'.
+    * specialize (state_expands _ _ _ _ _ _ _ H). intro. destruct H0.
+      rewrite app_nil_r in H0, H. rewrite H0 in H. simpl. exists (x ++ st). constructor.
+      - intros. rewrite <- H0. rewrite app_nil_r in H1. assumption.
+      - assumption.
+    * destruct a as (v, x). simpl. specialize (IHst' (st1 ++ [(v, x)])).
+      rewrite <- app_assoc in IHst'. apply IHst' in H.
+      destruct H, H. exists x0. constructor.
+      - intros v' x' H'. apply H. assumption.
+      - econstructor. eassumption.
+        replace (state_dump st' (st1 ++ [(v, x)]))
+        with (state_dump_ex st' (lookup_state ((st1 ++ [(v, x)]) ++ st'))).
+        ** rewrite <- app_assoc. apply bs_Write. constructor. apply H. apply lookup_state_lem.
+        ** reflexivity.
+Qed.
+
+Lemma state_dump_context2 s st' st1 i i' o o'
+        (H : exists st'', ([], i, o) == dump_context st' <~ s ==> (st'', i', state_dump st' st1 ++ o'))
+    : ([], i, o) == s ==> (st1 ++ st', i', o').
+Proof.
+    dependent induction st'.
+    * destruct H. simpl in H. rewrite app_nil_r. admit.
+    * destruct a as (v, x). specialize (IHst' _ Logic.eq_refl JMeq_refl (st1 ++ [(v, x)])).
+      rewrite <- app_assoc in IHst'. apply IHst'. destruct H. simpl in H. dependent destruction H.
+      dependent destruction H0. exists x0.
+      replace (state_dump st' (st1 ++ [(v, x)]))
+      with (state_dump_ex st' (lookup_state ((st1 ++ [(v, x)]) ++ st'))).
+      - rewrite <- app_assoc. assumption.
+      - reflexivity.
+Admitted.
+
+Lemma state_dump_context s st' i i' o o' : ([], i, o) == s ==> (st', i', o')
+    <-> exists st'', ([], i, o) == dump_context st' <~ s ==> (st'', i', state_dump st' nil ++ o').
+Proof.
+    constructor; intro.
+    * apply (state_dump_context1 _ _ _ nil) in H. destruct H, H. exists x. assumption.
+    * apply (state_dump_context2 _ _ nil). assumption.
+Qed.
 
 Fixpoint plug_context (C C' : Context) : Context :=
 match C with
@@ -577,24 +656,25 @@ Proof.
         + intros c c'. symmetry. eapply H.
         + eassumption.
       - eapply eq_forall_context. eassumption. eassumption.
-    * intros c c'. destruct c as ((st, i), o), c' as ((st' , i') , o'). constructor; intro.
-      - specialize (proj1 (extra_input _ _ _ _ _ _ _) H0). intro. destruct H1, H1.
-        specialize (proj1 (extra_output _ _ _ _ _ _ _) H2). intro. destruct H3, H3.
-        specialize (proj1 (extra_state _ _ _ _ _ _ _) H4). intro.
-
-        specialize (proj1 (state_dump_context _ _ _ _ _ _ _ ) H5). intro.
-        rewrite plug_context_plug in H6. specialize (proj1 (H _ _ _) H6). intro.
+    * constructor; intro; destruct c as ((st, i), o), c' as ((st', o'), i').
+      - apply extra_input in H0. destruct H0, H0.
         apply extra_input. exists x. constructor. assumption.
+        apply extra_output in H1. destruct H1, H1.
         apply extra_output. exists x0. constructor. assumption.
-        apply extra_state. apply state_dump_context. rewrite plug_context_plug. apply H7.
-      - specialize (proj1 (extra_input _ _ _ _ _ _ _) H0). intro. destruct H1, H1.
-        specialize (proj1 (extra_output _ _ _ _ _ _ _) H2). intro. destruct H3, H3.
-        specialize (proj1 (extra_state _ _ _ _ _ _ _) H4). intro.
-        specialize (proj1 (state_dump_context _ _ _ _ _ _ _ ) H5). intro.
-        rewrite plug_context_plug in H6. specialize (proj2 (H _ _ _) H6). intro.
+        apply extra_state in H2.
+        apply extra_state.
+        apply state_dump_context in H2. rewrite plug_context_plug in H2.
+        apply state_dump_context. rewrite plug_context_plug.
+        apply H. apply H2.
+      - apply extra_input in H0. destruct H0, H0.
         apply extra_input. exists x. constructor. assumption.
+        apply extra_output in H1. destruct H1, H1.
         apply extra_output. exists x0. constructor. assumption.
-        apply extra_state. apply state_dump_context. rewrite plug_context_plug. apply H7.
+        apply extra_state in H2.
+        apply extra_state.
+        apply state_dump_context in H2. rewrite plug_context_plug in H2.
+        apply state_dump_context. rewrite plug_context_plug.
+        apply H. apply H2.
 Qed.
 
 (* Small-step semantics *)
