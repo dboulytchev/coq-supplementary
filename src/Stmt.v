@@ -66,7 +66,7 @@ Inductive bs_int : stmt -> conf -> conf -> Prop :=
                           (st, i, o) == WHILE e DO s END ==> (st, i, o)
 where "c1 == s ==> c2" := (bs_int s c1 c2).
 
-#[export] Hint Constructors bs_int.
+#[export] Hint Constructors bs_int : core.
 
 (* "Surface" semantics *)
 Definition eval (s : stmt) (i o : list Z) : Prop :=
@@ -79,7 +79,7 @@ Definition eval_equivalent (s1 s2 : stmt) : Prop :=
   forall (i o : list Z),  <| s1 |> i => o <-> <| s2 |> i => o.
 
 Notation "s1 ~e~ s2" := (eval_equivalent s1 s2) (at level 0).
-
+ 
 (* Contextual equivalence *)
 Inductive Context : Type :=
 | Hole 
@@ -473,29 +473,53 @@ End SmallStep.
 
 Module Renaming.
 
-  Definition renaming := Expr.Renaming.renaming.
+  Definition renaming := Renaming.renaming.
+
+  Definition rename_conf (r : renaming) (c : conf) : conf :=
+    match c with
+    | (st, i, o) => (Renaming.rename_state r st, i, o)
+    end.
   
   Fixpoint rename (r : renaming) (s : stmt) : stmt :=
-    match r with
-    | exist _ f _ =>
-        match s with
-        | SKIP                       => SKIP
-        | x ::= e                    => (f x) ::= Renaming.rename_expr r e
-        | READ x                     => READ (f x)
-        | WRITE e                    => WRITE (Renaming.rename_expr r e)
-        | s1 ;; s2                   => (rename r s1) ;; (rename r s2)
-        | COND e THEN s1 ELSE s2 END => COND (Renaming.rename_expr r e) THEN (rename r s1) ELSE (rename r s2) END
-        | WHILE e DO s END           => WHILE (Renaming.rename_expr r e) DO (rename r s) END             
-        end
-    end.
+    match s with
+    | SKIP                       => SKIP
+    | x ::= e                    => (Renaming.rename_id r x) ::= Renaming.rename_expr r e
+    | READ x                     => READ (Renaming.rename_id r x)
+    | WRITE e                    => WRITE (Renaming.rename_expr r e)
+    | s1 ;; s2                   => (rename r s1) ;; (rename r s2)
+    | COND e THEN s1 ELSE s2 END => COND (Renaming.rename_expr r e) THEN (rename r s1) ELSE (rename r s2) END
+    | WHILE e DO s END           => WHILE (Renaming.rename_expr r e) DO (rename r s) END             
+    end.   
 
+  Lemma re_rename
+    (r r' : Renaming.renaming)
+    (Hinv : Renaming.renamings_inv r r')
+    (s    : stmt) : rename r (rename r' s) = s.
+  Proof. admit. Admitted.
+  
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
     Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
   Proof. admit. Admitted.
-    
+  
+  #[export] Hint Resolve Renaming.eval_renaming_invariance : core.
+
+  Lemma renaming_invariant_bs
+    (s         : stmt)
+    (r         : Renaming.renaming)
+    (c c'      : conf)
+    (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
+  Proof. admit. Admitted.
+  
+  Lemma renaming_invariant_bs_inv
+    (s         : stmt)
+    (r         : Renaming.renaming)
+    (c c'      : conf)
+    (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
+  Proof. admit. Admitted.
+  
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
   Proof. admit. Admitted.
-    
+      
 End Renaming.
 
 (* CPS semantics *)
