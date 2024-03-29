@@ -511,10 +511,33 @@ Module SmallStep.
     * dependent induction Heval. remember (IHHeval b e'1 e'2 IHe'1 IHe'2). auto.
   Qed.
 
+  Lemma ss_bs_step (s : state Z)
+                   (e e' : expr)
+                   (z : Z)
+                   (STEP : (s) |- e --> e')
+                   (EXEC : [|e'|] s => z)
+    : [|e|] s => (z).
+  Proof.
+    dependent induction e.
+    all: try by (inv STEP; inv EXEC; auto).
+    dependent induction b; 
+    inv STEP; inv EXEC; eauto.
+  Qed.
+
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
-  Proof. admit. Admitted.
+  Proof. 
+    split; intro.
+    { dependent induction e.
+      * inv H. 
+      * inv H. econstructor. eauto. eauto.
+      * admit. }
+    dependent induction H; auto.
+    assert (Nat z = Nat z). { reflexivity. } remember (IHss_eval z H0). 
+    remember (ss_bs_step s e e' z HStep e0).
+    assumption.
+  Admitted.
   
 End SmallStep.
 

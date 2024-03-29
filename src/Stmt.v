@@ -436,7 +436,17 @@ Module SmallStep.
         (STEP : c -- s --> (Some s', c'))
         (EXEC : c' == s' ==> c'') :
     c == s ==> c''.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction s generalizing c''.
+    all: try by (inv STEP; auto). 
+    { inv STEP.
+      * remember (ss_bs_base s1 c c' SSTEP). eauto.
+      * inv EXEC. 
+        remember (IHs1 c'0 s1' SSTEP STEP1). 
+        eauto. }
+    dependent induction STEP.
+    inv EXEC; inv STEP; eauto.
+  Qed.
 
   Theorem bs_ss_eq (s : stmt) (c c' : conf) :
     c == s ==> c' <-> c -- s -->> c'.
@@ -448,8 +458,16 @@ Module SmallStep.
         remember (ss_ss_composition _ _ _ _ _ s s0). assumption. }
       inv H. remember (IHs1 _ _ STEP). eauto.
       remember (IHs2 _ _ STEP). eauto.
-      admit. }
-    Admitted.
+      dependent induction H. 
+      * eapply ss_int_Step. eapply ss_While. eapply ss_int_Step. 
+        eapply ss_If_True. assumption. eapply ss_ss_composition. eauto.
+        remember (IHbs_int2 s IHs e). eauto.
+      * eapply ss_int_Step. eapply ss_While. eapply ss_int_Step. 
+        eapply ss_If_False. assumption. constructor. constructor. }
+    dependent induction H. 
+    { inv H; constructor; assumption. }
+    eapply ss_bs_step; eauto.
+  Qed.
     
 End SmallStep.
 
