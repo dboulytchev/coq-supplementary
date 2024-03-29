@@ -1,3 +1,4 @@
+Require Import FinFun.
 Require Import BinInt ZArith_dec.
 Require Export Id.
 Require Export State.
@@ -79,13 +80,13 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
                    (NZERO : ~ zb = Z.zero),
-  [| a [/] b |] s => (Z.div za zb)
+    [| a [/] b |] s => (Z.div za zb)
 
 | bs_Mod  : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
                    (NZERO : ~ zb = Z.zero),
-             [| a [%] b |] s => (Z.modulo za zb)
+    [| a [%] b |] s => (Z.modulo za zb)
 
 | bs_Le_T : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
@@ -97,7 +98,7 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
                    (OP : Z.gt za zb),
-  [| a [<=] b |] s => Z.zero
+    [| a [<=] b |] s => Z.zero
 
 | bs_Lt_T : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
@@ -127,14 +128,14 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
                    (OP : Z.gt za zb),
-  [| a [>] b |] s => Z.one
+    [| a [>] b |] s => Z.one
 
 | bs_Gt_F : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
                    (OP : Z.le za zb),
     [| a [>] b |] s => Z.zero
-
+                         
 | bs_Eq_T : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
                    (VALB : [| b |] s => zb)
@@ -164,7 +165,7 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
                    (VALB : [| b |] s => zb)
                    (BOOLA : zbool za)
                    (BOOLB : zbool zb),
-  [| a [&] b |] s => (za * zb)
+    [| a [&] b |] s => (za * zb)
 
 | bs_Or   : forall (s : state Z) (a b : expr) (za zb : Z)
                    (VALA : [| a |] s => za)
@@ -174,10 +175,10 @@ Inductive eval : expr -> state Z -> Z -> Prop :=
     [| a [\/] b |] s => (zor za zb)
 where "[| e |] st => z" := (eval e st z). 
 
-#[export] Hint Constructors eval.
+#[export] Hint Constructors eval : core.
 
 Module SmokeTest.
-            
+
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
   Proof. apply bs_Nat. Qed.
   
@@ -346,99 +347,74 @@ Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
 
 Definition contextual_equivalent (e1 e2 : expr) : Prop :=
   forall (C : Context), (C <~ e1) ~~ (C <~ e2).
+
 Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
                             (at level 42, no associativity).
+
+Lemma plug_BopL_equiv' (b : bop) (e e1 e2 : expr) (s : state Z)
+  (H : forall n : Z, [|e1|] s => n -> [|e2|] s => n) :
+  forall n : Z, [|Bop b e1 e|] s => n -> [|Bop b e2 e|] s => n.
+Proof. intros. inversion H0.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact (H za VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+Qed.
 
 Lemma plug_BopL_equiv (b : bop) (e e1 e2 : expr) (s : state Z)
   (H : forall n : Z, [|e1|] s => n <-> [|e2|] s => n) :
   forall n : Z, [|Bop b e1 e|] s => n <-> [|Bop b e2 e|] s => n.
-Proof. intros. split.
-  intro. inversion H0.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj1 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-  intro. inversion H0.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact (proj2 (H za) VALA). exact VALB. try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+Proof. intro. split.
+  apply plug_BopL_equiv'. apply H.
+  apply plug_BopL_equiv'. apply H.
+Qed.
+
+Lemma plug_BopR_equiv' (b : bop) (e e1 e2 : expr) (s : state Z)
+  (H : forall n : Z, [|e1|] s => n -> [|e2|] s => n) :
+  forall n : Z, [|Bop b e e1|] s => n -> [|Bop b e e2|] s => n.
+Proof. intros. inversion H0.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+  econstructor. exact VALA. exact (H zb VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
 Qed.
 
 Lemma plug_BopR_equiv (b : bop) (e e1 e2 : expr) (s : state Z)
   (H : forall n : Z, [|e1|] s => n <-> [|e2|] s => n) :
   forall n : Z, [|Bop b e e1|] s => n <-> [|Bop b e e2|] s => n.
-Proof. intros. split.
-  intro. inversion H0.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj1 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-  intro. inversion H0.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
-    econstructor. exact VALA. exact (proj2 (H zb) VALB). try exact NZERO. try exact OP. try exact BOOLA. try exact BOOLB.
+Proof. intro. split.
+  apply plug_BopR_equiv'. apply H.
+  apply plug_BopR_equiv'. apply H.
 Qed.
 
 Lemma eq_eq_ceq (e1 e2 : expr) :
@@ -455,10 +431,10 @@ Module SmallStep.
 
   Inductive is_value : expr -> Prop :=
     isv_Intro : forall n, is_value (Nat n).
-
+               
   Reserved Notation "st |- e --> e'" (at level 0).
 
-  Inductive ss_eval : state Z -> expr -> expr -> Prop :=
+  Inductive ss_step : state Z -> expr -> expr -> Prop :=
     ss_Var   : forall (s   : state Z)
                       (i   : id)
                       (z   : Z)
@@ -475,11 +451,34 @@ Module SmallStep.
                       (zl zr z : Z)
                       (op      : bop)
                       (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))      
-  where "st |- e --> e'" := (ss_eval st e e').
+  where "st |- e --> e'" := (ss_step st e e').
 
-  Lemma no_step_from_value (e : expr) (HV: is_value e) : forall s, ~ exists e', (s |- e --> e').
+  Reserved Notation "st |- e -->> e'" (at level 0).
+
+  Inductive ss_eval : state Z -> expr -> expr -> Prop :=
+    se_Stop : forall (s : state Z)
+                     (z : Z),  s |- (Nat z) -->> (Nat z)
+  | se_Step : forall (s : state Z)
+                     (e e' e'' : expr)
+                     (HStep : s |- e --> e')
+                     (Heval: s |- e' -->> e''), s |- e -->> e''
+  where "st |- e -->> e'"  := (ss_eval st e e').
+  
+  Definition normal_form (e : expr) : Prop :=
+    forall s, ~ exists e', (s |- e --> e').   
+
+  Lemma value_is_normal_form (e : expr) (HV: is_value e) : normal_form e.
   Proof. intro. intro. inversion HV. subst. destruct H. inversion H. Qed.
 
+  Lemma normal_form_is_not_a_value : ~ forall (e : expr), normal_form e -> is_value e.
+  Proof. intro. remember (Nat 0 [/] Nat 0).
+    assert (normal_form e). intro. intro. destruct H0. subst. inversion H0.
+      inversion LEFT.
+      inversion RIGHT.
+      inversion EVAL. inversion VALB. subst. contradiction.
+    remember (H e H0). inversion i. subst. inversion H1.
+  Qed.
+  
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
   Proof. intro. remember (H
     ((Nat 1 [+] Nat 2) [*] (Nat 3 [+] Nat 4))
@@ -509,11 +508,190 @@ Module SmallStep.
         remember (Bop op (Nat zl) (Nat zr)). apply (eval_deterministic e s). exact EVAL0. exact EVAL.
         subst. reflexivity.
   Qed.
+  
+  Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
+  Proof. induction Heval. apply isv_Intro. exact IHHeval. Qed.
+  
+  Lemma ss_bs_correct (e e' : expr) (s : state Z) (z : Z) (BS : [|e|] s => z) (SS : s |- e --> e') : [|e'|] s => z.
+  Proof. generalize z BS. clear BS z. induction SS; intros.
+    inversion BS. subst. assert (z = z0). apply state_deterministic with s i. exact VAL. exact VAR. subst. apply bs_Nat.
+    apply plug_BopL_equiv' with l. exact IHSS. exact BS.
+    apply plug_BopR_equiv' with r. exact IHSS. exact BS.
+    assert (z = z0). apply eval_deterministic with (Bop op (Nat zl) (Nat zr)) s. exact EVAL. exact BS. subst. apply bs_Nat.
+  Qed.
+
+  (*Lemma ss_bop_concatenation (e1 e2 : expr) (s : state Z) (z z1 z2 : Z) (b : bop)
+    (BS1 : [|e1|] s => z1)
+    (BS2 : [|e2|] s => z2)
+    (SS1 : s |- e1 -->> (Nat z1))
+    (SS2 : s |- e2 -->> (Nat z2))
+    (Base : forall za zb, s |- Bop b (Nat za) (Nat zb) -->> (Nat z)) :
+    s |- Bop b e1 e2 -->> (Nat z).
+  Proof.
+    induction SS1; subst.
+      induction SS2; subst.
+        apply Base.
+        apply se_Step with (Bop b (Nat z0) e'). apply ss_Right. exact HStep. apply IHSS2. exact BS1. apply ss_bs_correct with e. exact BS2. exact HStep. exact Base.
+      apply se_Step with (Bop b e' e2). apply ss_Left. exact HStep. apply IHSS1. apply ss_bs_correct with e. exact BS1. exact HStep. exact BS2. exact SS2. exact Base.
+  Qed.*)
+
+  (*Lemma ss_bs_equiv (e : expr) (s : state Z) (z z' : Z)
+    (BS : [|e|] s => z)
+    (SS : s |- e --> (Nat z')) :
+    z = z'.
+  Proof. inversion SS; subst.
+    assert ([|Var i|] s => z'). apply bs_Var. exact VAL. apply eval_deterministic with (Var i) s. exact BS. exact H.
+    apply eval_deterministic with (Bop op (Nat zl) (Nat zr)) s. exact BS. exact EVAL.
+  Qed.*)
+
+  Lemma ss_bs_correct_rev (e e' : expr) (s : state Z) (z : Z) (BS : [|e'|] s => z) (SS : s |- e --> e') : [|e|] s => z.
+  Proof. generalize z BS. clear BS z. induction SS; intros.
+    inversion BS. subst. apply bs_Var. exact VAL.
+    apply plug_BopL_equiv' with l'. exact IHSS. exact BS.
+    apply plug_BopR_equiv' with r'. exact IHSS. exact BS.
+    inversion BS. subst. exact EVAL.
+  Qed.
+
+  Lemma se_BopL_evaluation (l r : expr) (b : bop) (s : state Z) (z : Z)
+    (SE : s |- (Bop b l r) -->> (Nat z)) :
+    exists z', s |- l -->> (Nat z').
+  Proof. remember (Bop b l r). remember (Nat z).
+    generalize b l r z Heqe Heqe0. clear Heqe0 Heqe z r l b. induction SE.
+      intros. inversion Heqe.
+      induction HStep; intros; inversion Heqe; subst; clear Heqe.
+        assert (exists z', s |- l' -->> (Nat z')). apply IHSE with b r0 z. reflexivity. reflexivity.
+        destruct H. exists x. apply se_Step with l'. exact HStep. exact H.
+        apply IHSE with b r' z. reflexivity. reflexivity.
+        exists zl. apply se_Stop.
+  Qed.
+
+  Lemma se_BopR_evaluation (l r : expr) (b : bop) (s : state Z) (z : Z)
+    (SE : s |- (Bop b l r) -->> (Nat z)) :
+    exists z', s |- r -->> (Nat z').
+  Proof. remember (Bop b l r). remember (Nat z).
+    generalize b l r z Heqe Heqe0. clear Heqe0 Heqe z r l b. induction SE.
+      intros. inversion Heqe.
+      induction HStep; intros; inversion Heqe; subst; clear Heqe.
+        apply IHSE with b l' z. reflexivity. reflexivity.
+        assert (exists z', s |- r' -->> (Nat z')). apply IHSE with b l0 z. reflexivity. reflexivity.
+        destruct H. exists x. apply se_Step with r'. exact HStep. exact H.
+        exists zr. apply se_Stop.
+  Qed.
 
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
-                      (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
-  Proof. admit. Admitted.
+                      (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
+  Proof. split; intro.
+    induction H.
+      apply se_Stop.
+      apply se_Step with (Nat z). apply ss_Var. exact VAR. apply se_Stop.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat (za + zb)). apply ss_Bop. apply bs_Add. exact H. exact H0. apply se_Stop.
+          apply se_Step with (Nat z [+] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [+] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat (za - zb)). apply ss_Bop. apply bs_Sub. exact H. exact H0. apply se_Stop.
+          apply se_Step with (Nat z [-] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [-] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat (za * zb)). apply ss_Bop. apply bs_Mul. exact H. exact H0. apply se_Stop.
+          apply se_Step with (Nat z [*] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [*] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat (Z.div za zb)). apply ss_Bop. apply bs_Div. exact H. exact H0. exact NZERO. apply se_Stop.
+          apply se_Step with (Nat z [/] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [/] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat (Z.modulo za zb)). apply ss_Bop. apply bs_Mod. exact H. exact H0. exact NZERO. apply se_Stop.
+          apply se_Step with (Nat z [%] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [%] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.one). apply ss_Bop. apply bs_Le_T with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [<=] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [<=] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.zero). apply ss_Bop. apply bs_Le_F with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [<=] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [<=] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.one). apply ss_Bop. apply bs_Lt_T with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [<] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [<] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.zero). apply ss_Bop. apply bs_Lt_F with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [<] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [<] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.one). apply ss_Bop. apply bs_Ge_T with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [>=] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [>=] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.zero). apply ss_Bop. apply bs_Ge_F with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [>=] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [>=] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.one). apply ss_Bop. apply bs_Gt_T with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [>] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [>] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.zero). apply ss_Bop. apply bs_Gt_F with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [>] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [>] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.one). apply ss_Bop. apply bs_Eq_T with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [==] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [==] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.zero). apply ss_Bop. apply bs_Eq_F with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [==] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [==] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.one). apply ss_Bop. apply bs_Ne_T with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [/=] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [/=] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat Z.zero). apply ss_Bop. apply bs_Ne_F with za zb. exact H. exact H0. exact OP. apply se_Stop.
+          apply se_Step with (Nat z [/=] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [/=] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat (za * zb)). apply ss_Bop. apply bs_And. exact H. exact H0. exact BOOLA. exact BOOLB. apply se_Stop.
+          apply se_Step with (Nat z [&] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [&] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+      induction IHeval1; subst.
+        induction IHeval2; subst.
+          apply se_Step with (Nat (zor za zb)). apply ss_Bop. apply bs_Or. exact H. exact H0. exact BOOLA. exact BOOLB. apply se_Stop.
+          apply se_Step with (Nat z [\/] e'). apply ss_Right. exact HStep. apply IHIHeval2. exact H. apply ss_bs_correct with e. exact H0. exact HStep.
+        apply se_Step with (e' [\/] b). apply ss_Left. exact HStep. apply IHIHeval1. apply ss_bs_correct with e. exact H. exact HStep. exact H0. exact IHeval2.
+    remember (Nat z). generalize z Heqe0. clear Heqe0 z. induction H; intros; subst.
+      inversion Heqe0. apply bs_Nat.
+      generalize z IHss_eval H. clear H IHss_eval z. induction HStep; intros.
+        assert ([|Nat z|] s => z0). apply IHss_eval. reflexivity.
+        inversion H0. subst. apply bs_Var. exact VAL.
+        assert ([|Bop op l' r|] s => z). apply IHss_eval. reflexivity.
+        apply plug_BopL_equiv' with l'. intros. apply ss_bs_correct_rev with l'. exact H1. exact HStep. exact H0.
+        assert ([|Bop op l r'|] s => z). apply IHss_eval. reflexivity.
+        apply plug_BopR_equiv' with r'. intros. apply ss_bs_correct_rev with r'. exact H1. exact HStep. exact H0.
+        assert ([|Nat z|] s => z0). apply IHss_eval. reflexivity.
+        inversion H0. subst. exact EVAL.
+  Qed.
 
   Lemma ss_to_eval (e : expr)
                     (s : state Z)
@@ -532,3 +710,107 @@ Module SmallStep.
   Qed.
   
 End SmallStep.
+
+Module Renaming.
+  
+  Definition renaming := { f : id -> id | Bijective f }.
+
+  Fixpoint rename_id (r : renaming) (x : id) : id :=
+    match r with
+      exist _ f _ => f x
+    end.
+  
+  Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
+    match e with
+    | Var x => Var (rename_id r x) 
+    | Nat n => Nat n
+    | Bop op e1 e2 => Bop op (rename_expr r e1) (rename_expr r e2) 
+    end.
+
+  Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
+    match st with
+    | [] => []
+    | (id, x) :: tl =>
+        match r with exist _ f _ => (f id, x) :: rename_state r tl end
+    end.
+
+  (*Definition inv_renaming (r : renaming) : renaming :=
+    match r with exist _ f b =>
+    match b with ex_intro _ g ps =>
+      exist Bijective g (ex_intro _ f (conj (proj2 ps) (proj1 ps)))
+    end
+    end.*)
+  
+  (*Definition re_rename_id (r : renaming) (x : id) : id :=
+    match r with
+      exist _ _ (ex_intro _ g _) => g x
+    end.*)
+
+  Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
+  Proof. intro. intros. destruct BH. destruct H0. rewrite <- (H0 x). rewrite <- (H0 y). rewrite H. reflexivity. Qed.
+
+  Lemma eval_renaming_invariance' (e : expr) (st : state Z) (z : Z) (r : renaming) :
+    [| e |] st => z -> [| rename_expr r e |] (rename_state r st) => z.
+  Proof. intro. generalize st z r H. clear H r z st. induction e; intros; inversion H; clear H.
+    apply bs_Nat.
+    apply bs_Var. subst. induction VAR; destruct r.
+      apply st_binds_hd.
+      apply st_binds_tl; simpl.
+        intro. remember (bijective_injective x0 b). assert (id = id'). apply i. exact H0. contradiction.
+        exact IHVAR.
+    apply bs_Add. apply IHe1. exact VALA. apply IHe2. exact VALB.
+    apply bs_Sub. apply IHe1. exact VALA. apply IHe2. exact VALB.
+    apply bs_Mul. apply IHe1. exact VALA. apply IHe2. exact VALB.
+    apply bs_Div. apply IHe1. exact VALA. apply IHe2. exact VALB. exact NZERO.
+    apply bs_Mod. apply IHe1. exact VALA. apply IHe2. exact VALB. exact NZERO.
+    apply bs_Le_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Le_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Lt_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Lt_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Ge_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Ge_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Gt_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Gt_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Eq_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Eq_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Ne_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_Ne_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    apply bs_And. apply IHe1. exact VALA. apply IHe2. exact VALB. exact BOOLA. exact BOOLB.
+    apply bs_Or. apply IHe1. exact VALA. apply IHe2. exact VALB. exact BOOLA. exact BOOLB.
+  Qed.
+
+  (*Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
+    [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
+  Proof. split; intro.
+    generalize st z r H. clear H r z st. induction e; intros; inversion H; clear H.
+      apply bs_Nat.
+      apply bs_Var. subst. induction VAR; destruct r.
+        apply st_binds_hd.
+        apply st_binds_tl; simpl.
+          intro. remember (bijective_injective x0 b). assert (id = id'). apply i. exact H0. contradiction.
+          exact IHVAR.
+      apply bs_Add. apply IHe1. exact VALA. apply IHe2. exact VALB.
+      apply bs_Sub. apply IHe1. exact VALA. apply IHe2. exact VALB.
+      apply bs_Mul. apply IHe1. exact VALA. apply IHe2. exact VALB.
+      apply bs_Div. apply IHe1. exact VALA. apply IHe2. exact VALB. exact NZERO.
+      apply bs_Mod. apply IHe1. exact VALA. apply IHe2. exact VALB. exact NZERO.
+      apply bs_Le_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Le_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Lt_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Lt_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Ge_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Ge_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Gt_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Gt_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Eq_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Eq_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Ne_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_Ne_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+      apply bs_And. apply IHe1. exact VALA. apply IHe2. exact VALB. exact BOOLA. exact BOOLB.
+      apply bs_Or. apply IHe1. exact VALA. apply IHe2. exact VALB. exact BOOLA. exact BOOLB.
+    generalize st z r H. clear H r z st. induction e; intros; inversion H; clear H.
+      apply bs_Nat.
+      apply bs_Var. subst. remember (rename_state r st). remember (rename_id r i). induction VAR. destruct r.*)
+        
+
+End Renaming.
