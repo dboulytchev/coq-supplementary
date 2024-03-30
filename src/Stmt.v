@@ -408,10 +408,10 @@ Lemma extra_input_lem s st st' i i' o o' (H : (st, i, o) == s ==> (st', i', o'))
     : forall i'', (st, i ++ i'', o) == s ==> (st', i' ++ i'', o').
 Proof.
     dependent induction H; intro.
-    * constructor.
-    * constructor. assumption.
-    * constructor.
-    * constructor. assumption.
+
+    all: try by constructor.
+    all: try by constructor; assumption.
+
     * destruct c' as ((st'', i'''), o'').
       specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
       specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
@@ -424,7 +424,6 @@ Proof.
       specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
       specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
       eapply bs_While_True. assumption. apply IHbs_int1. apply IHbs_int2.
-    * eapply bs_While_False. assumption.
 Qed.
 
 Lemma extra_input s st st' i i' o o' : ((st, i, o) == s ==> (st', i', o')
@@ -432,10 +431,10 @@ Lemma extra_input s st st' i i' o o' : ((st, i, o) == s ==> (st', i', o')
 Proof.
     constructor; intro.
     * dependent induction H.
-      - exists []. constructor; constructor.
-      - exists []. constructor; constructor. assumption.
+
+      all: try by exists []; constructor; constructor.
+
       - exists [z]. constructor; constructor.
-      - exists []. constructor; constructor. assumption.
       - destruct c' as ((st'', i''), o'').
         specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
         specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
@@ -454,7 +453,6 @@ Proof.
         exists (x ++ x0). constructor.
         + rewrite <- app_assoc, H1, H3. reflexivity.
         + eapply bs_While_True. assumption. apply extra_input_lem. eassumption. eassumption.
-      - exists []. constructor; constructor. assumption.
     * dependent destruction H. dependent destruction H. rewrite H.
       eapply (extra_input_lem _ _ _ _ _ _ _ H0).
 Qed.
@@ -463,10 +461,10 @@ Lemma extra_output_lem s st st' i i' o o' (H : (st, i, o) == s ==> (st', i', o')
     : forall o'', (st, i, o ++ o'') == s ==> (st', i', o' ++ o'').
 Proof.
     dependent induction H; intro.
-    * constructor.
-    * constructor. assumption.
-    * constructor.
-    * constructor. assumption.
+
+    all: try by constructor.
+    all: try by constructor; assumption.
+
     * destruct c' as ((st'', i''), o''').
       specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
       specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
@@ -479,7 +477,6 @@ Proof.
       specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
       specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl).
       eapply bs_While_True. assumption. apply IHbs_int1. apply IHbs_int2.
-    * eapply bs_While_False. assumption.
 Qed.
 
 Lemma extra_output s st st' i i' o o' : ((st, i, o) == s ==> (st', i', o')
@@ -487,9 +484,9 @@ Lemma extra_output s st st' i i' o o' : ((st, i, o) == s ==> (st', i', o')
 Proof.
     constructor; intro.
     * dependent induction H.
-      - exists []. constructor; constructor.
-      - exists []. constructor; constructor. assumption.
-      - exists []. constructor; constructor.
+
+      all: try by exists []; constructor; constructor.
+
       - exists [z]. constructor; constructor. assumption.
       - destruct c' as ((st'', i''), o'').
         specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl).
@@ -508,8 +505,8 @@ Proof.
         destruct IHbs_int1, H1, IHbs_int2, H3.
         exists (x0 ++ x). constructor.
         + rewrite <- app_assoc, H3, H1. reflexivity.
-        + eapply bs_While_True. assumption. eassumption. apply (extra_output_lem _ _ _ _ _ _ _ H4).
-      - exists []. constructor; constructor. assumption.
+        + eapply bs_While_True. assumption. eassumption.
+          apply (extra_output_lem _ _ _ _ _ _ _ H4).
     * dependent destruction H. dependent destruction H. rewrite H.
       eapply (extra_output_lem _ _ _ _ _ _ _ H0).
 Qed.
@@ -541,22 +538,14 @@ Qed.
 Fixpoint dump_context (st : state Z) : Context :=
 match st with
 | [] => Hole
-| (v, _) :: st => SeqL (dump_context st) (WRITE (Var v))
+| (Id v, x) :: st => SeqL (SeqL (dump_context st) (WRITE (Nat (Z_of_nat v)))) (WRITE (Nat x))
 end.
 
-Fixpoint state_dump_ex (st : state Z) (f : id -> Z) : list Z :=
+Fixpoint state_dump (st : state Z) : list Z :=
 match st with
 | [] => []
-| (v, x) :: st => f v :: state_dump_ex st f
+| (Id v, x) :: st => x :: Z_of_nat v :: state_dump st
 end.
-
-Fixpoint lookup_state (st : state Z) (v : id) : Z :=
-match st with
-| [] => 0
-| (v', x) :: st => if id_eq_dec v v' then x else lookup_state st v
-end.
-
-Definition state_dump (st st' : state Z) : list Z := state_dump_ex st (lookup_state (st' ++ st)).
 
 Lemma state_expands s st st' i i' o o' (H : (st, i, o) == s ==> (st', i', o'))
                                 : exists st'', st' = st'' ++ st.
@@ -567,70 +556,43 @@ Proof.
     all: try by exists [(x, z)]; reflexivity.
     all: try by specialize (IHbs_int _ _ _ _ _ _ JMeq_refl JMeq_refl); assumption.
 
-    * destruct c' as ((st'', i''), o'').
-      specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int1.
-      specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int2.
-      exists (x0 ++ x). rewrite H2, H1. apply app_assoc.
-    * destruct c' as ((st'', i''), o'').
-      specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int1.
-      specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl). destruct IHbs_int2.
-      exists (x0 ++ x). rewrite H2, H1. apply app_assoc.
+    all: destruct c' as ((st'', i''), o'');
+         specialize (IHbs_int1 _ _ _ _ _ _ JMeq_refl JMeq_refl); destruct IHbs_int1;
+         specialize (IHbs_int2 _ _ _ _ _ _ JMeq_refl JMeq_refl); destruct IHbs_int2;
+         exists (x0 ++ x); rewrite H2, H1; apply app_assoc.
 Qed.
 
-Lemma lookup_state_lem st1 st2 v x
-    : (st1 ++ (v, x) :: st2) / v => (lookup_state (st1 ++ (v, x) :: st2) v).
-Proof.
-    dependent induction st1.
-    * simpl. destruct (id_eq_dec v v).
-      - constructor.
-      - absurd (v = v); auto.
-    * destruct a as (v', x'). simpl. destruct (id_eq_dec v v').
-      - rewrite e. constructor.
-      - constructor. assumption. apply IHst1; reflexivity.
-Qed.
-
-Lemma state_dump_context1 s st st' st1 i i' o o'
-        (H : (st, i, o) == s ==> (st1 ++ st', i', o'))
-    : exists st'', (forall v x, (st1 ++ st') / v => x -> st'' / v => x)
-        /\ (st, i, o) == dump_context st' <~ s ==> (st'', i', state_dump st' st1 ++ o').
+Lemma state_dump_context1_lem s st st' st1 i i' o o' (H : (st, i, o) == s ==> (st1 ++ st', i', o'))
+    : (st, i, o) == dump_context st' <~ s ==> (st1 ++ st', i', state_dump st' ++ o').
 Proof.
     dependent induction st'.
-    * specialize (state_expands _ _ _ _ _ _ _ H). intro. destruct H0.
-      rewrite app_nil_r in H0, H. rewrite H0 in H. simpl. exists (x ++ st). constructor.
-      - intros. rewrite <- H0. rewrite app_nil_r in H1. assumption.
-      - assumption.
-    * destruct a as (v, x). simpl. specialize (IHst' (st1 ++ [(v, x)])).
+    * assumption.
+    * destruct a as ((v), x). specialize (IHst' (st1 ++ [(Id v, x)])).
       rewrite <- app_assoc in IHst'. apply IHst' in H.
-      destruct H, H. exists x0. constructor.
-      - intros v' x' H'. apply H. assumption.
-      - econstructor. eassumption.
-        replace (state_dump st' (st1 ++ [(v, x)]))
-        with (state_dump_ex st' (lookup_state ((st1 ++ [(v, x)]) ++ st'))).
-        ** rewrite <- app_assoc. apply bs_Write. constructor. apply H. apply lookup_state_lem.
-        ** reflexivity.
+      econstructor.
+      - econstructor.
+        + eassumption.
+        + constructor. constructor.
+      - constructor. constructor.
 Qed.
 
-Lemma state_dump_context2 s st' st1 i i' o o'
-        (H : exists st'', ([], i, o) == dump_context st' <~ s ==> (st'', i', state_dump st' st1 ++ o'))
-    : ([], i, o) == s ==> (st1 ++ st', i', o').
+Lemma state_dump_context1 s st st' i i' o o' (H : (st, i, o) == s ==> (st', i', o'))
+    : (st, i, o) == dump_context st' <~ s ==> (st', i', state_dump st' ++ o').
+Proof. apply (state_dump_context1_lem _ _ _ nil). assumption. Qed.
+
+Lemma state_dump_context2 s st st' st1 st2 i i1 i2 o o1 o2
+        (H1 : (st, i, o) == s ==> (st1, i1, o1))
+        (H2 : (st, i, o) == dump_context st' <~ s ==> (st2, i2, o2))
+    : st1 = st2 /\ i1 = i2 /\ state_dump st' ++ o1 = o2.
 Proof.
     dependent induction st'.
-    * destruct H. simpl in H. rewrite app_nil_r. admit.
-    * destruct a as (v, x). specialize (IHst' _ Logic.eq_refl JMeq_refl (st1 ++ [(v, x)])).
-      rewrite <- app_assoc in IHst'. apply IHst'. destruct H. simpl in H. dependent destruction H.
-      dependent destruction H0. exists x0.
-      replace (state_dump st' (st1 ++ [(v, x)]))
-      with (state_dump_ex st' (lookup_state ((st1 ++ [(v, x)]) ++ st'))).
-      - rewrite <- app_assoc. assumption.
-      - reflexivity.
-Admitted.
-
-Lemma state_dump_context s st' i i' o o' : ([], i, o) == s ==> (st', i', o')
-    <-> exists st'', ([], i, o) == dump_context st' <~ s ==> (st'', i', state_dump st' nil ++ o').
-Proof.
-    constructor; intro.
-    * apply (state_dump_context1 _ _ _ nil) in H. destruct H, H. exists x. assumption.
-    * apply (state_dump_context2 _ _ nil). assumption.
+    * specialize (bs_int_deterministic _ _ _ _ H1 H2). intro. dependent destruction H. auto.
+    * destruct a as ((v), x). specialize (IHst' _ Logic.eq_refl JMeq_refl).
+      dependent destruction H2. dependent destruction H2_. destruct c' as ((st2', i2'), o2').
+      edestruct IHst'. eassumption. eassumption. destruct H0, H2.
+      dependent destruction H2_0. dependent destruction VAL.
+      dependent destruction H2_2. dependent destruction VAL.
+      auto.
 Qed.
 
 Fixpoint plug_context (C C' : Context) : Context :=
@@ -648,6 +610,9 @@ Notation "C '<C~' C'" := (plug_context C C') (at level 43, no associativity).
 Lemma plug_context_plug C C' s : C <~ (C' <~ s) = C <C~ C' <~ s.
 Proof. dependent induction C; simpl; congruence. Qed.
 
+Lemma ceq_sym s1 s2 (H : s1 ~c~ s2) : s2 ~c~ s1.
+Proof. constructor; apply H. Qed.
+
 Lemma eq_eq_ceq s1 s2 : s1 ~~~ s2 <-> s1 ~c~ s2.
 Proof.
     constructor; intro.
@@ -655,7 +620,7 @@ Proof.
       - eapply eq_forall_context.
         + intros c c'. symmetry. eapply H.
         + eassumption.
-      - eapply eq_forall_context. eassumption. eassumption.
+      - eapply eq_forall_context; eassumption.
     * constructor; intro; destruct c as ((st, i), o), c' as ((st', o'), i').
       - apply extra_input in H0. destruct H0, H0.
         apply extra_input. exists x. constructor. assumption.
@@ -663,18 +628,137 @@ Proof.
         apply extra_output. exists x0. constructor. assumption.
         apply extra_state in H2.
         apply extra_state.
-        apply state_dump_context in H2. rewrite plug_context_plug in H2.
-        apply state_dump_context. rewrite plug_context_plug.
-        apply H. apply H2.
+        admit.
       - apply extra_input in H0. destruct H0, H0.
         apply extra_input. exists x. constructor. assumption.
         apply extra_output in H1. destruct H1, H1.
         apply extra_output. exists x0. constructor. assumption.
         apply extra_state in H2.
         apply extra_state.
-        apply state_dump_context in H2. rewrite plug_context_plug in H2.
-        apply state_dump_context. rewrite plug_context_plug.
-        apply H. apply H2.
+        apply ceq_sym in H.
+        admit.
+Admitted.
+
+Definition equivalent_states st1 st2 := forall v, Expr.equivalent_states st1 st2 v.
+
+Lemma equiv_st_lem s st1 st2 st1' i i' o o'
+                            (H1 : equivalent_states st1 st2)
+                            (H2 : (st1, i, o) == s ==> (st1', i', o'))
+    : exists st2', (st2, i, o) == s ==> (st2', i', o') /\ equivalent_states st1' st2'.
+Proof.
+    dependent induction H2 generalizing st1 st2 st1' i i' o o' H1.
+    * econstructor. split; try eassumption. constructor.
+    * econstructor. split.
+      - constructor. eapply variable_relevance. intros. apply H1. eassumption.
+      - split; intro; dependent destruction H; try by constructor.
+        all: constructor; try apply H1; assumption.
+    * econstructor. split. constructor.
+      split; intro; dependent destruction H; try by constructor.
+      all: constructor; try apply H1; assumption.
+    * econstructor. split; eauto. constructor. eapply variable_relevance; eauto.
+    * destruct c' as ((st'', i''), o'').
+      specialize (IHbs_int1 _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int1, H.
+      specialize (IHbs_int2 _ _ _ _ _ _ _ H0 JMeq_refl JMeq_refl). destruct IHbs_int2, H2.
+      econstructor. split; eauto. econstructor; eauto.
+    * specialize (IHbs_int _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int, H.
+      econstructor. split; eauto. apply bs_If_True; eauto. eapply variable_relevance; eauto.
+    * specialize (IHbs_int _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int, H.
+      econstructor. split; eauto. apply bs_If_False; eauto. eapply variable_relevance; eauto.
+    * destruct c' as ((st'', i''), o'').
+      specialize (IHbs_int1 _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int1, H.
+      specialize (IHbs_int2 _ _ _ _ _ _ _ H0 JMeq_refl JMeq_refl). destruct IHbs_int2, H2.
+      econstructor. split; eauto. eapply bs_While_True; eauto. eapply variable_relevance; eauto.
+    * econstructor. split; eauto. eapply bs_While_False; eauto. eapply variable_relevance; eauto.
+Qed.
+
+Lemma not_eq_eq_ceq : ~(forall s1 s2, s1 ~c~ s2 -> s1 ~~~ s2).
+Proof.
+    intro.
+    set (s1 := Id 0 ::= Nat 1).
+    set (s2 := (Id 0 ::= Nat 0) ;; (Id 0 ::= Nat 1)).
+    specialize (H s1 s2).
+    absurd (s1 ~~~ s2).
+    * intro.
+      set (c1 := ([], [], []) : conf).
+      set (c2 := ([(Id 0, 1%Z)], [], []) : conf).
+      specialize (H0 c1 c2).
+      absurd (c1 == s2 ==> c2).
+      - intro. dependent destruction H1. dependent destruction H1_.
+        dependent destruction VAL. inversion H1_0.
+      - apply H0. constructor. constructor.
+    * assert (H1 : (forall C st st1 i i' o o', (st, i, o) == C <~ s1 ==> (st1, i', o')
+        -> exists st2, (st, i, o) == C <~ s2 ==> (st2, i', o') /\ equivalent_states st1 st2)).
+      - clear H. intros. dependent induction H; dependent destruction C; dependent destruction x.
+        + dependent destruction VAL. exists ((Id 0, 1%Z) :: (Id 0, 0%Z) :: s). split.
+          ** econstructor. constructor; constructor. constructor. constructor.
+          ** split; intro; dependent destruction H; constructor; auto. constructor; auto.
+             dependent destruction H0; auto. absurd (Id 0 <> Id 0); auto.
+        + clear IHbs_int2. destruct c' as ((st1'', i''), o'').
+          specialize (IHbs_int1 _ _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int1 as [st2''], H1.
+          eapply equiv_st_lem in H0. destruct H0, H0. econstructor. split.
+          ** econstructor. eassumption. eassumption.
+          ** assumption.
+          ** assumption.
+        + clear IHbs_int1. destruct c' as ((st1'', i''), o'').
+          specialize (IHbs_int2 _ _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int2 as [st2''], H1.
+          econstructor. split; eauto. econstructor; eassumption.
+        + specialize (IHbs_int _ _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int as [st''], H0. econstructor. split; eauto. apply bs_If_True; auto.
+        + econstructor. split. apply bs_If_True; eauto. split; auto.
+        + econstructor. split. apply bs_If_False; eauto. split; auto.
+        + specialize (IHbs_int _ _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int as [st''], H0. econstructor. split; eauto. apply bs_If_False; auto.
+        + destruct c' as ((st1'', i''), o'').
+          specialize (IHbs_int1 _ _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int1 as [st2''], H1.
+          specialize (IHbs_int2 (WhileC e0 C) _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int2 as [st2'], H3.
+          eapply equiv_st_lem in H3; eauto. destruct H3 as [st2'''], H3.
+          econstructor. split. econstructor; eauto. split; intro.
+          ** apply H5. apply H4. assumption.
+          ** apply H4. apply H5. assumption.
+        + exists st1. split. constructor; auto. split; intro; auto.
+      - assert (H2 : (forall C st st1 i i' o o', (st, i, o) == C <~ s2 ==> (st1, i', o')
+            -> exists st2, (st, i, o) == C <~ s1 ==> (st2, i', o') /\ equivalent_states st1 st2)).
+      -- clear H H1. intros. dependent induction H; dependent destruction C; dependent destruction x.
+        + dependent destruction H. dependent destruction VAL.
+          dependent destruction H0. dependent destruction VAL.
+          exists ((Id 0, 1%Z) :: s). split.
+          ** econstructor. constructor.
+          ** split; intro; dependent destruction H; constructor; auto.
+             dependent destruction H0; auto. absurd (Id 0 <> Id 0); auto. constructor; auto.
+        + clear IHbs_int2. destruct c' as ((st1'', i''), o'').
+          specialize (IHbs_int1 _ _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int1 as [st2''], H1.
+          eapply equiv_st_lem in H0. destruct H0, H0. econstructor. split.
+          ** econstructor. eassumption. eassumption.
+          ** assumption.
+          ** assumption.
+        + clear IHbs_int1. destruct c' as ((st1'', i''), o'').
+          specialize (IHbs_int2 _ _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int2 as [st2''], H1.
+          econstructor. split; eauto. econstructor; eassumption.
+        + specialize (IHbs_int _ _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int as [st''], H0. econstructor. split; eauto. apply bs_If_True; auto.
+        + econstructor. split. apply bs_If_True; eauto. split; auto.
+        + econstructor. split. apply bs_If_False; eauto. split; auto.
+        + specialize (IHbs_int _ _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int as [st''], H0. econstructor. split; eauto. apply bs_If_False; auto.
+        + destruct c' as ((st1'', i''), o'').
+          specialize (IHbs_int1 _ _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int1 as [st2''], H1.
+          specialize (IHbs_int2 (WhileC e0 C) _ _ _ _ _ _ Logic.eq_refl JMeq_refl JMeq_refl).
+          destruct IHbs_int2 as [st2'], H3.
+          eapply equiv_st_lem in H3; eauto. destruct H3 as [st2'''], H3.
+          econstructor. split. econstructor; eauto. split; intro.
+          ** apply H5. apply H4. assumption.
+          ** apply H4. apply H5. assumption.
+        + exists st1. split. constructor; auto. split; intro; auto.
+      -- apply H. intros C i o. split; intro; destruct H0 as [st].
+         + apply H1 in H0. destruct H0, H0. exists x. assumption.
+         + apply H2 in H0. destruct H0, H0. exists x. assumption.
 Qed.
 
 (* Small-step semantics *)
