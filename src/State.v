@@ -45,19 +45,50 @@ Section S.
     subst n. subst m. reflexivity.
   Qed.
     
+  Lemma state_deterministic' (st : state) (x : id) (n m : option A)
+    (SN : st_eval st x = n)
+    (SM : st_eval st x = m) :
+    n = m.
+  Proof using Type.
+    subst n. subst m. reflexivity.
+  Qed.
+    
   Lemma state_deterministic (st : state) (x : id) (n m : A)   
     (SN : st / x => n)
     (SM : st / x => m) :
-    n = m. 
-  Proof. admit. Admitted.
+    n = m.  
+  Proof. induction st as [| st'].
+  - inversion SN.
+  - destruct st;
+    inversion SN; inversion SM. subst.
+    + inversion H4. reflexivity.
+    + subst. inversion H. symmetry in H1. contradiction.
+    + subst. inversion H6. contradiction.
+    + specialize (IHst H4 H10). assumption.
+    + subst. inversion SM.
+      * reflexivity.
+      * contradiction.
+    + subst. inversion SM.
+      * reflexivity.
+      * contradiction.
+    + subst. inversion H6. contradiction.
+    + specialize (IHst H4 H10). assumption.
+  Qed.
   
   Lemma update_eq (st : state) (x : id) (n : A) :
     st [x <- n] / x => n.
-  Proof. admit. Admitted.
+  Proof. constructor. Qed.
 
   Lemma update_neq (st : state) (x2 x1 : id) (n m : A)
         (NEQ : x2 <> x1) : st / x1 => m <-> st [x2 <- n] / x1 => m.
-  Proof. admit. Admitted.
+  Proof. split; intros.
+  - constructor.
+    + auto.
+    + assumption.
+  - inversion H.
+    + contradiction.
+    + assumption.
+  Qed.
 
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
