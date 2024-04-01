@@ -41,6 +41,7 @@ Section S.
     (SN : st_eval st x = n)
     (SM : st_eval st x = m) :
     n = m.
+<<<<<<< HEAD
   Proof using Type.
     subst n. subst m. reflexivity.
   Qed.
@@ -51,28 +52,142 @@ Section S.
     n = m. 
   Proof. admit. Admitted.
   
+=======
+  Proof.
+    induction st.
+    { inversion SN. }
+    { 
+      destruct a.
+      inversion SN; inversion SM; subst.
+      {
+        trivial.
+      }
+      {
+        contradiction.
+      }
+      {
+        contradiction.
+      }
+      {
+        specialize (IHst H5 H12).
+        assumption.
+      }
+    }
+  Qed.
+
+>>>>>>> 7fb1ed5 (Some proofs done.)
   Lemma update_eq (st : state) (x : id) (n : A) :
     st [x <- n] / x => n.
-  Proof. admit. Admitted.
+  Proof.
+    constructor.
+  Qed.
 
   Lemma update_neq (st : state) (x2 x1 : id) (n m : A)
         (NEQ : x2 <> x1) : st / x1 => m <-> st [x2 <- n] / x1 => m.
+<<<<<<< HEAD
   Proof. admit. Admitted.
   
+=======
+  Proof.
+    split; intros.
+    {
+      constructor; auto.
+    }
+    {
+      inversion H.
+      {
+        contradiction.
+      }
+      {
+        assumption.
+      }
+    }
+  Qed.
+
+
+>>>>>>> 7fb1ed5 (Some proofs done.)
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
-  Proof. admit. Admitted.
+  Proof.
+    split; intros.
+    {
+      inversion H; subst.
+      {
+        constructor.
+      }
+      {
+        constructor.
+        {
+          assumption.
+        }
+        {
+          inversion H6; subst; [contradiction | assumption].
+        }
+      }
+    }
+    {
+      inversion H; subst; repeat constructor; try assumption.
+    }
+  Qed.
   
   Lemma update_same (st : state) (x1 x2 : id) (n1 m : A)
         (SN : st / x1 => n1)
         (SM : st / x2 => m) :
     st [x1 <- n1] / x2 => m.
-  Proof. admit. Admitted.
+  Proof.
+    remember (id_eq_dec x1 x2).
+    destruct s.
+    {
+      subst.
+      remember (state_deterministic st x2 n1 m).
+      specialize (e SN SM) as e'.
+      subst.
+      constructor.
+    }
+    {
+      constructor; auto.
+    }
+  Qed.
   
   Lemma update_permute (st : state) (x1 x2 x3 : id) (n1 n2 m : A)
         (NEQ : x2 <> x1)
         (SM : st [x2 <- n1][x1 <- n2] / x3 => m) :
     st [x1 <- n2][x2 <- n1] / x3 => m.
-  Proof. admit. Admitted.
+  Proof.
+    remember (id_eq_dec x3 x2).
+    destruct s.
+    {
+      subst.
+      remember (((st) [x1 <- n2])).
+      inversion SM; subst.
+      {
+        contradiction.
+      }
+      {
+        inversion H5; subst; [constructor | contradiction].
+      }
+    }
+    {
+      constructor.
+      {
+        assumption.
+      }
+      {
+        inversion SM; subst.
+        {
+          constructor.
+        }
+        {
+          constructor.
+          {
+            assumption.
+          }
+          {
+            inversion H5; subst; [contradiction | assumption].
+          }
+        }
+      }
+    }
+  Qed.
 
 End S.

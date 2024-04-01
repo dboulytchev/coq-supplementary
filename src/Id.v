@@ -216,16 +216,30 @@ Proof.
     assert ((n ?= n0) = Gt).
     - rewrite -> Heqc. reflexivity.
     - apply i in H.
-      assert (n <= n0).
-      * destruct i.
-        Focus 2.
-      discriminate Hid1_leq_id2.
-    rewrite Heqi.
+      left.
+      inversion Hid1_leq_id2.
+      lia.
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof. 
+  intros.
+  remember (lt_eq_lt_id_dec id1 id2).
+  destruct id1, id2.
+  destruct s.
+  { destruct s.
+    { right. constructor. inversion l. lia. }
+    { contradiction. }
+  }
+  { left. constructor. inversion l. lia. }
+Qed.
     
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct id1, id2, H0.
+  inversion H.
+  lia.
+Qed.  

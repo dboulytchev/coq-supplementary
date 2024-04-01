@@ -1,5 +1,6 @@
 Require Import FinFun.
 Require Import BinInt ZArith_dec.
+Require Import Coq.ZArith.BinInt.
 Require Export Id.
 Require Export State.
 Require Export Lia.
@@ -180,12 +181,44 @@ where "[| e |] st => z" := (eval e st z).
 Module SmokeTest.
 
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
+<<<<<<< HEAD
   Proof. admit. Admitted.
+=======
+  Proof. 
+    constructor.
+  Qed.
+>>>>>>> 7fb1ed5 (Some proofs done.)
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
+<<<<<<< HEAD
   Proof. admit. Admitted.
+=======
+  Proof.
+    inversion HH.
+    subst.
+    inversion VALB.
+    subst.
+    assert ((za * 2)%Z = (za + za)%Z).
+    {
+      induction za.
+      {
+        constructor.
+      }
+      {
+        simpl.
+        lia.
+      }
+      {
+        simpl.
+        lia.
+      }
+    }
+    rewrite H.
+    constructor; assumption.
+  Qed.    
+>>>>>>> 7fb1ed5 (Some proofs done.)
 
 End SmokeTest.
 
@@ -218,7 +251,25 @@ Lemma defined_expression
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
+<<<<<<< HEAD
 Proof. admit. Admitted.
+=======
+Proof.
+  induction e.
+  {
+    inversion ID.
+  }
+  {
+    inversion ID.
+    inversion RED.
+    subst.
+    eauto.
+  }
+  {
+    admit.
+  }
+Admitted.
+>>>>>>> 7fb1ed5 (Some proofs done.)
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -232,7 +283,26 @@ Proof. admit. Admitted.
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
-Proof. admit. Admitted.
+Proof.
+  induction e.
+  {
+    inversion E1.
+    inversion E2.
+    subst.
+    reflexivity.
+  }
+  {
+    inversion E1.
+    inversion E2.
+    subst.
+    remember (state_deterministic Z s i z1 z2 VAR VAR0).
+    subst.
+    reflexivity.
+  }
+  {
+    admit.
+  }
+Admitted.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
