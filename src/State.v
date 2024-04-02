@@ -92,18 +92,45 @@ Section S.
 
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
-  Proof. admit. Admitted.
+  Proof. split.
+  - intros. inversion H. subst.
+    + constructor.
+    + constructor.
+      * apply H5.
+      * inversion H6. subst. contradiction. subst. apply H13.
+  - intros. inversion H; subst.
+    + constructor.
+    + inversion H; subst. constructor. constructor. assumption. 
+      constructor. assumption. assumption.
+Qed.
   
   Lemma update_same (st : state) (x1 x2 : id) (n1 m : A)
         (SN : st / x1 => n1)
         (SM : st / x2 => m) :
     st [x1 <- n1] / x2 => m.
-  Proof. admit. Admitted.
+  Proof. destruct (id_eq_dec x1 x2).
+    - rewrite e. specialize (state_deterministic st x2 n1 m) as spec.
+      rewrite e in SN. apply spec in SN.
+      + rewrite SN. constructor.
+      + assumption.
+    - constructor. auto. assumption.
+Qed.  
   
   Lemma update_permute (st : state) (x1 x2 x3 : id) (n1 n2 m : A)
         (NEQ : x2 <> x1)
         (SM : st [x2 <- n1][x1 <- n2] / x3 => m) :
     st [x1 <- n2][x2 <- n1] / x3 => m.
-  Proof. admit. Admitted.
+  Proof. destruct (id_eq_dec x3 x2).
+    - rewrite e. inversion SM; subst.
+      + contradiction.
+      + inversion H5; subst.
+        * constructor.
+        * contradiction.
+    - constructor.
+      + assumption.
+      + inversion SM. subst. constructor. constructor.
+        * apply H4.
+        * subst. inversion H5. subst. contradiction. assumption.
+Qed.
 
 End S.
