@@ -255,7 +255,9 @@ Lemma defined_expression
 Proof. admit. Admitted.
 =======
 Proof.
-  induction e.
+  generalize dependent z.
+  induction e;
+  intros.
   {
     inversion ID.
   }
@@ -266,10 +268,28 @@ Proof.
     eauto.
   }
   {
-    admit.
+    inversion ID.
+    subst.
+    inversion H3.
+    {
+      inversion RED;
+      subst;
+      eapply IHe1;
+      eassumption.
+    }
+    {
+      inversion RED;
+      subst;
+      eapply IHe2;
+      eassumption.
+    }
   }
+<<<<<<< HEAD
 Admitted.
 >>>>>>> 7fb1ed5 (Some proofs done.)
+=======
+Qed.
+>>>>>>> 7e82007 (More proofs in Expr.)
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -277,14 +297,48 @@ Admitted.
 Lemma undefined_variable (e : expr) (s : state Z) (id : id)
       (ID : id ? e) (UNDEF : forall (z : Z), ~ (s / id => z)) :
   forall (z : Z), ~ ([| e |] s => z).
-Proof. admit. Admitted.
+Proof.
+  intros z EVAL.
+  generalize dependent z.
+  induction e;
+  intros.
+  {
+    inversion ID.
+  }
+  {
+    inversion ID.
+    inversion EVAL.
+    subst.
+    specialize (UNDEF z).
+    contradiction.
+  }
+  {
+    inversion ID.
+    inversion H3.
+    {
+      inversion EVAL;
+      subst;
+      eapply IHe1;
+      eassumption.
+    }
+    {
+      inversion EVAL;
+      subst;
+      eapply IHe2;
+      eassumption.
+    }
+  }
+Qed.
 
 (* The evaluation relation is deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
 Proof.
-  induction e.
+  generalize dependent z1.
+  generalize dependent z2.
+  induction e;
+  intros.
   {
     inversion E1.
     inversion E2.
@@ -300,9 +354,17 @@ Proof.
     reflexivity.
   }
   {
-    admit.
+    inversion E1;
+    inversion E2;
+    specialize (IHe1 za VALA za0 VALA0);
+    specialize (IHe2 zb VALB zb0 VALB0);
+    subst;
+    try inversion H5;
+    try reflexivity;
+    try lia;
+    try contradiction.
   }
-Admitted.
+Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
@@ -313,7 +375,54 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
           equivalent_states s1 s2 id)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  induction e;
+  intros.
+  {
+    inversion EV.
+    constructor.
+  }
+  {
+    inversion EV.
+    subst.
+    specialize (FV i).
+    assert (i ? (Var i)).
+    {
+      constructor.
+    }
+    specialize (FV H z).
+    inversion FV.
+    constructor.
+    auto.
+  }
+  {
+    assert (forall id : id, (id) ? (e1) -> equivalent_states s1 s2 id).
+    {
+      intros.
+      apply (FV id).
+      constructor.
+      left.
+      assumption.
+    }
+
+    assert (forall id : id, (id) ? (e2) -> equivalent_states s1 s2 id).
+    {
+      intros.
+      apply (FV id).
+      constructor.
+      right.
+      assumption.
+    }
+
+    inversion EV;
+    subst;
+    specialize (IHe1 H za VALA);
+    specialize (IHe2 H0 zb VALB);
+    econstructor;
+    eauto.
+  }
+Qed.
 
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z), 
@@ -321,14 +430,40 @@ Definition equivalent (e1 e2 : expr) : Prop :=
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
 Lemma eq_refl (e : expr): e ~~ e.
-Proof. admit. Admitted.
+Proof.
+  constructor;
+  intuition.
+Qed.
 
 Lemma eq_symm (e1 e2 : expr) (EQ : e1 ~~ e2): e2 ~~ e1.
-Proof. admit. Admitted.
+Proof.
+  unfold equivalent in EQ.
+  constructor.
+  {
+    intro.
+    specialize (EQ n s).
+    inversion EQ.
+    auto.
+  }
+  {
+    specialize (EQ n s).
+    inversion EQ.
+    auto.
+  }
+Qed.
 
 Lemma eq_trans (e1 e2 e3 : expr) (EQ1 : e1 ~~ e2) (EQ2 : e2 ~~ e3):
   e1 ~~ e3.
-Proof. admit. Admitted.
+Proof.
+  unfold equivalent in EQ1.
+  unfold equivalent in EQ2.
+  constructor;
+  specialize (EQ1 n s);
+  specialize (EQ2 n s);
+  inversion EQ1;
+  inversion EQ2;
+  auto.
+Qed.
 
 Inductive Context : Type :=
 | Hole : Context
