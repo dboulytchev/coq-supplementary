@@ -106,10 +106,57 @@ Definition contextual_equivalent (s1 s2 : stmt) :=
 Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
-Proof. admit. Admitted.
+Proof. 
+  specialize (H Hole). simpl in H. assumption.
+Qed. 
 
 Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
-Proof. admit. Admitted.
+Proof.
+  assert (((Id 1) ::= (Var (Id 2))) ~e~ ((Id 2) ::= (Var (Id 1)))). 
+  {
+    constructor; intros.
+    - inversion H. inversion H0.
+      inversion VAL. inversion VAR.
+    - inversion H. inversion H0.
+      inversion VAL. inversion VAR.
+  }
+  assert (~(((Id 1) ::= (Var (Id 2))) ~c~ ((Id 2) ::= (Var (Id 1))))). 
+  {
+    unfold not. intros.
+    unfold contextual_equivalent in H0.
+    specialize (H0 (SeqR (READ(Id 1)) (SeqL Hole (WRITE(Var (Id 2)))))).
+    simpl in H0.
+    unfold eval_equivalent in H0.
+    specialize (H0 ((1%Z) :: []) ((1%Z) :: [])).
+    assert (<|READ (Id 1);; (Id 2 ::= Var (Id 1));; WRITE (Var (Id 2))|> [1%Z] => ([1%Z])).
+    {
+      remember (([])[(Id 1) <- 1%Z]) as s'. 
+      econstructor. 
+      apply bs_Seq with (s', [], []).
+      subst s'.
+      apply bs_Read.
+      apply bs_Seq with (s'[(Id 2) <- 1%Z], [], []).
+      apply bs_Assign.
+      constructor. simpl in Heqs'. subst s'. apply st_binds_hd.
+      apply bs_Write.
+      constructor. apply st_binds_hd.
+    }
+    destruct H0.
+    specialize (H2 H1).
+    inversion H2.
+    inversion H3.
+    inversion STEP1.
+    subst c'.
+    inversion STEP2. 
+    inversion STEP0.
+    inversion VAL.
+    inversion VAR.
+    inversion H32.
+  }
+  exists ((Id 1 ::= Var (Id 2))).
+  exists ((Id 2 ::= Var (Id 1))).
+  split; assumption. 
+Qed.
 
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
@@ -328,7 +375,7 @@ Proof.
   split. apply (eq_congruence_seq_l s s1 s2 EQ).
   split. apply (eq_congruence_cond_else e s s1 s2 EQ).
   split. apply (eq_congruence_cond_then e s s1 s2 EQ).
-  apply (eq_congruence_while e s s1 s2 EQ).
+  apply (eq_congruence_while e s1 s2 EQ).
 Qed.
 
 (* Big-step semantics is deterministic *)
@@ -423,13 +470,20 @@ Ltac by_eq_congruence e s s1 s2 H :=
   remember (eq_congruence e s s1 s2 H) as Congruence;
   match goal with H: Congruence = _ |- _ => clear H end;
   repeat (match goal with H: _ /\ _ |- _ => inversion_clear H end); assumption.
-    
+      
 Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
 Proof.
   split; intros.
-  - constructor; revert c c'. 
-    + induction C.
-      * simpl. apply H.
+  - admit.
+  - unfold contextual_equivalent in H.
+    split.
+    + intros. specialize (H Hole). simpl in H.
+      unfold eval_equivalent in H. 
+all:admit. Admitted. 
+
+(* apply H.
+       unfold bs_equivalent in  H. 
+
       * simpl. intros. 
         inversion H0.
         specialize (IHC c c'0 STEP1).
@@ -478,6 +532,7 @@ Proof.
         ++ apply bs_While_False. assumption.
   - remember (H Hole). simpl in b. assumption.
 Qed.
+*)
 
 (* Small-step semantics *)
 Module SmallStep.
@@ -710,10 +765,221 @@ Module Renaming.
 
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
     Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
-  Proof. admit. Admitted.
-    
+  Proof.
+    simpl. unfold Renaming.rename_id.
+    destruct r eqn:R. rewrite <- R.
+    reflexivity. 
+  Qed.
+
+  (** ADDITIONAL LEMMAS**)
+
+
+  Lemma renaming_state_injection (st st' : state Z) (r : renaming) : 
+    st = st' <-> Renaming.rename_state r st = Renaming.rename_state r st'.
+  Proof.
+    split. 
+    - intros. subst st. reflexivity. 
+    - revert st'. induction st; intros.
+      + simpl in H.
+        destruct st'.
+        * reflexivity.
+        * simpl in H. destruct r. destruct p. discriminate.
+      + simpl in H. destruct r eqn:R. 
+        rewrite <- R in H. rewrite <- R in IHst. destruct a.
+        destruct st'.
+        * simpl in H. discriminate.
+        * destruct p. simpl in H. destruct r eqn:R'.
+          simpl in H. rewrite <- R' in H. rewrite <- R' in IHst.
+          injection H. intros. specialize (IHst st' H0).
+          subst st'. injection R. intros. subst x0.
+          specialize (Renaming.bijective_injective x b) as I.
+          unfold FinFun.Injective in I.
+          specialize (I i i0 H2). subst i0. subst z0.
+          reflexivity.
+  Qed.
+
+  Lemma renaming_inversible (st : state Z) (r : renaming):
+    exists (st' : state Z), st = Renaming.rename_state r st'. 
+  Proof.
+    induction st.
+    - exists ([]). reflexivity.
+    - destruct r as [f b] eqn:R. 
+      rewrite <- R. rewrite <- R in IHst.
+      inversion b as [g I].
+      destruct IHst.
+      destruct a.
+      exists ((g i, z) :: x). simpl. rewrite -> R.
+      simpl. rewrite <- R. subst st.
+      destruct I. specialize (H0 i).
+      rewrite H0.
+      reflexivity.  
+  Qed.
+  
+  Lemma renaming_bs_invariant (s : stmt) (r : renaming) 
+    (i o i' o' : list Z) (st st' : state Z) :
+    (st, i, o) == s ==> (st', i', o') <->
+     (Renaming.rename_state r st, i, o) == rename r s ==> (Renaming.rename_state r st', i', o').
+  Proof.    
+    generalize dependent st.
+    generalize dependent st'. 
+    generalize dependent o.
+    generalize dependent o'.
+    generalize dependent i.
+    generalize dependent i'.
+    induction s; intros.
+    - split; intros; simpl.
+      + destruct r eqn:R.
+        inversion H.
+        apply bs_Skip.
+      + simpl in H. destruct r eqn:R. 
+        inversion H. 
+        rewrite <- R in H0.
+        apply (renaming_state_injection st st' r) in H0.
+        subst st. apply bs_Skip.
+    - split; intros; simpl.
+      + inversion H. simpl. destruct r eqn:R.
+        rewrite <- R. 
+        apply bs_Assign.
+        apply Renaming.eval_renaming_invariance.
+        assumption.
+      + simpl in H. destruct r eqn:R. rewrite <- R in H.
+        inversion H. simpl in H6.
+        destruct st'. 
+        * discriminate.
+        * destruct p. simpl in H6.
+        destruct r eqn:R'. rewrite <- R' in H6. 
+        injection H6. intros. apply renaming_state_injection in H0.
+        subst st'. injection R as R''. subst x1. 
+        specialize (Renaming.bijective_injective x b) as I.
+        specialize (I i i2 H10).
+        subst i2. subst z0.
+        apply bs_Assign. rewrite <- R' in VAL. 
+        specialize (Renaming.eval_renaming_invariance e st z r) as Q.
+        apply Q. assumption.
+    - split; intros; simpl.
+      + inversion H. inversion H. simpl.
+        destruct r eqn:R. simpl. rewrite <- R.
+        apply bs_Read.
+      + simpl in H. destruct r eqn:R. simpl.
+        inversion H. rewrite <- R in H.
+        rewrite <- R in H2. destruct st'.
+        * simpl in H5. discriminate.
+        * destruct p. injection H5.
+          intros. apply renaming_state_injection in H0.
+          subst st. 
+          specialize (Renaming.bijective_injective x b) as I.
+          unfold FinFun.Injective in I.
+          specialize (I i i2 H9). subst i2.
+          subst z.
+          apply bs_Read.
+    - split; intros; simpl.
+      + inversion H. destruct r eqn:R. apply bs_Write.
+        apply (Renaming.eval_renaming_invariance). 
+        assumption.
+      + simpl in H. destruct r eqn:R. inversion H.
+        apply renaming_state_injection in H5. subst st'.
+        apply bs_Write.
+        specialize (Renaming.eval_renaming_invariance e st z r). 
+        intros. destruct H0.
+        apply H5. rewrite <- R in VAL. assumption.
+    - split; intros; simpl.
+      + inversion H.
+        destruct r eqn:R. simpl.
+        rewrite <- R. rewrite <- R in IHs1.
+        rewrite <- R in IHs2.
+        destruct c'. destruct p.
+        eapply bs_Seq.
+        apply IHs1. eassumption.
+        apply IHs2. assumption.
+      + simpl in H. destruct r eqn:R. rewrite <- R  in H.
+        inversion H.
+        destruct c'. destruct p. 
+        specialize (renaming_inversible s r) as E.
+        destruct E. subst s. 
+        eapply bs_Seq.
+        eapply IHs1. rewrite <- R. 
+        eassumption.
+        eapply IHs2. rewrite <- R.
+        eassumption.
+    - split; intros; simpl.
+      + inversion H.
+        * destruct r eqn:R. rewrite <- R.
+          apply bs_If_True. apply Renaming.eval_renaming_invariance.
+          assumption. rewrite <- R in IHs1. apply IHs1.
+          assumption.
+        * destruct r eqn:R. rewrite <- R. 
+          apply bs_If_False. apply Renaming.eval_renaming_invariance.
+          assumption. rewrite <- R in IHs2. apply IHs2.
+          assumption.
+      + simpl in H. destruct r eqn:R. rewrite <- R in H.
+        inversion H. 
+        * apply bs_If_True.
+          apply Renaming.eval_renaming_invariance in CVAL.
+          assumption. rewrite <- R in IHs1.
+          apply IHs1. assumption.
+        * apply bs_If_False.
+          apply Renaming.eval_renaming_invariance in CVAL.
+          assumption.
+          rewrite <- R in IHs2.
+          apply IHs2.
+          assumption.
+    - split; intros; simpl.
+      + destruct r eqn:R. rewrite <- R.
+        rewrite <- R in IHs.
+        dependent induction H.
+        * remember (exist (fun f : id -> id => FinFun.Bijective f) x b) as r eqn:R. 
+          destruct c'. destruct p.
+          eapply bs_While_True.
+          -- apply Renaming.eval_renaming_invariance.
+             assumption.
+          -- apply IHs. eassumption.
+          -- eapply IHbs_int2. 
+             eassumption.
+             eassumption.
+             reflexivity.
+             reflexivity.
+             reflexivity.
+        * remember (exist (fun f : id -> id => FinFun.Bijective f) x b) as r eqn:R.
+          apply bs_While_False. apply Renaming.eval_renaming_invariance.
+          assumption.
+      + destruct r eqn:R. simpl in H. rewrite <- R in H.
+        dependent induction H.
+        * remember (exist (fun f : id -> id => FinFun.Bijective f) x b) as r eqn:R.
+          destruct c'. destruct p. destruct (renaming_inversible s0 r).
+          subst s0.
+          eapply bs_While_True.
+          -- eapply Renaming.eval_renaming_invariance.
+             eassumption.
+          -- eapply IHs. eassumption.
+          -- eapply IHbs_int2.
+             eassumption.
+             rewrite <- R. eassumption.
+             all: reflexivity.
+        * remember (exist (fun f : id -> id => FinFun.Bijective f) x0 b) as r eqn:R.
+          apply renaming_state_injection in x.
+          subst st.
+          apply bs_While_False.
+          eapply Renaming.eval_renaming_invariance.
+          eassumption.
+  Qed.
+
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
-  Proof. admit. Admitted.
+  Proof.
+    constructor; intros.
+    - inversion H.
+      exists (Renaming.rename_state r x).
+      specialize (renaming_bs_invariant s r i ([]) ([]) o ([]) x) as R.
+      simpl in R. apply R. assumption.
+    - inversion H.
+      destruct (renaming_inversible x r). subst x.
+      assert ((Renaming.rename_state r ([])) = ([])). 
+      {
+        reflexivity.
+      }
+      rewrite <- H1 in H0.
+      econstructor. apply renaming_bs_invariant with r.
+      eassumption.
+  Qed. 
     
 End Renaming.
 
