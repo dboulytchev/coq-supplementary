@@ -122,3 +122,11 @@ Proof.
   inversion H1. inversion H2.
   lia.
 Qed.
+
+(* Require Import Coq.Classes.RelationClasses.
+
+Theorem id_neq_sym (x y : id) : x <> y -> y <> x.
+Proof. auto. Qed.
+
+#[global]
+Instance id_neq_Symmetric : Symmetric (not (eq : id -> id -> Prop)) := id_neq_sym. *)

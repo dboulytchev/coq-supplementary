@@ -7,7 +7,7 @@ Require Export Id.
 Require Export State.
 Require Export Expr.
 
-From hahn Require Import HahnBase.
+(* From hahn Require Import HahnBase. *)
 
 (* AST for statements *)
 Inductive stmt : Type :=

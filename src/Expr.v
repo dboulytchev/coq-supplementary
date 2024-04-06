@@ -7,7 +7,7 @@ Require Export Lia.
 Require Import List.
 Import ListNotations.
 
-From hahn Require Import HahnBase.
+(* From hahn Require Import HahnBase. *)
 
 (* Type of binary operators *)
 Inductive bop : Type :=
@@ -354,7 +354,7 @@ Module Renaming.
 
   Definition renaming := { f : id -> id | Bijective f }.
 
-  Fixpoint rename_id (r : renaming) (x : id) : id :=
+  Definition rename_id (r : renaming) (x : id) : id :=
     match r with
       exist _ f _ => f x
     end.
