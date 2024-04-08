@@ -937,10 +937,34 @@ Module Renaming.
   Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.    
 
   Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
-  Proof. admit. Admitted.
-
+  Proof. 
+    destruct r eqn: R.
+    destruct b eqn: B.
+    assert(Bijective x0). {
+      unfold Bijective.
+      exists x. destruct a. split; assumption.
+    }
+    remember (exist (fun f : id -> id => Bijective f)
+    x0 H) as r'.
+    exists r'. unfold renamings_inv. intros. simpl.
+    unfold rename_id. destruct r'. injection Heqr' as xx.
+    subst x2. destruct a. auto.
+  Qed.
+ 
   Lemma renaming_inv2 (r : renaming) : exists (r' : renaming), renamings_inv r r'.
-  Proof. admit. Admitted.
+  Proof. 
+    destruct r eqn: R.
+    destruct b eqn: B.
+    assert(Bijective x0). {
+      unfold Bijective.
+      exists x. destruct a. split; assumption.
+    }
+    remember (exist (fun f : id -> id => Bijective f)
+    x0 H) as r'.
+    exists r'. unfold renamings_inv. intros. simpl.
+    unfold rename_id. destruct r'. injection Heqr' as xx.
+    subst x2. destruct a. auto.
+  Qed.
 
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with
@@ -953,7 +977,14 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (e    : expr) : rename_expr r (rename_expr r' e) = e.
-  Proof. admit. Admitted.     
+  Proof. 
+    induction e.
+    - reflexivity.
+    - simpl. apply f_equal.
+      apply Hinv.
+    - simpl. rewrite IHe1. rewrite IHe2.
+      reflexivity.
+  Qed.
 
   Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
     match st with
@@ -966,8 +997,16 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (st   : state Z) : rename_state r (rename_state r' st) = st.
-  Proof. admit. Admitted.     
-
+  Proof. 
+    induction st.
+    - reflexivity.
+    - simpl. destruct a. destruct r' eqn: R'. simpl.
+      destruct r eqn: R. simpl. rewrite <- R in *.
+      rewrite <- R' in *. rewrite IHst.
+      specialize (Hinv i). rewrite R in Hinv.
+      rewrite R' in Hinv. simpl in Hinv. 
+      rewrite Hinv. reflexivity.
+  Qed.
 
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
   Proof. 
