@@ -524,21 +524,48 @@ Module SmallStep.
     inv STEP; inv EXEC; eauto.
   Qed.
 
+  Lemma ss_eval_equiv_bop (b : bop)
+                          (e1 e2 : expr)
+                          (s : state Z)
+                          (za zb zc : Z)
+                          (SS1 : ((s) |- e1 -->> (Nat za)))
+                          (SS2 : ((s) |- e2 -->> (Nat zb)))
+                          (EVAL : ([|Bop b e1 e2|] s => zc))
+                          : ((s) |- (Bop b e1 e2) -->> (Nat zc)).
+  Proof. 
+    dependent induction e1. 
+    { dependent induction e2 generalizing b. 
+      { inv EVAL; econstructor; eauto; eauto. }
+      { inv EVAL; inv VALB; remember (ss_Var s i zb0 VAR); econstructor; eauto; eauto. } 
+      { admit. } }
+    { dependent induction e2 generalizing b.
+      { inv EVAL; inv VALA; remember (ss_Var s i za0 VAR); econstructor; eauto; eauto. }
+      { inv EVAL; inv VALA; inv VALB; 
+        remember (ss_Var s i za0 VAR); remember (ss_Var s i0 zb0 VAR0); 
+        remember (ss_Left s (Var i) (Var i0) (Nat za0)); 
+        remember (ss_Right s (Nat za0) (Var i0) (Nat zb0));
+        remember (ss_Bop s za0 zb0); 
+        econstructor; eauto; econstructor; eauto; econstructor; eauto; eauto. }
+      { admit. } }
+    admit.
+  Admitted.
+
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
   Proof. 
     split; intro.
-    { dependent induction e.
-      * inv H. 
-      * inv H. econstructor. eauto. eauto.
-      * admit. }
+    { revert dependent z. 
+      dependent induction e; try by (intro; intro; inv H; econstructor; eauto; eauto).
+      intros z' H. 
+      inv H; specialize (IHe1 _ _ VALA); specialize (IHe2 _ _ VALB);
+      eapply ss_eval_equiv_bop; eauto; eauto; eassumption. }
     dependent induction H; auto.
     assert (Nat z = Nat z). { reflexivity. } remember (IHss_eval z H0). 
     remember (ss_bs_step s e e' z HStep e0).
     assumption.
-  Admitted.
-  
+  Qed.
+
 End SmallStep.
 
 Module Renaming.
@@ -569,7 +596,12 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (e    : expr) : rename_expr r (rename_expr r' e) = e.
-  Proof. admit. Admitted.     
+  Proof. 
+    dependent induction e.
+    { reflexivity. }
+    { unfold rename_expr. rewrite Hinv. reflexivity. }
+    simpl. rewrite IHe1. rewrite IHe2. reflexivity.
+  Qed.
 
   Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
     match st with
@@ -582,10 +614,12 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (st   : state Z) : rename_state r (rename_state r' st) = st.
-  Proof. admit. Admitted.     
+  Proof. admit. Admitted.
       
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
-  Proof. admit. Admitted.
+  Proof. 
+    inv BH. inv H. intro. intro. congruence.
+  Qed.
   
   Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
