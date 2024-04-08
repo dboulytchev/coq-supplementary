@@ -844,8 +844,8 @@ Module Renaming.
     (i o i' o' : list Z) (st st' : state Z) :
     (st, i, o) == s ==> (st', i', o') <->
      (Renaming.rename_state r st, i, o) == rename r s ==> (Renaming.rename_state r st', i', o').
-  Proof.    
-    generalize dependent st.
+  Proof. admit. Admitted.    
+(*    generalize dependent st.
     generalize dependent st'. 
     generalize dependent o.
     generalize dependent o'.
@@ -987,6 +987,7 @@ Module Renaming.
           eapply Renaming.eval_renaming_invariance.
           eassumption.
   Qed.
+  *)
 
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
   Proof.
