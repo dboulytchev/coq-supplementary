@@ -8,6 +8,10 @@ Require Export State.
 Require Export Expr.
 Require Export Stmt.
 
+From hahn Require Import HahnBase.
+
+Require Import Coq.Program.Equality.
+
 (* Configuration *)
 Definition conf := (list Z * state Z * list Z * list Z)%type.
 
@@ -198,7 +202,31 @@ Module StraightLine.
         (VAL : [| e |] st => n)
         (EXEC: (n::s, st, i, o) -- p --> c) :        
     (s, st, i, o) -- (compile_expr e) ++ p --> c.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction VAL generalizing p s i o.
+    { apply sm_Const. assumption. }
+    { eapply sm_Load. eassumption. assumption. }
+    all: simpl; (repeat rewrite <- app_assoc); eapply IHVAL1; eapply IHVAL2.
+    { apply sm_Add. assumption. assumption. }
+    { apply sm_Sub. assumption. assumption. }
+    { apply sm_Mul. assumption. }
+    { apply sm_Div. assumption. assumption. }
+    { apply sm_Mod. assumption. assumption. }
+    { apply sm_Le_T. assumption. assumption. }
+    { apply sm_Le_F. assumption. assumption. }
+    { apply sm_Lt_T. assumption. assumption. }
+    { apply sm_Lt_F. assumption. assumption. }
+    { apply sm_Ge_T. assumption. assumption. }
+    { apply sm_Ge_F. assumption. assumption. }
+    { apply sm_Gt_T. assumption. assumption. }
+    { apply sm_Gt_F. assumption. assumption. }
+    { apply sm_Eq_T. assumption. assumption. }
+    { apply sm_Eq_F. assumption. assumption. }
+    { apply sm_Ne_T. assumption. assumption. }
+    { apply sm_Ne_F. assumption. assumption. }
+    { apply sm_And. assumption. assumption. assumption. }
+    apply sm_Or. assumption. assumption. assumption.
+  Qed.
 
   #[export] Hint Resolve compiled_expr_correct_cont.
   
@@ -206,7 +234,16 @@ Module StraightLine.
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
         (VAL : [| e |] st => n) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o).
-  Proof. admit. Admitted.
+  Proof. 
+    remember (compiled_expr_correct_cont e st s i o n ([]) (n::s, st, i, o)).
+    assert (((n :: s, st, i, o)) -- [] --> ((n :: s, st, i, o))). 
+    { constructor. exact []. }
+    remember (s0 VAL H). 
+    clear Heqs1 Heqs0.
+    assert ((compile_expr e) ++ [] = compile_expr e).
+    { apply app_nil_r. }
+    rewrite <- H0. assumption.
+  Qed.
   
   Lemma compiled_expr_not_incorrect_cont
         (e : expr) (st : state Z) (s i o : list Z) (p : prog) (c : conf)
