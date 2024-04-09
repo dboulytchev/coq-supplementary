@@ -179,13 +179,14 @@ where "[| e |] st => z" := (eval e st z).
 Module SmokeTest.
             
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. Admitted.
+  Proof. constructor. Qed.
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. Admitted.
-
+  Proof. inversion HH. subst. inversion VALB. subst.
+    rewrite <- (Zplus_diag_eq_mult_2). constructor; assumption.
+  Qed.
 End SmokeTest.
 
 (* A relation of one expression being of a subexpression of another *)
@@ -199,8 +200,15 @@ where "e1 << e2" := (subexpr e1 e2).
 
 Lemma strictness (e e' : expr) (HSub : e' << e) (st : state Z) (z : Z) (HV : [| e |] st => z) :
   exists z' : Z, [| e' |] st => z'.
-Proof. admit. Admitted.
-
+Proof.
+  generalize dependent z. 
+  induction e; intros; inversion HSub; subst.
+  - exists z0. assumption.
+  - exists z. assumption.
+  - exists z. assumption.
+  - inversion HV; eauto.
+  - inversion HV; eauto.
+Qed.
 Reserved Notation "x ? e" (at level 0).
 
 (* Set of variables is an expression *)
@@ -213,36 +221,62 @@ where "x ? e" := (V e x).
    defined in that state
  *)      
 Lemma defined_expression
-      (e : expr) (s : state Z) (z : Z) (id : id)
+      (e : expr) (s : state Z) (z : Z) (idV : id)
       (RED : [| e |] s => z)
-      (ID  : id ? e) :
-  exists z', s / id => z'.
-Proof. admit. Admitted.
-
+      (ID  : idV ? e) :
+  exists z', s / idV => z'.
+Proof.
+  generalize dependent z.
+  induction e; intros.
+  - inversion ID.
+  - inversion ID. subst. inversion RED. subst. exists z. assumption.
+  - inversion ID. inversion RED; inversion H3; eauto.
+Qed.
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
 *)
-Lemma undefined_variable (e : expr) (s : state Z) (id : id)
-      (ID : id ? e) (UNDEF : forall (z : Z), ~ (s / id => z)) :
+Lemma undefined_variable (e : expr) (s : state Z) (idV : id)
+      (ID : idV ? e) (UNDEF : forall (z : Z), ~ (s / idV => z)) :
   forall (z : Z), ~ ([| e |] s => z).
-Proof. admit. Admitted.
+Proof.
+  intros. unfold not.
+  generalize dependent z.
+  induction e; intros.
+  - inversion ID.
+  - inversion ID. inversion H. subst. apply (UNDEF z) in VAR. assumption.
+  - inversion ID. subst. destruct H4.
+    + inversion H; subst; apply IHe1 in VALA; assumption.
+    + inversion H; subst; apply IHe2 in VALB; assumption.
+Qed.
 
 (* The evaluation relation is deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
-Proof. admit. Admitted.
+Proof. generalize dependent z1. generalize dependent z2. induction e; intros.
+  - inversion E1. inversion E2. subst. reflexivity.
+  - inversion E1. inversion E2. subst. apply (state_deterministic Z s i z1 z2 VAR VAR0).
+  - inversion E1; inversion E2; specialize (IHe1 za VALA za0 VALA0); 
+    specialize (IHe2 zb VALB zb0 VALB0); subst;
+    try discriminate H5; try reflexivity; contradiction.
+Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
-Definition equivalent_states (s1 s2 : state Z) (id : id) :=
-  forall z :Z, s1 /id => z <-> s2 / id => z.
+Definition equivalent_states (s1 s2 : state Z) (idx : id) :=
+  forall z:Z, s1 / idx => z <-> s2 / idx => z.
 
 Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
-      (FV : forall (id : id) (ID : id ? e),
-          equivalent_states s1 s2 id)
+      (FV : forall (idx : id) (ID : idx ? e),
+          equivalent_states s1 s2 idx)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. admit. Admitted.
+Proof. generalize dependent z. induction e eqn:EH; intros.
+  - inversion EV. auto.
+  - inversion EV. subst.
+    assert (forall (i : id), i ? (Var i)).
+    + constructor.
+    + specialize (FV i). apply FV in H. apply H in VAR. apply (bs_Var s2 i z VAR).
+  - admit. Admitted. 
 
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z), 
