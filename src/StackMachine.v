@@ -249,7 +249,26 @@ Module StraightLine.
         (e : expr) (st : state Z) (s i o : list Z) (p : prog) (c : conf)
         (EXEC : (s, st, i, o) -- compile_expr e ++ p --> c) :
     exists (n : Z), [| e |] st => n /\ (n :: s, st, i, o) -- p --> c.
-  Proof. admit. Admitted.
+  Proof.
+    dependent induction e; simpl in EXEC.
+    { assert ([|Nat z|] st => (z) /\ ((z :: s, st, i, o)) -- p --> (c)).
+      { split.
+        { constructor. }
+        inv EXEC. }
+      eauto. }
+    { inv EXEC. 
+      assert ([|Var i|] st => (z) /\ ((z :: s, st, i0, o)) -- p --> (c)).
+      { split.
+        { constructor. assumption. }
+        assumption. }
+      eauto. }
+    repeat rewrite <- app_assoc in EXEC.
+    remember (IHe1 st s i o (compile_expr e2 ++ [B b] ++ p) c EXEC). 
+    destruct e as [za [E1 P0]].
+    remember (IHe2 st (za::s) i o ([B b] ++ p) c P0).
+    destruct e as [zb [E2 P1]]. clear Heqe Heqe0.
+    simpl in P1. inv P1; eauto.
+  Qed.
   
   Lemma compiled_expr_not_incorrect
         (e : expr) (st : state Z)
@@ -261,7 +280,11 @@ Module StraightLine.
   Lemma expr_compiler_correct
         (e : expr) (st : state Z) (s i o : list Z) (n : Z) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o) <-> [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof. 
+    split; intro. 
+    { eapply compiled_expr_not_incorrect. eassumption. }
+    apply compiled_expr_correct. assumption.
+  Qed.
   
   Fixpoint compile (s : stmt) (H : StraightLine s) : prog :=
     match H with
@@ -301,7 +324,11 @@ Module StraightLine.
   Theorem straightline_compiler_correct
           (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z) :
     (st, i, o) == p ==> (st', i', o') <-> ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof.
+    split; intro.
+    { apply compiled_straightline_correct. assumption. }
+    eapply compiled_straightline_not_incorrect. eassumption.
+  Qed.
   
 End StraightLine.
   
