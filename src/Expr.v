@@ -270,13 +270,19 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
           equivalent_states s1 s2 idx)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. generalize dependent z. induction e eqn:EH; intros.
+Proof. generalize dependent z. induction e; intros.
   - inversion EV. auto.
   - inversion EV. subst.
     assert (forall (i : id), i ? (Var i)).
     + constructor.
     + specialize (FV i). apply FV in H. apply H in VAR. apply (bs_Var s2 i z VAR).
-  - admit. Admitted. 
+  - assert (forall (idx : id), (idx ? e1) -> equivalent_states s1 s2 idx).
+    + intros. apply (FV idx). constructor. left. apply H.
+    + assert (forall (idx : id), (idx ? e2) -> equivalent_states s1 s2 idx).
+      ++  intros. apply (FV idx). constructor. right. apply H0.
+      ++  inversion EV; subst; specialize (IHe1 H za VALA); specialize (IHe2 H0 zb VALB);
+      try constructor; try assumption; eauto.
+Qed.
 
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z), 
@@ -284,14 +290,17 @@ Definition equivalent (e1 e2 : expr) : Prop :=
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
 Lemma eq_refl (e : expr): e ~~ e.
-Proof. admit. Admitted.
+Proof. constructor; intros; assumption. Qed.
 
 Lemma eq_symm (e1 e2 : expr) (EQ : e1 ~~ e2): e2 ~~ e1.
-Proof. admit. Admitted.
+Proof. constructor; apply EQ. Qed.
 
 Lemma eq_trans (e1 e2 e3 : expr) (EQ1 : e1 ~~ e2) (EQ2 : e2 ~~ e3):
   e1 ~~ e3.
-Proof. admit. Admitted.
+Proof. constructor; intros; unfold equivalent in EQ1; unfold equivalent in EQ2.
+  - apply (EQ1 n s) in H. apply EQ2. assumption.
+  - apply (EQ2 n s) in H. apply EQ1. assumption.
+Qed.
 
 Inductive Context : Type :=
 | Hole : Context
@@ -314,8 +323,16 @@ Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
 
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
-Proof. admit. Admitted.
-
+Proof. split; constructor; intro; generalize dependent n.
+  - induction C; intro; specialize (H n s). apply H.
+    + simpl. intro. inversion H0; subst; specialize (IHC za VALA); eauto.
+    + simpl. intro. inversion H0; subst; specialize (IHC zb VALB); eauto.
+  - induction C; intro; specialize (H n s). apply H.
+    + simpl. intro. inversion H0; subst; specialize (IHC za VALA); eauto.
+    + simpl. intro. inversion H0; subst; specialize (IHC zb VALB); eauto.
+  - intro. specialize (H Hole n s). simpl in H. apply H.
+  - intro. specialize (H Hole n s). simpl in H. apply H.
+Qed.
 Module SmallStep.
 
   Inductive is_value : expr -> Prop :=
