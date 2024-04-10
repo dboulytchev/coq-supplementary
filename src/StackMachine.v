@@ -275,7 +275,35 @@ Module StraightLine.
         (s i o : list Z) (n : Z)
         (EXEC : (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o)) :
     [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction e; simpl in EXEC.
+    { inv EXEC. inv EXEC0. }
+    { inv EXEC. inv EXEC0. constructor. assumption. }
+    remember (compiled_expr_not_incorrect_cont e1 st s i o (compile_expr e2 ++ [B b]) (n :: s, st, i, o) EXEC).
+    destruct e. destruct a.
+    remember (compiled_expr_not_incorrect_cont e2 st (x :: s) i o ([B b]) (n :: s, st, i, o) s0).
+    destruct e0. destruct a.
+    destruct b; inv s1; inv EXEC0.
+    { eapply bs_Add; eassumption. }
+    { eapply bs_Sub; eassumption. }
+    { eapply bs_Mul; eassumption. }
+    { eapply bs_Div; eassumption. }
+    { eapply bs_Mod; eassumption. }
+    { eapply bs_Le_T; eassumption. }
+    { eapply bs_Le_F; eassumption. }
+    { eapply bs_Lt_T; eassumption. }
+    { eapply bs_Lt_F; eassumption. }
+    { eapply bs_Ge_T; eassumption. }
+    { eapply bs_Ge_F; eassumption. }
+    { eapply bs_Gt_T; eassumption. }
+    { eapply bs_Gt_F; eassumption. }
+    { eapply bs_Eq_T; eassumption. }
+    { eapply bs_Eq_F; eassumption. }
+    { eapply bs_Ne_T; eassumption. }
+    { eapply bs_Ne_F; eassumption. }
+    { eapply bs_And; eassumption. }
+    eapply bs_Or; eassumption.
+  Qed.
   
   Lemma expr_compiler_correct
         (e : expr) (st : state Z) (s i o : list Z) (n : Z) :
