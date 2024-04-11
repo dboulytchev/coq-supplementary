@@ -472,68 +472,40 @@ Ltac by_eq_congruence e s s1 s2 H :=
   remember (eq_congruence e s s1 s2 H) as Congruence;
   match goal with H: Congruence = _ |- _ => clear H end;
   repeat (match goal with H: _ /\ _ |- _ => inversion_clear H end); assumption.
-      
-Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
+
+  
+(* Lemma bs_eq_eq_ceq.
+*)
+
+Lemma bs_eq_stronger s1 s2: s1 ~~~ s2 -> s1 ~e~ s2.
 Proof.
-  split; intros.
-  - admit.
-  - unfold contextual_equivalent in H.
-    split.
-    + intros. specialize (H Hole). simpl in H.
-      unfold eval_equivalent in H. 
-all:admit. Admitted. 
-
-(* apply H.
-       unfold bs_equivalent in  H. 
-
-      * simpl. intros. 
-        inversion H0.
-        specialize (IHC c c'0 STEP1).
-        eapply (bs_Seq). eassumption. assumption.
-      * simpl. intros. inversion H0.
-        specialize (IHC c'0 c' STEP2).
-        eapply (bs_Seq). eassumption. assumption.
-      * simpl. intros. inversion H0.
-        ++  specialize (IHC ((s0, i, o)) c' STEP).
-            apply bs_If_True. assumption. assumption.
-        ++  apply bs_If_False. assumption. assumption.
-      * simpl. intros. inversion H0.
-        ++  apply bs_If_True. assumption. assumption.
-        ++  specialize (IHC ((s0, i, o)) c' STEP).
-            apply bs_If_False. assumption. assumption.
-      * simpl. intros.
-        dependent induction H0.
-        ++ eapply bs_While_True with (c' := c').
-          -- assumption.
-          -- apply (IHC ((st, i, o)) c' H0_).
-          -- apply (IHbs_int2 s1 H e C IHC). reflexivity.
-        ++ apply bs_While_False. assumption.
-    + induction C.
-      * simpl. apply H.
-      * simpl. intros. 
-        inversion H0.
-        specialize (IHC c c'0 STEP1).
-        eapply (bs_Seq). eassumption. assumption.
-      * simpl. intros. inversion H0.
-        specialize (IHC c'0 c' STEP2).
-        eapply (bs_Seq). eassumption. assumption.
-      * simpl. intros. inversion H0.
-        ++  specialize (IHC ((s0, i, o)) c' STEP).
-            apply bs_If_True. assumption. assumption.
-        ++  apply bs_If_False. assumption. assumption.
-      * simpl. intros. inversion H0.
-        ++  apply bs_If_True. assumption. assumption.
-        ++  specialize (IHC ((s0, i, o)) c' STEP).
-            apply bs_If_False. assumption. assumption.
-      * simpl. intros.
-        dependent induction H0.
-        ++ eapply bs_While_True with (c' := c').
-          -- assumption.
-          -- apply (IHC ((st, i, o)) c' H0_).
-          -- apply (IHbs_int2 s2 H e C IHC). reflexivity.
-        ++ apply bs_While_False. assumption.
-  - remember (H Hole). simpl in b. assumption.
+  unfold eval_equivalent. intros.
+  split; intros; unfold eval in *;
+  destruct H0 as [st H0]; exists st;
+  apply H; assumption.  
 Qed.
+
+Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 -> s1 ~c~ s2.
+Proof.
+  intros.
+  - unfold contextual_equivalent.
+    intros C. apply bs_eq_stronger. 
+    generalize dependent C.
+    induction C.
+    + simpl. apply H.
+    + simpl. intros.
+      apply eq_congruence_seq_l. assumption.
+    + simpl. apply eq_congruence_seq_r. assumption.
+    + simpl. apply eq_congruence_cond_then. assumption.
+    + simpl. apply eq_congruence_cond_else. assumption.
+    + simpl. apply eq_congruence_while. assumption.
+Qed.
+
+(*
+The s1 ~c~ s2 -> s1 ~~~ s2 is false
+  - admit.
+Admitted. 
+
 *)
 
 (* Small-step semantics *)
@@ -771,8 +743,23 @@ Module Renaming.
     (r r' : Renaming.renaming)
     (Hinv : Renaming.renamings_inv r r')
     (s    : stmt) : rename r (rename r' s) = s.
-  Proof. admit. Admitted.
-  
+  Proof.
+    induction s.
+    - reflexivity.
+    - simpl. remember (Hinv i). 
+      rewrite e0. 
+      specialize (Renaming.re_rename_expr r r' Hinv e) as H.
+      rewrite H. reflexivity.
+    - simpl. specialize (Hinv i). rewrite Hinv. reflexivity.
+    - simpl. specialize (Renaming.re_rename_expr r r' Hinv e) as H.
+      rewrite H. reflexivity.
+    - simpl. rewrite IHs1. rewrite IHs2. reflexivity.
+    - simpl. specialize (Renaming.re_rename_expr r r' Hinv e) as H.
+      rewrite H. rewrite IHs1. rewrite IHs2. reflexivity.
+    - simpl. specialize (Renaming.re_rename_expr r r' Hinv e) as H.
+      rewrite H. rewrite IHs. reflexivity.
+  Qed.    
+
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
     Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
   Proof.
@@ -782,20 +769,6 @@ Module Renaming.
   Qed.
 
   #[export] Hint Resolve Renaming.eval_renaming_invariance : core.
-
-  Lemma renaming_invariant_bs
-    (s         : stmt)
-    (r         : Renaming.renaming)
-    (c c'      : conf)
-    (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
-  Proof. admit. Admitted.
-  
-  Lemma renaming_invariant_bs_inv
-    (s         : stmt)
-    (r         : Renaming.renaming)
-    (c c'      : conf)
-    (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
-  Proof. admit. Admitted.
 
   (** ADDITIONAL LEMMAS (Some of them were added to task, TODO: deduplicate)**)
 
@@ -823,91 +796,42 @@ Module Renaming.
           reflexivity.
   Qed.
 
-  Lemma renaming_inversible (st : state Z) (r : renaming):
-    exists (st' : state Z), st = Renaming.rename_state r st'. 
+  Lemma renaming_invariant_bs
+    (s         : stmt)
+    (r         : Renaming.renaming)
+    (c c'      : conf)
+    (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
   Proof.
-    induction st.
-    - exists ([]). reflexivity.
-    - destruct r as [f b] eqn:R. 
-      rewrite <- R. rewrite <- R in IHst.
-      inversion b as [g I].
-      destruct IHst.
-      destruct a.
-      exists ((g i, z) :: x). simpl. rewrite -> R.
-      simpl. rewrite <- R. subst st.
-      destruct I. specialize (H0 i).
-      rewrite H0.
-      reflexivity.  
-  Qed.
-  
-  Lemma renaming_bs_invariant (s : stmt) (r : renaming) 
-    (i o i' o' : list Z) (st st' : state Z) :
-    (st, i, o) == s ==> (st', i', o') <->
-     (Renaming.rename_state r st, i, o) == rename r s ==> (Renaming.rename_state r st', i', o').
-  Proof. admit. Admitted.    
-(*    generalize dependent st.
+    destruct c as [[st i] o].
+    destruct c' as [[st' i'] o'].
+    simpl.
+    rename Hbs into H.
+    generalize dependent st.
     generalize dependent st'. 
     generalize dependent o.
     generalize dependent o'.
     generalize dependent i.
     generalize dependent i'.
     induction s; intros.
-    - split; intros; simpl.
+    - intros. simpl.
       + destruct r eqn:R.
         inversion H.
         apply bs_Skip.
-      + simpl in H. destruct r eqn:R. 
-        inversion H. 
-        rewrite <- R in H0.
-        apply (renaming_state_injection st st' r) in H0.
-        subst st. apply bs_Skip.
-    - split; intros; simpl.
-      + inversion H. simpl. destruct r eqn:R.
+    - intros. simpl.
+      + inversion H. simpl. destruct r eqn:R. simpl.
         rewrite <- R. 
         apply bs_Assign.
         apply Renaming.eval_renaming_invariance.
         assumption.
-      + simpl in H. destruct r eqn:R. rewrite <- R in H.
-        inversion H. simpl in H6.
-        destruct st'. 
-        * discriminate.
-        * destruct p. simpl in H6.
-        destruct r eqn:R'. rewrite <- R' in H6. 
-        injection H6. intros. apply renaming_state_injection in H0.
-        subst st'. injection R as R''. subst x1. 
-        specialize (Renaming.bijective_injective x b) as I.
-        specialize (I i i2 H10).
-        subst i2. subst z0.
-        apply bs_Assign. rewrite <- R' in VAL. 
-        specialize (Renaming.eval_renaming_invariance e st z r) as Q.
-        apply Q. assumption.
-    - split; intros; simpl.
+    - intros. simpl.
       + inversion H. inversion H. simpl.
         destruct r eqn:R. simpl. rewrite <- R.
         apply bs_Read.
-      + simpl in H. destruct r eqn:R. simpl.
-        inversion H. rewrite <- R in H.
-        rewrite <- R in H2. destruct st'.
-        * simpl in H5. discriminate.
-        * destruct p. injection H5.
-          intros. apply renaming_state_injection in H0.
-          subst st. 
-          specialize (Renaming.bijective_injective x b) as I.
-          unfold FinFun.Injective in I.
-          specialize (I i i2 H9). subst i2.
-          subst z.
-          apply bs_Read.
-    - split; intros; simpl.
+    - intros. simpl.
       + inversion H. destruct r eqn:R. apply bs_Write.
         apply (Renaming.eval_renaming_invariance). 
         assumption.
-      + simpl in H. destruct r eqn:R. inversion H.
-        apply renaming_state_injection in H5. subst st'.
-        apply bs_Write.
-        specialize (Renaming.eval_renaming_invariance e st z r). 
-        intros. destruct H0.
-        apply H5. rewrite <- R in VAL. assumption.
-    - split; intros; simpl.
+    - intros. simpl.
       + inversion H.
         destruct r eqn:R. simpl.
         rewrite <- R. rewrite <- R in IHs1.
@@ -916,17 +840,7 @@ Module Renaming.
         eapply bs_Seq.
         apply IHs1. eassumption.
         apply IHs2. assumption.
-      + simpl in H. destruct r eqn:R. rewrite <- R  in H.
-        inversion H.
-        destruct c'. destruct p. 
-        specialize (renaming_inversible s r) as E.
-        destruct E. subst s. 
-        eapply bs_Seq.
-        eapply IHs1. rewrite <- R. 
-        eassumption.
-        eapply IHs2. rewrite <- R.
-        eassumption.
-    - split; intros; simpl.
+    - intros. simpl.
       + inversion H.
         * destruct r eqn:R. rewrite <- R.
           apply bs_If_True. apply Renaming.eval_renaming_invariance.
@@ -936,19 +850,7 @@ Module Renaming.
           apply bs_If_False. apply Renaming.eval_renaming_invariance.
           assumption. rewrite <- R in IHs2. apply IHs2.
           assumption.
-      + simpl in H. destruct r eqn:R. rewrite <- R in H.
-        inversion H. 
-        * apply bs_If_True.
-          apply Renaming.eval_renaming_invariance in CVAL.
-          assumption. rewrite <- R in IHs1.
-          apply IHs1. assumption.
-        * apply bs_If_False.
-          apply Renaming.eval_renaming_invariance in CVAL.
-          assumption.
-          rewrite <- R in IHs2.
-          apply IHs2.
-          assumption.
-    - split; intros; simpl.
+    - intros. simpl.
       + destruct r eqn:R. rewrite <- R.
         rewrite <- R in IHs.
         dependent induction H.
@@ -967,35 +869,51 @@ Module Renaming.
         * remember (exist (fun f : id -> id => FinFun.Bijective f) x b) as r eqn:R.
           apply bs_While_False. apply Renaming.eval_renaming_invariance.
           assumption.
-      + destruct r eqn:R. simpl in H. rewrite <- R in H.
-        dependent induction H.
-        * remember (exist (fun f : id -> id => FinFun.Bijective f) x b) as r eqn:R.
-          destruct c'. destruct p. destruct (renaming_inversible s0 r).
-          subst s0.
-          eapply bs_While_True.
-          -- eapply Renaming.eval_renaming_invariance.
-             eassumption.
-          -- eapply IHs. eassumption.
-          -- eapply IHbs_int2.
-             eassumption.
-             rewrite <- R. eassumption.
-             all: reflexivity.
-        * remember (exist (fun f : id -> id => FinFun.Bijective f) x0 b) as r eqn:R.
-          apply renaming_state_injection in x.
-          subst st.
-          apply bs_While_False.
-          eapply Renaming.eval_renaming_invariance.
-          eassumption.
+  Qed.  
+
+  Lemma renaming_invariant_bs_inv
+    (s         : stmt)
+    (r         : Renaming.renaming)
+    (c c'      : conf)
+    (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
+  Proof.
+    specialize (Renaming.renaming_inv r) as H.
+    destruct H as [r' H].
+    specialize (renaming_invariant_bs (rename r s) r' (rename_conf r c) (rename_conf r c') Hbs) as R.
+    destruct c as [[st i] o].
+    destruct c' as [[st' i'] o'].
+    unfold rename_conf in R. 
+    rewrite Renaming.re_rename_state in R.
+    rewrite Renaming.re_rename_state in R. 
+    rewrite re_rename in R.
+    all: assumption.
   Qed.
-  *)
+
+  Lemma renaming_inversible (st : state Z) (r : renaming):
+    exists (st' : state Z), st = Renaming.rename_state r st'. 
+  Proof.
+    induction st.
+    - exists ([]). reflexivity.
+    - destruct r as [f b] eqn:R. 
+      rewrite <- R. rewrite <- R in IHst.
+      inversion b as [g I].
+      destruct IHst.
+      destruct a.
+      exists ((g i, z) :: x). simpl. rewrite -> R.
+      simpl. rewrite <- R. subst st.
+      destruct I. specialize (H0 i).
+      rewrite H0.
+      reflexivity.  
+  Qed.
+
 
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
   Proof.
     constructor; intros.
     - inversion H.
       exists (Renaming.rename_state r x).
-      specialize (renaming_bs_invariant s r i ([]) ([]) o ([]) x) as R.
-      simpl in R. apply R. assumption.
+      specialize (renaming_invariant_bs s r (([], i, []))  ((x, [], o)) H0) as R. 
+      assumption.
     - inversion H.
       destruct (renaming_inversible x r). subst x.
       assert ((Renaming.rename_state r ([])) = ([])). 
@@ -1003,7 +921,7 @@ Module Renaming.
         reflexivity.
       }
       rewrite <- H1 in H0.
-      econstructor. apply renaming_bs_invariant with r.
+      econstructor. apply renaming_invariant_bs_inv with r.
       eassumption.
   Qed. 
 
@@ -1078,21 +996,50 @@ Ltac cps_bs_gen_helper k H HH :=
 Lemma cps_bs_gen (S : stmt) (c c' : conf) (S1 k : cont)
       (EXEC : k |- c -- S1 --> c') (DEF : !S = S1 @ k):
   c == S ==> c'.
-Proof. admit. Admitted.
+Proof.
+  induction S.
+  - destruct S1; destruct k; try discriminate.
+    + inversion DEF. subst s. inversion EXEC.
+    + inversion DEF. subst s. inversion EXEC.
+      inversion CSTEP. apply bs_Skip.
+  - 
+all: admit. Admitted.
 
 Lemma cps_bs (s1 s2 : stmt) (c c' : conf) (STEP : !s2 |- c -- !s1 --> c'):
    c == s1 ;; s2 ==> c'.
-Proof. admit. Admitted.
+Proof. 
+  eapply cps_bs_gen. eassumption.
+  reflexivity.
+Qed. 
 
 Lemma cps_int_to_bs_int (c c' : conf) (s : stmt)
       (STEP : KEmpty |- c -- !(s) --> c') : 
   c == s ==> c'.
-Proof. admit. Admitted.
+Proof.
+  eapply cps_bs_gen. eassumption.
+  reflexivity.
+Qed.
 
 Lemma cps_cont_to_seq c1 c2 k1 k2 k3
       (STEP : (k2 @ k3 |- c1 -- k1 --> c2)) :
   (k3 |- c1 -- k1 @ k2 --> c2).
-Proof. admit. Admitted.
+Proof.
+  destruct k1.
+  - destruct k2.
+    + unfold Kapp in *. assumption.
+    + destruct k3.
+      * unfold Kapp in *.
+        inversion STEP.
+      * unfold Kapp in *. 
+        inversion STEP.
+  - destruct k2. 
+    + unfold Kapp in *.
+      assumption.
+    + destruct k3. 
+      * unfold Kapp in *.
+        apply cps_Seq. unfold Kapp. assumption.
+      * apply cps_Seq. assumption.
+Qed.
 
 Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
       (EXEC : c1 == s ==> c2)
@@ -1102,7 +1049,11 @@ Proof. admit. Admitted.
 
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
-Proof. admit. Admitted.
+Proof.
+  eapply bs_int_to_cps_int_cont.
+  eassumption. apply cps_Skip.
+  apply cps_Empty.
+Qed.
 
 (* Lemma cps_stmt_assoc s1 s2 s3 s (c c' : conf) : *)
 (*   (! (s1 ;; s2 ;; s3)) |- c -- ! (s) --> (c') <-> *)
