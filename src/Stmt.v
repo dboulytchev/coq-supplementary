@@ -659,7 +659,7 @@ Proof.
     * destruct c' as ((st'', i''), o'').
       specialize (IHbs_int1 _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int1, H.
       specialize (IHbs_int2 _ _ _ _ _ _ _ H0 JMeq_refl JMeq_refl). destruct IHbs_int2, H2.
-      econstructor. split; eauto. econstructor; eauto.
+      econstructor. split; eauto.
     * specialize (IHbs_int _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int, H.
       econstructor. split; eauto. apply bs_If_True; eauto. eapply variable_relevance; eauto.
     * specialize (IHbs_int _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int, H.
