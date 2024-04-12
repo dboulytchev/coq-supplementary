@@ -335,7 +335,12 @@ Module StraightLine.
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : (st, i, o) == p ==> (st', i', o')) :
     ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof.
+    remember (compiled_straightline_correct_cont p Sp st st' ([]) i o ([]) i' o' EXEC ([]) (([]), st', i', o')).
+    assert ((([], st', i', o')) -- [] --> (([], st', i', o'))). { apply sm_End. exact ([]). }
+    remember (s H). assert (compile p Sp ++ [] = compile p Sp). { apply app_nil_r. }
+    rewrite <- H0. assumption.
+  Qed.
   
   Lemma compiled_straightline_not_incorrect_cont
         (p : stmt) (Sp : StraightLine p) (st : state Z) (i o : list Z) (q : prog) (c : conf)
