@@ -22,10 +22,6 @@ Inductive gt_id : id -> id -> Prop :=
   gt_conv : forall n m, n > m -> (Id n) i> (Id m)
 where "n i> m" := (gt_id n m).   
 
-Notation "n i<= m" := (le_id n m).
-Notation "n i>  m" := (gt_id n m).
-Notation "n i<  m" := (lt_id n m).
-
 Ltac prove_with th :=
   intros; 
   repeat (match goal with H: id |- _ => destruct H end); 
@@ -57,7 +53,7 @@ Ltac prove_with th :=
     | H: ?n <= ?m |- {Id ?n i<= Id ?m} + {_}               => left
     end;
   try (constructor; assumption); congruence.
-    
+
 Lemma lt_eq_lt_id_dec: forall (id1 id2 : id), {id1 i< id2} + {id1 = id2} + {id2 i< id1}.
 Proof.
   intros.
