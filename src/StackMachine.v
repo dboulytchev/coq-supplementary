@@ -329,8 +329,17 @@ Module StraightLine.
         (H : (st, i, o) == p ==> (st', i', o')) (q : prog) (c : conf)
         (EXEC : ([], st', i', o') -- q --> c) :
     ([], st, i, o) -- (compile p Sp) ++ q --> c.
-  Proof. admit. Admitted.
-  
+  Proof.
+    dependent induction Sp; simpl; inv H; try (rewrite <- app_assoc).
+    { eapply compiled_expr_correct_cont. eassumption.
+      eapply sm_Store. eassumption. }
+    { eapply sm_Read. eapply sm_Store. eassumption. }
+    { eapply compiled_expr_correct_cont. eassumption.
+      eapply sm_Write. eassumption. }
+    destruct c' as [[st'' i''] o'']. eapply IHSp1; try eassumption.
+    eapply IHSp2; eassumption.
+  Qed.
+    
   Lemma compiled_straightline_correct
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : (st, i, o) == p ==> (st', i', o')) :
@@ -346,13 +355,35 @@ Module StraightLine.
         (p : stmt) (Sp : StraightLine p) (st : state Z) (i o : list Z) (q : prog) (c : conf)
         (EXEC: ([], st, i, o) -- (compile p Sp) ++ q --> c) :
     exists (st' : state Z) (i' o' : list Z), (st, i, o) == p ==> (st', i', o') /\ ([], st', i', o') -- q --> c.
-  Proof. admit. Admitted.
-  
+  Proof.
+    dependent induction Sp; simpl in EXEC; try (rewrite <- app_assoc in EXEC).
+    { eapply compiled_expr_not_incorrect_cont in EXEC. destruct EXEC. destruct H.
+      exists ((st)[x <- x0]). exists i. exists o. split. auto. inv H0. }
+    { inv EXEC. inv EXEC0. exists ((st)[x <- z]). exists i0. exists o. split.
+      auto. assumption. }
+    { eapply compiled_expr_not_incorrect_cont in EXEC. destruct EXEC. destruct H.
+      inv H0. exists st. exists i. exists (x :: o). split. auto. assumption. }
+    { exists st. exists i. exists o. split. auto. assumption. }
+    eapply IHSp1 in EXEC. destruct EXEC. destruct H. destruct H. destruct H.
+    eapply IHSp2 in H0. destruct H0. destruct H0. destruct H0. destruct H0.
+    exists x2. exists x3. exists x4. split. eapply bs_Seq; eassumption. assumption.
+  Qed.
+
   Lemma compiled_straightline_not_incorrect
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : ([], st, i, o) -- compile p Sp --> ([], st', i', o')) :
     (st, i, o) == p ==> (st', i', o').
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction Sp; simpl in EXEC; try (rewrite <- app_assoc in EXEC).
+    { eapply compiled_expr_not_incorrect_cont in EXEC. destruct EXEC as [n [BS COMP]].
+      inv COMP. inv EXEC. auto. }
+    { inv EXEC. inv EXEC0. inv EXEC1. }
+    { eapply compiled_expr_not_incorrect_cont in EXEC. destruct EXEC as [n [BS COMP]].
+      inv COMP. inv EXEC. auto. }
+    { inv EXEC. }
+    eapply compiled_straightline_not_incorrect_cont in EXEC.
+    destruct EXEC as [st0 [i0 [o0 [BS COMP]]]]. eapply IHSp2 in COMP. eapply bs_Seq; eassumption.
+  Qed.
   
   Theorem straightline_compiler_correct
           (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z) :
