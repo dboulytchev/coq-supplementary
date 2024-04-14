@@ -3,6 +3,7 @@ Require Import BinInt ZArith_dec.
 Require Export Id.
 Require Export State.
 Require Export Lia.
+Require Import Coq.Program.Equality.
 
 Require Import List.
 Import ListNotations.
@@ -376,29 +377,132 @@ Module SmallStep.
     forall s, ~ exists e', (s |- e --> e').   
 
   Lemma value_is_normal_form (e : expr) (HV: is_value e) : normal_form e.
-  Proof. admit. Admitted.
+  Proof. inversion HV. subst. intro. intro. inversion H. inversion H0. Qed.    
 
   Lemma normal_form_is_not_a_value : ~ forall (e : expr), normal_form e -> is_value e.
-  Proof. admit. Admitted.
-  
+  Proof. intro. specialize (H ((Nat 1) [\/] (Nat 2))). 
+    assert (normal_form (Nat 1 [\/] (Nat 2))).
+    - intro. intro. inversion H0. inversion H1.
+      inversion LEFT. inversion RIGHT.
+      inversion EVAL. inversion VALA. inversion VALB. subst. inversion BOOLB.
+        discriminate H2. discriminate H2.
+    - apply H in H0. inversion H0.
+  Qed.
+
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
-  Proof. admit. Admitted.
-  
+  Proof. intro.
+    specialize (H (Var (Id 0) [+] Var (Id 1)) (Nat 42 [+] (Var (Id 1))) (Var (Id 0) [+] Nat 56) [(Id 0, 42%Z); (Id 1, 56%Z)]).
+    discriminate H.
+    - apply ss_Left. apply ss_Var. apply st_binds_hd.
+    - apply ss_Right. apply ss_Var. apply st_binds_tl. discriminate.
+      apply st_binds_hd.
+  Qed.
+    
   Lemma ss_deterministic_step (e e' : expr)
                          (s    : state Z)
                          (z z' : Z)
                          (H1   : s |- e --> (Nat z))
                          (H2   : s |- e --> e') : e' = Nat z.
-  Proof. admit. Admitted.
-  
+  Proof. 
+  inversion H1; inversion H2; subst. 
+  1-5: inversion H5; subst; remember (state_deterministic Z s i z z1 VAL VAL0); rewrite e; auto.
+  - inversion H2; subst. 
+    + inversion LEFT0.
+    + inversion RIGHT.
+  - inversion H2; subst.
+    + inversion LEFT.
+    + inversion RIGHT0.
+  - inversion H2; inversion H1; subst.
+    specialize (eval_deterministic (Bop op (Nat zl) (Nat zr)) s z1 z EVAL1 EVAL2). 
+    intros. rewrite H. reflexivity.
+  Qed. 
+
   Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
-  Proof. admit. Admitted.
-  
+  Proof.
+    generalize dependent e. induction e'.
+    - intros. apply isv_Intro.
+    - intros. induction Heval.
+      + apply isv_Intro.
+      + assumption.
+    - intros. induction Heval.
+      + apply isv_Intro.
+      + specialize (IHHeval IHe'1 IHe'2). assumption.
+  Qed.
+
+  Lemma ss_bs_step_equiv (s   : state Z)
+                         (e e': expr)
+                         (z : Z)
+                         (HST: (s) |- e --> e')
+                         (HEX: [|e'|] s => z) : [|e|] s => (z).
+  Proof.
+    dependent induction e.
+    * inversion HST.
+    * inversion HST. subst. inversion HEX; subst. auto.
+    * dependent induction b;
+      inversion HST; subst; inversion HEX; subst; eauto.
+  Qed.
+
+  Lemma ss_bop_step_left (e1 e1' e2 : expr)
+                  (s : state Z)
+                  (b : bop)
+                  (z : Z)
+                  (LEFT : s |- e1 -->> e1')
+                  (HSTEP: s |- Bop b e1' e2 -->> (Nat z)): s |- Bop b e1 e2 -->> (Nat z).
+  Proof.
+    dependent induction LEFT. assumption.
+    econstructor. eapply ss_Left. eassumption.
+    apply IHLEFT. assumption.
+  Qed.
+
+  Lemma ss_bop_step_right (e1 e2 e2' : expr)
+                  (s : state Z)
+                  (b : bop)
+                  (z : Z)
+                  (RIGHT : s |- e2 -->> e2')
+                  (STEP: s |- Bop b e1 e2' -->> (Nat z)): s |- Bop b e1 e2 -->> (Nat z).
+  Proof.
+    dependent induction RIGHT. assumption.
+    econstructor. eapply ss_Right. eassumption.
+    apply IHRIGHT. assumption.
+  Qed.
+
+  Lemma ss_bop_step (e1 e1' e2 e2' : expr)
+                 (s : state Z)
+                 (b: bop)
+                 (z : Z)
+                 (LEFT : s |- e1 -->> e1')
+                 (RIGHT: s |- e2 -->> e2')
+                 (HEBOP: s |- Bop b e1' e2' -->> (Nat z)) : s |- Bop b e1 e2 -->> (Nat z).
+  Proof. eapply ss_bop_step_left. apply LEFT.
+         eapply ss_bop_step_right. apply RIGHT. apply HEBOP.
+  Qed.
+
+  Lemma ss_bop_bs_trans (e1 e2 : expr)
+                 (s : state Z)
+                 (b: bop)
+                 (z z1 z2 : Z)
+                 (HEV1 : s |- e1 -->> (Nat z1))
+                 (HEV2: s |- e2 -->> (Nat z2))
+                 (HEBOP: [|Bop b (Nat z1) (Nat z2)|] s => z) : s |- Bop b e1 e2 -->> (Nat z).
+  Proof. 
+    eapply ss_bop_step; try by eassumption. econstructor.
+    - eapply ss_Bop. eassumption.
+    - constructor.
+  Qed.
+
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
-  Proof. admit. Admitted.
-  
+   Proof. constructor; intro.
+    - dependent induction H.
+      constructor. 
+      econstructor. constructor. eassumption. constructor.
+      all: eapply ss_bop_bs_trans; (try by eassumption); econstructor; (try by econstructor); eassumption.
+    - dependent induction H.
+      + auto.
+      + specialize (IHss_eval z). assert (Nat z = Nat z). { reflexivity. } apply IHss_eval in H0.
+        specialize (ss_bs_step_equiv s e e' z HStep H0). intro. assumption.
+  Qed.
 End SmallStep.
 
 Module Renaming.
