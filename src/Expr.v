@@ -517,10 +517,16 @@ Module Renaming.
   Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.
   
   Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
-  Proof. admit. Admitted.
+  Proof. destruct r as [g bG]. destruct bG as [h H]. destruct H as [HG GH]. 
+         exists (exist _ _ (ex_intro _ g (conj GH HG))). unfold renamings_inv. simpl.
+         apply HG.
+  Qed.
 
   Lemma renaming_inv2 (r : renaming) : exists (r' : renaming), renamings_inv r r'.
-  Proof. admit. Admitted.
+  Proof. destruct r as [g bG]. destruct bG as [h H]. destruct H as [HG GH].
+        exists (exist _ _ (ex_intro _ g (conj GH HG))). unfold renamings_inv. simpl.
+        apply GH.
+  Qed.
 
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with
@@ -533,7 +539,12 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (e    : expr) : rename_expr r (rename_expr r' e) = e.
-  Proof. admit. Admitted.     
+  Proof. dependent induction e.
+    - reflexivity.
+    - unfold rename_expr. specialize (Hinv i).
+    rewrite Hinv. reflexivity.
+    - simpl. rewrite IHe1. rewrite IHe2. reflexivity.
+  Qed.
 
   Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
     match st with
@@ -546,13 +557,63 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (st   : state Z) : rename_state r (rename_state r' st) = st.
-  Proof. admit. Admitted.     
+  Proof. dependent induction st.
+    - reflexivity.
+    - simpl. destruct a. destruct r as [g bG]. destruct bG as [h H].
+      destruct H as [HG GH]. destruct r' as [g' bG']. destruct bG' as [h' H'].
+      destruct H' as [HG' GH']. unfold renamings_inv in Hinv. simpl in Hinv. simpl.
+      rewrite IHst. 
+      + rewrite Hinv. reflexivity.
+      + reflexivity.
+      + reflexivity.
+  Qed.
       
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
-  Proof. admit. Admitted.
-  
-  Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
+  Proof. inversion BH as [g H]. inversion H. unfold Injective. intros.
+    specialize (H0 x). inversion H. specialize (H3 y).
+   rewrite H2 in H0. rewrite <- H0. rewrite -> H3. reflexivity.
+  Qed.
+
+  Lemma state_renaming_invariance (x : id) 
+                                  (st : state Z) 
+                                  (z : Z) 
+                                  (r: renaming) : st / x => z <-> (rename_state r st) / rename_id r x  => z.
+  Proof. split; intro;
+  (try by inversion H); subst; destruct r as [g bG]; dependent induction H.
+    - apply st_binds_hd.
+    - apply st_binds_tl.
+      + intro. apply H. eapply bijective_injective. simpl in H1.
+        * apply bG.
+        * apply H1.
+      + apply IHst_binds.
+    - destruct st.
+      + discriminate x.
+      + destruct p. dependent destruction x. 
+        remember (bijective_injective g bG) as BIG.
+        apply (BIG x1 i) in x. rewrite x. apply st_binds_hd.
+    - destruct st.
+      + discriminate x.
+      + destruct p. dependent destruction x. simpl in H. simpl in H0. simpl in IHst_binds.
+        apply st_binds_tl.
+        * intro. apply H. rewrite H1. reflexivity.
+        * apply (IHst_binds x1 st z g bG); reflexivity.
+  Qed.
+
+  Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r : renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
-  Proof. admit. Admitted.
+  Proof. generalize dependent z. induction e.
+  - split; intros; inversion H; subst; apply bs_Nat.
+  - split; intros.
+    + simpl. inversion H. subst. apply bs_Var. apply state_renaming_invariance. assumption.
+    + inversion H. subst. apply state_renaming_invariance in VAR. apply bs_Var. assumption.
+  - split; intros.
+    + inversion H; subst;
+      specialize (IHe1 za); specialize (IHe2 zb); simpl; 
+      apply IHe1 in VALA; apply IHe2 in VALB; 
+      auto; econstructor; try apply VALA; try apply VALB; try apply OP.
+    + inversion H; subst;
+      specialize (IHe1 za); specialize (IHe2 zb); apply IHe1 in VALA;
+      apply IHe2 in VALB; try econstructor; try eassumption.
+  Qed.    
     
 End Renaming.
