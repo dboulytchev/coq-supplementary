@@ -191,9 +191,7 @@ Module SmokeTest.
   Proof. 
     inversion HH. inversion VALB.
     replace (za * 2)%Z with (za + za)%Z.
-    - apply bs_Add. 
-      + assumption.
-      + assumption.
+    - apply bs_Add; assumption. 
     - lia.
   Qed.
 
@@ -214,121 +212,12 @@ Proof. revert HSub. revert e'. revert HV. revert z.
 induction e; intros.
   - inversion HSub. econstructor. eassumption.
   - inversion HSub. econstructor. eassumption.
-  - inversion HV.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-       inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-       inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-      inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-      inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-      + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-      inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-      inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-        inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
-    + specialize (IHe1 za VALA).
-      specialize (IHe2 zb VALB).
-      inversion HSub.
-        * econstructor. eassumption.
-        * specialize (IHe1 e' H6). assumption.
-        * specialize (IHe2 e' H6). assumption.
+  - inversion HV; specialize (IHe1 za VALA);
+    specialize (IHe2 zb VALB); inversion HSub.
+    all: try specialize (IHe1 e' H6).
+    all: try specialize (IHe2 e' H6).
+    all: try assumption.
+    all: econstructor. all: eassumption.
 Qed.
 
 Reserved Notation "x ? e" (at level 0).
@@ -349,66 +238,13 @@ Lemma defined_expression
   exists z', s / id => z'.
 Proof.
   induction RED.
-    + inversion ID.
-    + inversion ID. rewrite <- H1.
-      econstructor. eassumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.
-    + inversion ID. destruct H3.
-      - remember (IHRED1 H3). assumption.
-      - remember (IHRED2 H3). assumption.      
+    { inversion ID. }
+    { inversion ID. rewrite <- H1.
+      econstructor. eassumption. }
+    all: inversion ID. all: destruct H3.
+    all: try specialize (IHRED1 H3).
+    all: try specialize (IHRED2 H3).
+    all: assumption.
 Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
@@ -433,78 +269,13 @@ Proof.
     - inversion E1. inversion E2. rewrite <- H2. assumption.
     - inversion E1. inversion E2. 
       apply (state_deterministic Z s i z1 z2 VAR VAR0).
-    - inversion E1; subst b; inversion E2. 
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          rewrite -> e. rewrite -> e0. 
-          reflexivity.  
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          rewrite -> e. rewrite -> e0. 
-          reflexivity.  
-        + reflexivity.  
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.  
-        + reflexivity.
-        + reflexivity.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.
-        + reflexivity.
-        + reflexivity.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.
-        + reflexivity.
-        + reflexivity.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          lia.
-        + reflexivity.
-        + reflexivity.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          subst zb0. subst za0. contradiction.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          subst zb0. subst za0. contradiction.
-        + reflexivity.
-        + reflexivity.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          subst zb0. subst za0. contradiction.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          subst zb0. subst za0. contradiction.
-        + reflexivity.        
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          subst zb0. subst za0. reflexivity.
-        + remember (IHe1 za za0 VALA VALA0). 
-          remember (IHe2 zb zb0 VALB VALB0).
-          subst zb0. subst za0. reflexivity.
+    - inversion E1; subst b; inversion E2; 
+      remember (IHe1 za za0 VALA VALA0); 
+      remember (IHe2 zb zb0 VALB VALB0).
+      all: try lia.
+      all: subst zb0. all: subst za0.
+      all: try reflexivity.
+      all: try contradiction.
 Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
@@ -601,25 +372,9 @@ Proof.
             assumption.
       * intros. simpl. simpl in H0.
         inversion H0.
-          -- constructor. assumption. apply (IHC zb H VALB).
-          -- constructor. assumption. apply (IHC zb H VALB).
-          -- constructor. assumption. apply (IHC zb H VALB).
-          -- constructor. assumption. apply (IHC zb H VALB). assumption.
-          -- constructor. assumption. apply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption. assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption. assumption.
+        all: econstructor. 
+        all: try eassumption.
+        all: eapply (IHC zb H VALB).
     + revert H. revert n. induction C.
       * intros. simpl. simpl in H0.
         specialize (H n s). destruct H. apply (H1 H0).
@@ -629,26 +384,10 @@ Proof.
             eassumption;
             assumption.
       * intros. simpl. simpl in H0.
-        inversion H0.
-          -- constructor. assumption. apply (IHC zb H VALB).
-          -- constructor. assumption. apply (IHC zb H VALB).
-          -- constructor. assumption. apply (IHC zb H VALB).
-          -- constructor. assumption. apply (IHC zb H VALB). assumption.
-          -- constructor. assumption. apply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption. assumption.
-          -- econstructor. eassumption. eapply (IHC zb H VALB). assumption. assumption.
+        inversion H0. 
+        all: econstructor. 
+        all: try eassumption.
+        all: eapply (IHC zb H VALB).
   -  specialize (H (Hole)). simpl in H. assumption.
 Qed.
 
@@ -850,64 +589,11 @@ Module SmallStep.
       + inversion H. eapply se_Step.
         * econstructor. inversion H. eassumption. 
         * apply se_Stop.
-      + inversion H.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          constructor. apply bs_Nat. apply bs_Nat.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          constructor. apply bs_Nat. apply bs_Nat.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          constructor. apply bs_Nat. apply bs_Nat.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          constructor. apply bs_Nat. apply bs_Nat. assumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          constructor. apply bs_Nat. apply bs_Nat. assumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. assumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption. eassumption.
-        * specialize (IHe1 za VALA). specialize (IHe2 zb VALB).
-          eapply ss_count_children. eassumption. eassumption. 
-          econstructor. apply bs_Nat. apply bs_Nat. eassumption. eassumption.
+      + inversion H; specialize (IHe1 za VALA); specialize (IHe2 zb VALB);
+         eapply ss_count_children.
+         all: try eassumption.
+         all: econstructor. all: try eapply bs_Nat.
+         all: try eassumption.  
     - revert z. induction e; intros.
       + inversion H. apply bs_Nat.
         inversion HStep.
@@ -1060,12 +746,8 @@ Module Renaming.
         * apply st_binds_tl. auto.
           inversion H. 
           unfold rename_id in H5.
-          destruct r eqn:R. rewrite <- R in H.
-          rewrite <- R in H0. rewrite <- R in IHst.
-          rewrite <- R in H1. 
-          rewrite <- R in H2.
-          rewrite <- R in H3. 
-          rewrite <- R in H6.
+          destruct r eqn:R. 
+          rewrite <- R in *.
           injection H6. intros.
           subst id0.
           remember (bijective_injective x1 b).
@@ -1074,12 +756,10 @@ Module Renaming.
           specialize (i1 i i0 H10).
           subst i. contradiction.
           destruct r eqn:R.
-          rewrite <- R in H0.
-          rewrite <- R in H.
-          rewrite <- R in IHst.
+          rewrite <- R in *.
           apply IHst.
           injection H0. intros.
-          subst st0. rewrite <- R in H2. assumption.
+          subst st0. assumption.
   Qed.
   
 
