@@ -339,6 +339,36 @@ Qed.
 Definition equivalent_states (s1 s2 : state Z) :=
   forall id, Expr.equivalent_states s1 s2 id.
 
+Lemma equiv_st_lem s st1 st2 st1' i i' o o'
+                            (H1 : equivalent_states st1 st2)
+                            (H2 : (st1, i, o) == s ==> (st1', i', o'))
+    : exists st2', (st2, i, o) == s ==> (st2', i', o') /\ equivalent_states st1' st2'.
+Proof.
+    dependent induction H2 generalizing st1 st2 st1' i i' o o' H1.
+    * econstructor. split; try eassumption. constructor.
+    * econstructor. split.
+      - constructor. eapply variable_relevance. intros. apply H1. eassumption.
+      - split; intro; dependent destruction H; try by constructor.
+        all: constructor; try apply H1; assumption.
+    * econstructor. split. constructor.
+      split; intro; dependent destruction H; try by constructor.
+      all: constructor; try apply H1; assumption.
+    * econstructor. split; eauto. constructor. eapply variable_relevance; eauto.
+    * destruct c' as ((st'', i''), o'').
+      specialize (IHbs_int1 _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int1, H.
+      specialize (IHbs_int2 _ _ _ _ _ _ _ H0 JMeq_refl JMeq_refl). destruct IHbs_int2, H2.
+      econstructor. split; eauto.
+    * specialize (IHbs_int _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int, H.
+      econstructor. split; eauto. apply bs_If_True; eauto. eapply variable_relevance; eauto.
+    * specialize (IHbs_int _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int, H.
+      econstructor. split; eauto. apply bs_If_False; eauto. eapply variable_relevance; eauto.
+    * destruct c' as ((st'', i''), o'').
+      specialize (IHbs_int1 _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int1, H.
+      specialize (IHbs_int2 _ _ _ _ _ _ _ H0 JMeq_refl JMeq_refl). destruct IHbs_int2, H2.
+      econstructor. split; eauto. eapply bs_While_True; eauto. eapply variable_relevance; eauto.
+    * econstructor. split; eauto. eapply bs_While_False; eauto. eapply variable_relevance; eauto.
+Qed.
+
 Lemma bs_equiv_states
   (s            : stmt)
   (i o i' o'    : list Z)
@@ -346,7 +376,10 @@ Lemma bs_equiv_states
   (HE1          : equivalent_states st1 st1')
   (H            : (st1, i, o) == s ==> (st2, i', o')) :
   exists st2',  equivalent_states st2 st2' /\ (st1', i, o) == s ==> (st2', i', o').
-Proof. admit. Admitted.
+Proof.
+    specialize (equiv_st_lem _ _ _ _ _ _ _ _ HE1 H).
+    intro. destruct H0, H0. exists x. auto.
+Qed.
 
 (* Contextual equivalence is equivalent to the semantic one *)
 (* TODO: no longer needed *)
@@ -638,38 +671,6 @@ Proof.
         apply ceq_sym in H.
         admit.
 Admitted.
-
-Definition equivalent_states st1 st2 := forall v, Expr.equivalent_states st1 st2 v.
-
-Lemma equiv_st_lem s st1 st2 st1' i i' o o'
-                            (H1 : equivalent_states st1 st2)
-                            (H2 : (st1, i, o) == s ==> (st1', i', o'))
-    : exists st2', (st2, i, o) == s ==> (st2', i', o') /\ equivalent_states st1' st2'.
-Proof.
-    dependent induction H2 generalizing st1 st2 st1' i i' o o' H1.
-    * econstructor. split; try eassumption. constructor.
-    * econstructor. split.
-      - constructor. eapply variable_relevance. intros. apply H1. eassumption.
-      - split; intro; dependent destruction H; try by constructor.
-        all: constructor; try apply H1; assumption.
-    * econstructor. split. constructor.
-      split; intro; dependent destruction H; try by constructor.
-      all: constructor; try apply H1; assumption.
-    * econstructor. split; eauto. constructor. eapply variable_relevance; eauto.
-    * destruct c' as ((st'', i''), o'').
-      specialize (IHbs_int1 _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int1, H.
-      specialize (IHbs_int2 _ _ _ _ _ _ _ H0 JMeq_refl JMeq_refl). destruct IHbs_int2, H2.
-      econstructor. split; eauto.
-    * specialize (IHbs_int _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int, H.
-      econstructor. split; eauto. apply bs_If_True; eauto. eapply variable_relevance; eauto.
-    * specialize (IHbs_int _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int, H.
-      econstructor. split; eauto. apply bs_If_False; eauto. eapply variable_relevance; eauto.
-    * destruct c' as ((st'', i''), o'').
-      specialize (IHbs_int1 _ _ _ _ _ _ _ H1 JMeq_refl JMeq_refl). destruct IHbs_int1, H.
-      specialize (IHbs_int2 _ _ _ _ _ _ _ H0 JMeq_refl JMeq_refl). destruct IHbs_int2, H2.
-      econstructor. split; eauto. eapply bs_While_True; eauto. eapply variable_relevance; eauto.
-    * econstructor. split; eauto. eapply bs_While_False; eauto. eapply variable_relevance; eauto.
-Qed.
 
 Lemma not_eq_eq_ceq : ~(forall s1 s2, s1 ~c~ s2 -> s1 ~~~ s2).
 Proof.

@@ -455,33 +455,6 @@ Inductive insn : Set :=
 
 Definition prog := list insn.
 
-Fixpoint label_occurs_ones_rec (occured : bool) (n: nat) (p : prog) : bool :=
-  match p with
-    LAB m :: p' => if eq_nat_dec n m
-                   then if occured
-                        then false
-                        else label_occurs_ones_rec true n p'
-                   else label_occurs_ones_rec occured n p'
-  | _     :: p' => label_occurs_ones_rec occured n p'
-  | []          => occured
-  end.
-
-Definition label_occurs_ones (n : nat) (p : prog) : bool := label_occurs_ones_rec false n p.
-
-Fixpoint prog_wf_rec (prog p : prog) : bool :=
-  match p with
-    []      => true
-  | i :: p' => match i with
-                 JMP l => label_occurs_ones l prog
-               | JZ  l => label_occurs_ones l prog
-               | JNZ l => label_occurs_ones l prog
-               | _     => true
-               end && prog_wf_rec prog p'
-
-  end.
-
-Definition prog_wf (p : prog) : bool := prog_wf_rec p p.
-
 Fixpoint at_label (l : nat) (p : prog) : prog :=
   match p with
     []          => []
@@ -580,8 +553,40 @@ Proof.
   }
 Qed.
 
+Fixpoint prog_labels (p : prog) : list nat :=
+match p with
+  [] => []
+| i :: p => match i with
+              JMP l => l :: prog_labels p
+            | JZ  l => l :: prog_labels p
+            | JNZ l => l :: prog_labels p
+            | _     => prog_labels p
+            end
+end.
+
+Lemma wf_lem (p q : prog)
+    : (forall l, In l (prog_labels q) -> label_occurs_once l p = true) <-> prog_wf_rec p q = true.
+Proof.
+    split; intros.
+    * dependent induction q; auto; dependent destruction a; simpl;
+      unfold label_occurs_once in *; simpl in *; auto.
+      all: rewrite H; auto.
+    * dependent induction q; auto; dependent induction a; simpl in *; auto; destruct H0; auto.
+      all: try dependent destruction H0; apply andb_prop in H; destruct H; auto.
+Qed.
+
+Lemma prog_labels_app p q : prog_labels (p ++ q) = prog_labels p ++ prog_labels q.
+Proof. dependent induction p; auto; dependent destruction a; simpl; congruence. Qed.
+
+Lemma prog_labels_rev p : prog_labels (rev p) = rev (prog_labels p).
+Proof.
+    dependent induction p; auto; dependent destruction a; simpl.
+    all: rewrite prog_labels_app; simpl; rewrite <- IHp; auto.
+    all: rewrite app_nil_r; auto.
+Qed.
+
 Lemma wf_rev (p q : prog) (Hwf : prog_wf_rec q p = true) : prog_wf_rec q (rev p) = true.
-Proof. admit. Admitted.
+Proof. apply wf_lem. rewrite prog_labels_rev. intros. apply In_rev in H. eapply wf_lem; eauto. Qed.
 
 Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
   match p with
