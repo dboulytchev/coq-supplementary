@@ -289,7 +289,12 @@ Ltac eval_zero_not_one :=
 Lemma bs_int_deterministic (c c1 c2 : conf) (s : stmt)
       (EXEC1 : c == s ==> c1) (EXEC2 : c == s ==> c2) :
   c1 = c2.
-Proof. admit. Admitted.
+Proof. 
+  dependent induction EXEC1 in c2; dependent destruction EXEC2; try reflexivity;
+  try by_eval_deterministic; 
+  try apply IHEXEC1_2; try rewrite (IHEXEC1_1 c'0); try assumption;
+  try eval_zero_not_one; apply (IHEXEC1 c'0 EXEC2).
+Qed.
 
 (* Contextual equivalence is equivalent to the semantic one *)
 (* TODO: no longer needed *)
@@ -346,32 +351,84 @@ Module SmallStep.
         (EXEC1 : c -- s --> c')
         (EXEC2 : c -- s --> c'') :
     c' = c''.
-  Proof. admit. Admitted.
+  Proof. dependent induction s; dependent destruction EXEC1; dependent destruction EXEC2;
+    try reflexivity;
+    try by_eval_deterministic;
+    try (specialize (IHs1 _ _ _ EXEC1 EXEC2); inversion IHs1);
+    try reflexivity; 
+    eval_zero_not_one.
+  Qed. 
   
   Lemma ss_int_deterministic (c c' c'' : conf) (s : stmt)
         (STEP1 : c -- s -->> c') (STEP2 : c -- s -->> c'') :
     c' = c''.
-  Proof. admit. Admitted.
-  
+  Proof. dependent induction STEP1; dependent destruction STEP2;
+    specialize (ss_int_step_deterministic _ _ _ _ H H0); intros; inversion H1.
+    reflexivity. subst. apply (IHSTEP1 STEP2).
+  Qed.
+
   Lemma ss_bs_base (s : stmt) (c c' : conf) (STEP : c -- s --> (None, c')) :
     c == s ==> c'.
-  Proof. admit. Admitted.
+  Proof. inversion STEP; subst.
+    - apply bs_Skip.
+    - apply bs_Assign. assumption.
+    - apply bs_Read.
+    - apply bs_Write. assumption.
+  Qed.
 
   Lemma ss_ss_composition (c c' c'' : conf) (s1 s2 : stmt)
         (STEP1 : c -- s1 -->> c'') (STEP2 : c'' -- s2 -->> c') :
     c -- s1 ;; s2 -->> c'. 
-  Proof. admit. Admitted.
+  Proof. dependent induction STEP1; eapply ss_int_Step.
+    - eapply ss_Seq_Compl. apply H.
+    - apply STEP2.
+    - eapply ss_Seq_InCompl. apply H.
+    - apply (IHSTEP1 STEP2).
+  Qed.
   
   Lemma ss_bs_step (c c' c'' : conf) (s s' : stmt)
         (STEP : c -- s --> (Some s', c'))
         (EXEC : c' == s' ==> c'') :
     c == s ==> c''.
-  Proof. admit. Admitted.
-  
+  Proof. revert EXEC STEP. revert s' c c' c''. induction s; intros.
+    1-4: inversion STEP.
+    - inversion STEP.
+      + specialize (ss_bs_base s1 c c' SSTEP). intro. seq_apply.
+      + subst s'. inversion EXEC. specialize (IHs1 s1' c c' c'1 STEP1 SSTEP). seq_apply.
+    - inversion STEP; subst.
+      + apply bs_If_True. apply SCVAL. apply EXEC.
+      + apply bs_If_False. apply SCVAL. apply EXEC.
+    - dependent induction STEP. inversion EXEC; inversion STEP.
+      + eapply bs_While_True. apply CVAL. apply STEP1. apply STEP2.
+      + eapply bs_While_False. apply CVAL.
+  Qed.
+
   Theorem bs_ss_eq (s : stmt) (c c' : conf) :
     c == s ==> c' <-> c -- s -->> c'.
-  Proof. admit. Admitted.
-  
+  Proof. split; intros.
+    - dependent induction s.
+      + constructor. inversion H. subst. eapply ss_Skip.
+      + constructor. inversion H. subst. eapply ss_Assign. apply VAL.
+      + constructor. inversion H. subst. eapply ss_Read.
+      + constructor. inversion H. subst. eapply ss_Write. apply VAL.
+      + inversion H. subst. specialize (IHs1 c c'0 STEP1). specialize (IHs2 c'0 c' STEP2).
+        apply (ss_ss_composition c c' c'0 s1 s2 IHs1 IHs2).
+      + inversion H. subst. eapply ss_int_Step. eapply ss_If_True. apply CVAL.
+        apply (IHs1 (s, i, o) c' STEP). eapply ss_int_Step. eapply ss_If_False. apply CVAL. 
+        apply (IHs2 (s, i, o) c' STEP).
+      + dependent induction H.
+        * eapply ss_int_Step. eapply ss_While. eapply ss_int_Step.
+          eapply ss_If_True. apply CVAL.
+          eapply ss_ss_composition. eapply IHs. apply H.
+          apply (IHbs_int2 s IHs e). reflexivity.
+        * eapply ss_int_Step. eapply ss_While. eapply ss_int_Step.
+          eapply ss_If_False. apply CVAL.
+          eapply ss_int_Base. eapply ss_Skip.
+    - induction H.
+      + apply (ss_bs_base s c c' H).
+      + apply (ss_bs_step c c' c'' s s' H IHss_int).
+  Qed.     
+
 End SmallStep.
 
 Module Renaming.
