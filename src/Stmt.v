@@ -6,6 +6,7 @@ Require Import BinInt ZArith_dec Zorder ZArith.
 Require Export Id.
 Require Export State.
 Require Export Expr.
+Require Import Coq.Program.Equality.
 
 From hahn Require Import HahnBase.
 
@@ -107,10 +108,23 @@ Definition contextual_equivalent (s1 s2 : stmt) :=
 Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
-Proof. admit. Admitted.
+Proof. apply (H Hole). Qed.
 
 Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
-Proof. admit. Admitted.
+Proof. exists ((Id 1) ::= Nat 42), ((Id 1) ::= Nat 56). split.
+  - split; intro.
+    + destruct H. dependent destruction H. econstructor. eapply bs_Assign. apply bs_Nat.
+    + destruct H. dependent destruction H. econstructor. eapply bs_Assign. apply bs_Nat.
+  - unfold not. intro. 
+    specialize (H (SeqL Hole (WRITE (Var (Id 1)))) nil ([42%Z])). destruct H.
+    assert (<| SeqL Hole (WRITE (Var (Id 1))) <~  Id 1 ::= Nat 56 |> [] => ([42%Z]) -> False) as contra.
+    + intro. repeat dependent destruction H1. dependent destruction H1_.
+      dependent destruction H1_0. dependent destruction VAL0. dependent destruction VAR.
+      inversion VAL. contradiction.
+    + apply contra. apply H. econstructor. econstructor.
+      * apply bs_Assign. apply bs_Nat.
+      * apply bs_Write. apply bs_Var. apply st_binds_hd.
+Qed.
 
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
@@ -136,63 +150,113 @@ Module SmokeTest.
   (* Associativity of sequential composition *)
   Lemma seq_assoc (s1 s2 s3 : stmt) :
     ((s1 ;; s2) ;; s3) ~~~ (s1 ;; (s2 ;; s3)).
-  Proof. admit. Admitted.
+  Proof. split; intros; seq_inversion; seq_inversion; seq_apply. Qed.
   
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof. split; intros.
+    - inversion H. subst.
+      + apply bs_If_True. assumption. seq_apply.
+      + apply bs_If_False. assumption. apply bs_Skip.
+    - inversion H. subst.
+      + seq_inversion. apply (bs_While_True s0 i o c'0 c' e s CVAL STEP1 STEP2).
+      + inversion STEP. subst. apply (bs_While_False s0 i o e s CVAL).
+    Qed.
       
   (* Terminating loop invariant *)
   Lemma while_false (e : expr) (s : stmt) (st : state Z)
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof. admit. Admitted.
+  Proof. dependent induction EXE.
+    - specialize (IHEXE2 e s st i o). apply IHEXE2; reflexivity.
+    - apply CVAL.
+  Qed.
   
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
     (WHILE (Nat 1) DO SKIP END) ~~~
     (COND (Nat 3) THEN SKIP ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof. split; intros.
+    - destruct c' as [p o']. destruct p as [st' i'].
+      specialize (while_false (Nat 1) SKIP st' i' o' c H). intros. inversion H0.
+    - inversion H; subst; inversion CVAL.
+  Qed.
   
   (* Loops with equivalent bodies are equivalent *)
   Lemma while_eq (e : expr) (s1 s2 : stmt)
         (EQ : s1 ~~~ s2) :
     WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-  Proof. admit. Admitted.
+  Proof. split; intros.
+    - dependent induction H.
+      + eapply bs_While_True. 
+        * apply CVAL.
+        * apply EQ. apply H.
+        * eapply IHbs_int2. apply EQ. reflexivity.
+      + apply bs_While_False. apply CVAL.
+    - dependent induction H.
+      + eapply bs_While_True.
+        * apply CVAL.
+        * apply EQ. apply H.
+        * eapply IHbs_int2. apply EQ. reflexivity.
+      + apply bs_While_False. apply CVAL.
+  Qed.
   
   (* Loops with the constant true condition don't terminate *)
   (* Exercise 4.8 from Winskel's *)
   Lemma while_true_undefined c s c' :
     ~ c == WHILE (Nat 1) DO s END ==> c'.
-  Proof. admit. Admitted.
-  
+  Proof. unfold not. intros. dependent induction H.
+    - apply (IHbs_int2 s). reflexivity.
+    - inversion CVAL.
+  Qed.
+
 End SmokeTest.
 
 (* Semantic equivalence is a congruence *)
 Lemma eq_congruence_seq_r (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (s  ;; s1) ~~~ (s  ;; s2).
-Proof. admit. Admitted.
+Proof. split; intros.
+  - seq_inversion. specialize (EQ c'0 c'). apply EQ in STEP2. 
+    eapply bs_Seq. apply STEP1. apply STEP2.
+  - seq_inversion. specialize (EQ c'0 c'). apply EQ in STEP2.
+    eapply bs_Seq. apply STEP1. apply STEP2.
+Qed.
 
 Lemma eq_congruence_seq_l (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (s1 ;; s) ~~~ (s2 ;; s).
-Proof. admit. Admitted.
+Proof. split; intros.
+  - seq_inversion. apply (EQ c c'0) in STEP1.
+    eapply bs_Seq. apply STEP1. apply STEP2.
+  - seq_inversion. apply (EQ c c'0) in STEP1.
+    eapply bs_Seq. apply STEP1. apply STEP2.
+Qed.
 
 Lemma eq_congruence_cond_else
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   COND e THEN s  ELSE s1 END ~~~ COND e THEN s  ELSE s2 END.
-Proof. admit. Admitted.
+Proof. split; intros; inversion H; subst.
+  - apply (bs_If_True s0 i o c' e s s2 CVAL STEP).
+  - apply (EQ (s0, i, o) c') in STEP. apply (bs_If_False s0 i o c' e s s2 CVAL STEP).
+  - apply (bs_If_True s0 i o c' e s s1 CVAL STEP).
+  - apply (EQ (s0, i, o) c') in STEP. apply (bs_If_False s0 i o c' e s s1 CVAL STEP).
+Qed.
 
 Lemma eq_congruence_cond_then
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   COND e THEN s1 ELSE s END ~~~ COND e THEN s2 ELSE s END.
-Proof. admit. Admitted.
+Proof. split; intros; inversion H; subst.
+  - apply (EQ (s0, i, o) c') in STEP. apply (bs_If_True s0 i o c' e s2 s CVAL STEP).
+  - apply (bs_If_False s0 i o c' e s2 s CVAL STEP).
+  - apply (EQ (s0, i, o) c') in STEP. apply (bs_If_True s0 i o c' e s1 s CVAL STEP).
+  - apply (bs_If_False s0 i o c' e s1 s CVAL STEP).
+Qed.
 
 Lemma eq_congruence_while
       (e : expr) (s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-Proof. admit. Admitted.
+Proof. apply SmokeTest.while_eq. apply EQ. Qed.
 
 Lemma eq_congruence (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   ((s  ;; s1) ~~~ (s  ;; s2)) /\
@@ -200,7 +264,13 @@ Lemma eq_congruence (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (COND e THEN s  ELSE s1 END ~~~ COND e THEN s  ELSE s2 END) /\
   (COND e THEN s1 ELSE s  END ~~~ COND e THEN s2 ELSE s  END) /\
   (WHILE e DO s1 END ~~~ WHILE e DO s2 END).
-Proof. admit. Admitted.
+Proof. 
+  split. apply (eq_congruence_seq_r s s1 s2 EQ).
+  split. apply (eq_congruence_seq_l s s1 s2 EQ).
+  split. apply (eq_congruence_cond_else e s s1 s2 EQ).
+  split. apply (eq_congruence_cond_then e s s1 s2 EQ).
+  apply (eq_congruence_while e s1 s2 EQ).
+Qed.
 
 (* Big-step semantics is deterministic *)
 Ltac by_eval_deterministic :=
