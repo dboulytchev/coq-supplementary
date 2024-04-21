@@ -585,35 +585,91 @@ Ltac cps_bs_gen_helper k H HH :=
   destruct k eqn:K; subst; inversion H; subst;
   [inversion EXEC; subst | eapply bs_Seq; eauto];
   apply HH; auto.
+
+Theorem if_fold (e: expr) (s1 s2 s : stmt) :
+  (COND e THEN s1 ELSE s2 END ;; s) ~~~ (COND e THEN s1;; s ELSE s2;; s END).
+Proof. split; intro; inversion H; subst.
+  - inversion STEP1; subst.
+    + apply bs_If_True. apply CVAL. eapply bs_Seq. apply STEP. apply STEP2.
+    + apply bs_If_False. apply CVAL. eapply bs_Seq. apply STEP. apply STEP2.
+  - inversion STEP. subst. eapply bs_Seq. apply bs_If_True. apply CVAL. apply STEP1. apply STEP2.
+  - inversion STEP. subst. eapply bs_Seq. apply bs_If_False. apply CVAL. apply STEP1. apply STEP2.  
+Qed.
     
 Lemma cps_bs_gen (S : stmt) (c c' : conf) (S1 k : cont)
       (EXEC : k |- c -- S1 --> c') (DEF : !S = S1 @ k):
   c == S ==> c'.
-Proof. admit. Admitted.
+Proof. generalize dependent S. induction EXEC; intros. 
+  inversion DEF.
+  all: destruct k; inversion DEF.
+  all: try by (inversion EXEC; constructor).
+  - eapply bs_Seq. apply bs_Skip. apply IHEXEC. reflexivity.
+  - eapply bs_Seq. apply bs_Assign. apply CVAL. apply IHEXEC. reflexivity.
+  - eapply bs_Seq. apply bs_Read. apply IHEXEC. reflexivity.
+  - eapply bs_Seq. apply bs_Write. apply CVAL. apply IHEXEC. reflexivity.
+  - apply IHEXEC. reflexivity.
+  - apply SmokeTest.seq_assoc. apply IHEXEC. reflexivity.
+  - apply bs_If_True. apply CVAL. apply IHEXEC. reflexivity.
+  - apply if_fold. apply bs_If_True. apply CVAL. apply IHEXEC. reflexivity.
+  - apply bs_If_False. apply CVAL. apply IHEXEC. reflexivity.
+  - apply if_fold. apply bs_If_False. apply CVAL. apply IHEXEC. reflexivity.
+  - apply SmokeTest.while_unfolds. apply bs_If_True. apply CVAL. apply IHEXEC. reflexivity.
+  - assert (((st, i, o) == s ;; WHILE e DO s END ;; s0 ==> c') -> ((st, i, o) == WHILE e DO s END ;; s0 ==> c')) as while_ufoldl.
+    + intro. inversion H. inversion STEP2. subst. eapply bs_Seq. eapply bs_While_True. apply CVAL.
+      apply STEP1. apply STEP0. apply STEP3.
+    + apply while_ufoldl. apply IHEXEC. reflexivity.
+  - eapply bs_Seq. apply bs_While_False. apply CVAL. apply IHEXEC. reflexivity.
+Qed.
 
 Lemma cps_bs (s1 s2 : stmt) (c c' : conf) (STEP : !s2 |- c -- !s1 --> c'):
    c == s1 ;; s2 ==> c'.
-Proof. admit. Admitted.
+Proof. eapply cps_bs_gen. eauto. reflexivity. Qed.
 
 Lemma cps_int_to_bs_int (c c' : conf) (s : stmt)
       (STEP : KEmpty |- c -- !(s) --> c') : 
   c == s ==> c'.
-Proof. admit. Admitted.
+Proof. eapply cps_bs_gen. eauto. reflexivity. Qed.
 
 Lemma cps_cont_to_seq c1 c2 k1 k2 k3
       (STEP : (k2 @ k3 |- c1 -- k1 --> c2)) :
   (k3 |- c1 -- k1 @ k2 --> c2).
-Proof. admit. Admitted.
+Proof. dependent destruction k1.
+  - dependent destruction k2.
+    + apply STEP.
+    + dependent destruction k3.
+      all: inversion STEP.
+  - dependent destruction k2.
+    + apply STEP.
+    + dependent destruction k3.
+      all: (apply cps_Seq; assumption).
+Qed.
 
 Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
       (EXEC : c1 == s ==> c2)
       (STEP : k |- c2 -- !(SKIP) --> c3) :
   k |- c1 -- !(s) --> c3.
-Proof. admit. Admitted.
+Proof. inversion STEP. subst. clear STEP. generalize dependent k. generalize c3.
+  induction EXEC; intros.
+  - apply cps_Skip. apply CSTEP.
+  - eapply cps_Assign. apply VAL. apply CSTEP.
+  - apply cps_Read. apply CSTEP.
+  - eapply cps_Write. apply VAL. apply CSTEP.
+  - apply cps_Seq. apply IHEXEC1. destruct k eqn:KD. 
+    + eapply IHEXEC2. apply CSTEP.
+    + apply cps_Seq. apply IHEXEC2. apply CSTEP.
+  - apply cps_If_True. apply CVAL. apply IHEXEC. apply CSTEP.
+  - apply cps_If_False. apply CVAL. apply IHEXEC. apply CSTEP.
+  - apply cps_While_True. apply CVAL. apply IHEXEC1. destruct k eqn:KD.
+    + eapply IHEXEC2. apply CSTEP.
+    + eapply cps_Seq. apply IHEXEC2. apply CSTEP.
+  - apply cps_While_False. apply CVAL. apply CSTEP.
+Qed.
 
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
-Proof. admit. Admitted.
+Proof. eapply bs_int_to_cps_int_cont. 
+    apply EXEC. apply cps_Skip. apply cps_Empty.
+Qed.
 
 (* Lemma cps_stmt_assoc s1 s2 s3 s (c c' : conf) : *)
 (*   (! (s1 ;; s2 ;; s3)) |- c -- ! (s) --> (c') <-> *)
