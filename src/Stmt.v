@@ -64,6 +64,8 @@ Inductive bs_int : stmt -> conf -> conf -> Prop :=
                           (st, i, o) == WHILE e DO s END ==> (st, i, o)
 where "c1 == s ==> c2" := (bs_int s c1 c2).
 
+#[export] Hint Constructors bs_int : core.
+
 (* "Surface" semantics *)
 Definition eval (s : stmt) (i o : list Z) : Prop :=
   exists st, ([], i, []) == s ==> (st, [], o).
@@ -75,7 +77,7 @@ Definition eval_equivalent (s1 s2 : stmt) : Prop :=
   forall (i o : list Z),  <| s1 |> i => o <-> <| s2 |> i => o.
 
 Notation "s1 ~e~ s2" := (eval_equivalent s1 s2) (at level 0).
-
+ 
 (* Contextual equivalence *)
 Inductive Context : Type :=
 | Hole 
@@ -465,29 +467,126 @@ End SmallStep.
 
 Module Renaming.
 
-  Definition renaming := Expr.Renaming.renaming.
-  
-  Fixpoint rename (r : renaming) (s : stmt) : stmt :=
-    match r with
-    | exist _ f _ =>
-        match s with
-        | SKIP                       => SKIP
-        | x ::= e                    => (f x) ::= Renaming.rename_expr r e
-        | READ x                     => READ (f x)
-        | WRITE e                    => WRITE (Renaming.rename_expr r e)
-        | s1 ;; s2                   => (rename r s1) ;; (rename r s2)
-        | COND e THEN s1 ELSE s2 END => COND (Renaming.rename_expr r e) THEN (rename r s1) ELSE (rename r s2) END
-        | WHILE e DO s END           => WHILE (Renaming.rename_expr r e) DO (rename r s) END             
-        end
+  Definition renaming := Renaming.renaming.
+
+  Definition rename_id := Renaming.rename_id.
+
+  Definition renamings_inv := Renaming.renamings_inv.
+
+  Definition renaming_inv := Renaming.renaming_inv.
+
+  Definition renaming_inv2 := Renaming.renaming_inv2.
+
+  Definition rename_expr := Renaming.rename_expr.
+
+  Definition re_rename_expr := Renaming.re_rename_expr.
+
+  Definition rename_state := Renaming.rename_state.
+
+  Definition re_rename_state := Renaming.re_rename_state.
+
+  Definition rename_conf (r : renaming) (c : conf) : conf :=
+    match c with
+    | (st, i, o) => (rename_state r st, i, o)
     end.
 
+  Lemma re_rename_conf (r r' : renaming) (Hinv : renamings_inv r r') (c : conf) : rename_conf r (rename_conf r' c) = c.
+  Proof. destruct c, p. simpl. assert (rename_state r (rename_state r' s) = s). apply re_rename_state. exact Hinv. rewrite -> H. reflexivity. Qed.
+
+  Fixpoint rename (r : renaming) (s : stmt) : stmt :=
+    match s with
+    | SKIP                       => SKIP
+    | x ::= e                    => (rename_id r x) ::= rename_expr r e
+    | READ x                     => READ (rename_id r x)
+    | WRITE e                    => WRITE (rename_expr r e)
+    | s1 ;; s2                   => (rename r s1) ;; (rename r s2)
+    | COND e THEN s1 ELSE s2 END => COND (rename_expr r e) THEN (rename r s1) ELSE (rename r s2) END
+    | WHILE e DO s END           => WHILE (rename_expr r e) DO (rename r s) END             
+    end.
+
+  Lemma re_rename
+    (r r' : renaming)
+    (Hinv : renamings_inv r r')
+    (s    : stmt) : rename r (rename r' s) = s.
+  Proof. induction s; simpl.
+    reflexivity.
+      assert (rename_id r (rename_id r' i) = i). apply Hinv.
+      assert (rename_expr r (rename_expr r' e) = e). apply re_rename_expr. exact Hinv.
+    rewrite -> H. rewrite -> H0. reflexivity.
+      assert (rename_id r (rename_id r' i) = i). apply Hinv.
+    rewrite -> H. reflexivity.
+      assert (rename_expr r (rename_expr r' e) = e). apply re_rename_expr. exact Hinv.
+    rewrite -> H. reflexivity.
+    rewrite -> IHs1. rewrite -> IHs2. reflexivity.
+      assert (rename_expr r (rename_expr r' e) = e). apply re_rename_expr. exact Hinv.
+    rewrite -> H. rewrite -> IHs1. rewrite -> IHs2. reflexivity.
+      assert (rename_expr r (rename_expr r' e) = e). apply re_rename_expr. exact Hinv.
+    rewrite -> H. rewrite -> IHs. reflexivity.
+  Qed.
+  
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
-    Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
+    rename_state r (st [ x <- z ]) = (rename_state r st) [(rename_id r x) <- z].
   Proof. destruct r. reflexivity. Qed.
-    
+  
+  #[export] Hint Resolve Renaming.eval_renaming_invariance : core.
+
+  Lemma renaming_invariant_bs
+    (s         : stmt)
+    (r         : renaming)
+    (c c'      : conf)
+    (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
+  Proof. destruct r. induction Hbs.
+    apply bs_Skip.
+    apply bs_Assign. apply Renaming.eval_renaming_invariance. exact VAL.
+    apply bs_Read.
+    apply bs_Write. apply Renaming.eval_renaming_invariance. exact VAL.
+    apply bs_Seq with (rename_conf (exist _ x b) c'). exact IHHbs1. exact IHHbs2.
+    apply bs_If_True. apply Renaming.eval_renaming_invariance. exact CVAL. exact IHHbs.
+    apply bs_If_False. apply Renaming.eval_renaming_invariance. exact CVAL. exact IHHbs.
+    apply bs_While_True with (rename_conf (exist _ x b) c'). apply Renaming.eval_renaming_invariance. exact CVAL. exact IHHbs1. exact IHHbs2.
+    apply bs_While_False. apply Renaming.eval_renaming_invariance. exact CVAL.
+  Qed.
+  
+  Lemma renaming_invariant_bs_inv
+    (s         : stmt)
+    (r         : renaming)
+    (c c'      : conf)
+    (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
+  Proof. destruct (renaming_inv r).
+      assert ((rename_conf x (rename_conf r c)) == rename x (rename r s) ==> (rename_conf x (rename_conf r c')) = c == s ==> c').
+          assert (rename_conf x (rename_conf r c) = c). apply re_rename_conf. exact H.
+          assert (rename x (rename r s) = s). apply re_rename. exact H.
+          assert (rename_conf x (rename_conf r c') = c'). apply re_rename_conf. exact H.
+        rewrite -> H0. rewrite -> H1. rewrite -> H2. reflexivity.
+    rewrite <- H0. apply renaming_invariant_bs. exact Hbs.
+  Qed.
+
+  Lemma id_renamed_exists (i : id) (r : renaming) : exists i', rename_id r i' = i.
+  Proof. destruct (renaming_inv2 r). exists (rename_id x i). apply H. Qed.
+
+  Lemma state_renamed_exists (s : state Z) (r : renaming) : exists s', rename_state r s' = s.
+  Proof. destruct (renaming_inv2 r). induction s.
+    exists []. reflexivity.
+    destruct IHs. destruct a. destruct (id_renamed_exists i r). exists ((x1, z) :: x0).
+        assert (rename_state r ((x1, z) :: x0) = (rename_id r x1, z) :: rename_state r x0). destruct r. reflexivity.
+      rewrite -> H2. rewrite -> H1. rewrite -> H0. reflexivity.
+  Qed.
+
+  Lemma conf_renamed_exists (c : conf) (r : renaming) : exists c', rename_conf r c' = c.
+  Proof. destruct c, p, (state_renamed_exists s r). exists (x, l0, l). simpl. rewrite -> H. reflexivity. Qed.
+
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
-  Proof. admit. Admitted.
-    
+  Proof. intro. intro. split; intro.
+    inversion H. exists (rename_state r x).
+        assert (rename_conf r ([], i, []) = ([], i, [])). reflexivity.
+        assert (rename_conf r (x, [], o) = (rename_state r x, [], o)). reflexivity.
+      rewrite <- H1. rewrite <- H2. apply renaming_invariant_bs. exact H0.
+    inversion H. destruct (renaming_inv2 r). destruct (conf_renamed_exists (x, [], o) r).
+      destruct x1, p. inversion H2. rewrite -> H5 in H2. rewrite -> H6 in H2.
+        assert (rename_conf r ([], i, []) = ([], i, [])). reflexivity.
+      exists s0. apply renaming_invariant_bs_inv with r. rewrite -> H3. rewrite -> H2. exact H0.
+  Qed.
+      
 End Renaming.
 
 (* CPS semantics *)

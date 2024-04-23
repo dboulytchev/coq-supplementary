@@ -714,18 +714,40 @@ End SmallStep.
 Module Renaming.
   
   Definition renaming := { f : id -> id | Bijective f }.
-
+  
   Fixpoint rename_id (r : renaming) (x : id) : id :=
     match r with
       exist _ f _ => f x
     end.
+
+  Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.
   
+  Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
+  Proof. destruct r, b, a. exists (exist Bijective x0 (ex_intro _ x (conj e0 e))).
+    intro. simpl. apply e.
+  Qed.
+
+  Lemma renaming_inv2 (r : renaming) : exists (r' : renaming), renamings_inv r r'.
+  Proof. destruct r, b, a. exists (exist Bijective x0 (ex_intro _ x (conj e0 e))).
+    intro. simpl. apply e0.
+  Qed.
+
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with
     | Var x => Var (rename_id r x) 
     | Nat n => Nat n
     | Bop op e1 e2 => Bop op (rename_expr r e1) (rename_expr r e2) 
     end.
+
+  Lemma re_rename_expr
+    (r r' : renaming)
+    (Hinv : renamings_inv r r')
+    (e    : expr) : rename_expr r (rename_expr r' e) = e.
+  Proof. destruct r, r'. induction e; simpl.
+    reflexivity.
+    assert (x (x0 i) = i). apply (Hinv i). rewrite H. reflexivity.
+    rewrite IHe1. rewrite IHe2. reflexivity.
+  Qed.
 
   Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
     match st with
@@ -734,17 +756,14 @@ Module Renaming.
         match r with exist _ f _ => (f id, x) :: rename_state r tl end
     end.
 
-  (*Definition inv_renaming (r : renaming) : renaming :=
-    match r with exist _ f b =>
-    match b with ex_intro _ g ps =>
-      exist Bijective g (ex_intro _ f (conj (proj2 ps) (proj1 ps)))
-    end
-    end.*)
-  
-  (*Definition re_rename_id (r : renaming) (x : id) : id :=
-    match r with
-      exist _ _ (ex_intro _ g _) => g x
-    end.*)
+  Lemma re_rename_state
+    (r r' : renaming)
+    (Hinv : renamings_inv r r')
+    (st   : state Z) : rename_state r (rename_state r' st) = st.
+  Proof. destruct r, r'. induction st.
+    reflexivity.
+    destruct a. simpl. assert (x (x0 i) = i). apply (Hinv i). rewrite H. rewrite IHst. reflexivity.
+  Qed.
 
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
   Proof. intro. intros. destruct BH. destruct H0. rewrite <- (H0 x). rewrite <- (H0 y). rewrite H. reflexivity. Qed.
@@ -779,38 +798,18 @@ Module Renaming.
     apply bs_Or. apply IHe1. exact VALA. apply IHe2. exact VALB. exact BOOLA. exact BOOLB.
   Qed.
 
-  (*Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
+  Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
   Proof. split; intro.
-    generalize st z r H. clear H r z st. induction e; intros; inversion H; clear H.
-      apply bs_Nat.
-      apply bs_Var. subst. induction VAR; destruct r.
-        apply st_binds_hd.
-        apply st_binds_tl; simpl.
-          intro. remember (bijective_injective x0 b). assert (id = id'). apply i. exact H0. contradiction.
-          exact IHVAR.
-      apply bs_Add. apply IHe1. exact VALA. apply IHe2. exact VALB.
-      apply bs_Sub. apply IHe1. exact VALA. apply IHe2. exact VALB.
-      apply bs_Mul. apply IHe1. exact VALA. apply IHe2. exact VALB.
-      apply bs_Div. apply IHe1. exact VALA. apply IHe2. exact VALB. exact NZERO.
-      apply bs_Mod. apply IHe1. exact VALA. apply IHe2. exact VALB. exact NZERO.
-      apply bs_Le_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Le_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Lt_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Lt_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Ge_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Ge_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Gt_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Gt_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Eq_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Eq_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Ne_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_Ne_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
-      apply bs_And. apply IHe1. exact VALA. apply IHe2. exact VALB. exact BOOLA. exact BOOLB.
-      apply bs_Or. apply IHe1. exact VALA. apply IHe2. exact VALB. exact BOOLA. exact BOOLB.
-    generalize st z r H. clear H r z st. induction e; intros; inversion H; clear H.
-      apply bs_Nat.
-      apply bs_Var. subst. remember (rename_state r st). remember (rename_id r i). induction VAR. destruct r.*)
-        
+    apply eval_renaming_invariance'. exact H.
+    destruct (renaming_inv r).
+      assert ([|rename_expr x (rename_expr r e)|] (rename_state x (rename_state r st)) => z).
+        apply eval_renaming_invariance'. exact H.
+      assert (rename_expr x (rename_expr r e) = e).
+        apply re_rename_expr. exact H0.
+      assert (rename_state x (rename_state r st) = st).
+        apply re_rename_state. exact H0.
+      rewrite -> H2 in H1. rewrite -> H3 in H1. exact H1.
+  Qed.
 
 End Renaming.
