@@ -274,7 +274,7 @@ Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
-  forall z :Z, s1 /id => z <-> s2 / id => z.
+  forall z : Z, s1 /id => z <-> s2 / id => z.
 
 Lemma equivalent_states_for_left_part_of_bop (b : bop) (e1 e2 : expr) (s1 s2 : state Z)
   (FV : forall (i : id), i ? (Bop b e1 e2) -> equivalent_states s1 s2 i) :

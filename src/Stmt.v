@@ -313,26 +313,102 @@ Proof. generalize dependent c2. induction EXEC1; intros; inversion EXEC2.
   reflexivity.
 Qed.
 
+Definition equivalent_states (s1 s2 : state Z) :=
+  forall id, Expr.equivalent_states s1 s2 id.
+
+Lemma upd_equiv_states
+  (s1 s2 : state Z)
+  (HE : equivalent_states s1 s2)
+  (i : id) (z : Z) :
+  equivalent_states (s1 [i <- z]) (s2 [i <- z]).
+Proof. intro. intro. split; intro.
+  inversion H; subst. apply st_binds_hd. apply st_binds_tl. exact H5. apply (HE id z0). exact H6.
+  inversion H; subst. apply st_binds_hd. apply st_binds_tl. exact H5. apply (HE id z0). exact H6.
+Qed.
+
+Lemma eval_equiv_states
+  (s1 s2 : state Z)
+  (HE : equivalent_states s1 s2)
+  (e : expr) (z : Z)
+  (H : [|e|] s1 => z) : [|e|] s2 => z.
+Proof. induction H; intros.
+  apply bs_Nat.
+  apply bs_Var. apply HE. exact VAR.
+  apply bs_Add. exact (IHeval1 HE). exact (IHeval2 HE).
+  apply bs_Sub. exact (IHeval1 HE). exact (IHeval2 HE).
+  apply bs_Mul. exact (IHeval1 HE). exact (IHeval2 HE).
+  apply bs_Div. exact (IHeval1 HE). exact (IHeval2 HE). exact NZERO.
+  apply bs_Mod. exact (IHeval1 HE). exact (IHeval2 HE). exact NZERO.
+  apply bs_Le_T with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Le_F with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Lt_T with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Lt_F with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Ge_T with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Ge_F with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Gt_T with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Gt_F with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Eq_T with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Eq_F with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Ne_T with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_Ne_F with za zb. exact (IHeval1 HE). exact (IHeval2 HE). exact OP.
+  apply bs_And. exact (IHeval1 HE). exact (IHeval2 HE). exact BOOLA. exact BOOLB.
+  apply bs_Or. exact (IHeval1 HE). exact (IHeval2 HE). exact BOOLA. exact BOOLB.
+Qed.
+
+Lemma bs_equiv_states
+  (s            : stmt)
+  (i o i' o'    : list Z)
+  (st1 st2 st1' : state Z)
+  (HE1          : equivalent_states st1 st1')
+  (H            : (st1, i, o) == s ==> (st2, i', o')) :
+  exists st2',  equivalent_states st2 st2' /\ (st1', i, o) == s ==> (st2', i', o').
+Proof. remember (st1, i, o). remember (st2, i', o'). generalize i o i' o' st1 st2 st1' HE1 Heqp Heqp0. clear Heqp0 Heqp HE1 st1' st2 st1 o' i' o i. induction H; intros.
+  subst. inversion Heqp0. subst. exists st1'. split. exact HE1. apply bs_Skip.
+  inversion Heqp. inversion Heqp0. subst. exists (st1' [x <- z]). split. apply upd_equiv_states. exact HE1. apply bs_Assign. apply eval_equiv_states with st1. exact HE1. exact VAL.
+  inversion Heqp. inversion Heqp0. subst. exists (st1' [x <- z]). split. apply upd_equiv_states. exact HE1. apply bs_Read.
+  inversion Heqp. inversion Heqp0. subst. exists st1'. split. exact HE1. apply bs_Write. apply eval_equiv_states with st2. exact HE1. exact VAL.
+  inversion Heqp. inversion Heqp0. subst. destruct c'. destruct p. assert ((s, l0, l) = (s, l0, l)). reflexivity. destruct (IHbs_int1 i o l0 l st1 s st1' HE1 H1 H3). destruct H4. destruct (IHbs_int2 l0 l i' o' s st2 x H4 H3 H2). destruct H6. exists x0. split. exact H6. apply bs_Seq with (x, l0, l). exact H5. exact H7.
+  inversion Heqp. inversion Heqp0. subst. destruct (IHbs_int i0 o0 i' o' st1 st2 st1' HE1 Heqp H0). destruct H1. exists x. split. exact H1. apply bs_If_True. apply eval_equiv_states with st1. exact HE1. exact CVAL. exact H2.
+  inversion Heqp. inversion Heqp0. subst. destruct (IHbs_int i0 o0 i' o' st1 st2 st1' HE1 Heqp H0). destruct H1. exists x. split. exact H1. apply bs_If_False. apply eval_equiv_states with st1. exact HE1. exact CVAL. exact H2.
+  inversion Heqp. inversion Heqp0. subst. destruct c'. destruct p. assert ((s0, l0, l) = (s0, l0, l)). reflexivity. destruct (IHbs_int1 i0 o0 l0 l st1 s0 st1' HE1 Heqp H2). destruct H3. destruct (IHbs_int2 l0 l i' o' s0 st2 x H3 H2 H1). destruct H5. exists x0. split. exact H5. apply bs_While_True with (x, l0, l). apply eval_equiv_states with st1. exact HE1. exact CVAL. exact H4. exact H6.
+  inversion Heqp. inversion Heqp0. subst. exists st1'. split. exact HE1. apply bs_While_False. apply eval_equiv_states with st2. exact HE1. exact CVAL.
+Qed.
+  
 (* Contextual equivalence is equivalent to the semantic one *)
 (* TODO: no longer needed *)
 Ltac by_eq_congruence e s s1 s2 H :=
   remember (eq_congruence e s s1 s2 H) as Congruence;
   match goal with H: Congruence = _ |- _ => clear H end;
   repeat (match goal with H: _ /\ _ |- _ => inversion_clear H end); assumption.
-    
-Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
-Proof. admit. Admitted.
-(*Proof. split.
-  intro. intro. induction C.
-    exact H.
-    intro. intro. apply eq_congruence_seq_l. exact IHC.
-    intro. intro. apply eq_congruence_seq_r. exact IHC.
-    intro. intro. apply eq_congruence_cond_then. exact IHC.
-    intro. intro. apply eq_congruence_cond_else. exact IHC.
-    intro. intro. apply eq_congruence_while. exact s1. exact IHC.
-  intro. exact (H Hole).
-Qed.*)
+(*
+Lemma eq_c : ((Id 0 ::= Nat Z.zero) ;; (Id 0 ::= Nat Z.one)) ~c~
+              (Id 0 ::= (Nat Z.one)).
+Proof.
+  unfold contextual_equivalent.
+  intro C.
+  unfold eval_equivalent.
+  intros i o. split; intro H.
+  { generalize dependent o. induction C; intros o H.
+    { simpl in *. inversion H. inversion H0. subst. inversion STEP1. subst.
+      unfold update in STEP2. simpl in STEP2. inversion STEP2. subst.
+      econstructor. constructor. constructor.
+    }
+    { simpl in *. inversion_clear H. inversion_clear H0. destruct c', p.
+      specialize (IHC l).
+      assert (A: <| C <~ (Id 0 ::= Nat Z.zero) ;; (Id 0 ::= Nat Z.one) |> i => l
+      
+  
 
+Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
+Proof.
+  split; intro H.
+  { admit. }
+  { unfold contextual_equivalent in H. unfold bs_equivalent. unfold eval_equivalent in H.
+    intros c c'. split; intro Hbs.
+    simpl in H. destruct c, c', p, p0.
+    specialize (H l1 l0). inversion H. 
+ *)   
+      
 (* Small-step semantics *)
 Module SmallStep.
   
@@ -618,35 +694,35 @@ Inductive cps_int : cont -> cont -> conf -> conf -> Prop :=
     k |- (s, i, o) -- !(x ::= e) --> c'
 | cps_Read        : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (x : id) (z : Z)
-                      (CSTEP : KEmpty |- (s [x <- z], i, o) -- k --> c'),
+                           (CSTEP : KEmpty |- (s [x <- z], i, o) -- k --> c'),
     k |- (s, z::i, o) -- !(READ x) --> c'
 | cps_Write       : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (z : Z)
-                      (CVAL : [| e |] s => z)
-                      (CSTEP : KEmpty |- (s, i, z::o) -- k --> c'),
+                           (CVAL : [| e |] s => z)
+                           (CSTEP : KEmpty |- (s, i, z::o) -- k --> c'),
     k |- (s, i, o) -- !(WRITE e) --> c'
 | cps_Seq         : forall (c c' : conf) (k : cont) (s1 s2 : stmt)
                            (CSTEP : !s2 @ k |- c -- !s1 --> c'),
     k |- c -- !(s1 ;; s2) --> c'
 | cps_If_True     : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s1 s2 : stmt)
-                      (CVAL : [| e |] s => Z.one)
-                      (CSTEP : k |- (s, i, o) -- !s1 --> c'),
+                           (CVAL : [| e |] s => Z.one)
+                           (CSTEP : k |- (s, i, o) -- !s1 --> c'),
     k |- (s, i, o) -- !(COND e THEN s1 ELSE s2 END) --> c'
 | cps_If_False    : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s1 s2 : stmt)
-                      (CVAL : [| e |] s => Z.zero)
-                      (CSTEP : k |- (s, i, o) -- !s2 --> c'),
+                           (CVAL : [| e |] s => Z.zero)
+                           (CSTEP : k |- (s, i, o) -- !s2 --> c'),
     k |- (s, i, o) -- !(COND e THEN s1 ELSE s2 END) --> c'
 | cps_While_True  : forall (st : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s : stmt)
-                      (CVAL : [| e |] st => Z.one)
-                      (CSTEP : !(WHILE e DO s END) @ k |- (st, i, o) -- !s --> c'),
+                           (CVAL : [| e |] st => Z.one)
+                           (CSTEP : !(WHILE e DO s END) @ k |- (st, i, o) -- !s --> c'),
     k |- (st, i, o) -- !(WHILE e DO s END) --> c'
 | cps_While_False : forall (st : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s : stmt)
-                      (CVAL : [| e |] st => Z.zero)
-                      (CSTEP : KEmpty |- (st, i, o) -- k --> c'),
+                           (CVAL : [| e |] st => Z.zero)
+                           (CSTEP : KEmpty |- (st, i, o) -- k --> c'),
     k |- (st, i, o) -- !(WHILE e DO s END) --> c'
 where "k |- c1 -- s --> c2" := (cps_int k s c1 c2).
 
