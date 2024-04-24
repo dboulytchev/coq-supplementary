@@ -534,11 +534,10 @@ Module SmallStep.
   Qed.
 
   Lemma ss_strictness (s       : state Z)
-      
-  (z: Z)
-                     (e1 e2 : expr)
-                     (op      : bop)
-                     (EVAL : s |- (Bop op e1 e2)  -->> (Nat z)) :
+                      (z: Z)
+                      (e1 e2 : expr)
+                      (op      : bop)
+                      (EVAL : s |- (Bop op e1 e2)  -->> (Nat z)) :
     exists (za zb : Z) , s |- e1 -->> (Nat za) /\ s |- e2 -->> (Nat zb) /\ [| Bop op (Nat za) (Nat zb) |] s => z.
   Proof.
     dependent induction EVAL.

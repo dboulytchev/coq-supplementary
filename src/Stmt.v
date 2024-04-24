@@ -992,18 +992,94 @@ Ltac cps_bs_gen_helper k H HH :=
   destruct k eqn:K; subst; inversion H; subst;
   [inversion EXEC; subst | eapply bs_Seq; eauto];
   apply HH; auto.
-    
+  
 Lemma cps_bs_gen (S : stmt) (c c' : conf) (S1 k : cont)
       (EXEC : k |- c -- S1 --> c') (DEF : !S = S1 @ k):
   c == S ==> c'.
 Proof.
-  induction S.
-  - destruct S1; destruct k; try discriminate.
-    + inversion DEF. subst s. inversion EXEC.
-    + inversion DEF. subst s. inversion EXEC.
-      inversion CSTEP. apply bs_Skip.
-  - 
-all: admit. Admitted.
+generalize dependent S.
+induction EXEC; intros; try discriminate. 
+- destruct k; try discriminate; inversion DEF.
+  + inversion EXEC. apply bs_Skip.
+  + apply bs_Seq with c. apply bs_Skip.
+    apply IHEXEC. reflexivity.
+- destruct k; try discriminate; inversion DEF.
+  + inversion EXEC. apply bs_Assign. assumption.
+  + eapply bs_Seq. apply bs_Assign. 
+    eassumption. apply IHEXEC. reflexivity.
+- destruct k; try discriminate; inversion DEF.
+  + inversion EXEC. apply bs_Read.
+  + eapply bs_Seq. apply bs_Read. apply IHEXEC.
+    reflexivity.
+- destruct k; try discriminate; inversion DEF.
+  + inversion EXEC. apply bs_Write. assumption.
+  + eapply bs_Seq. apply bs_Write. eassumption.
+    apply IHEXEC. reflexivity.
+- destruct k; try discriminate; inversion DEF.
+  + apply IHEXEC. reflexivity.
+  + assert (forall s1' s2' s3' c c', c == s1';;(s2';;s3') ==> c' -> 
+  c == (s1';;s2');;s3' ==> c'). {
+     intros. inversion H.
+     inversion STEP2.
+     eapply bs_Seq.
+     eapply bs_Seq.
+     all: eassumption. 
+  } apply SmokeTest.seq_assoc.
+  apply IHEXEC. reflexivity.
+- destruct k. inversion DEF.
+  + apply bs_If_True. assumption.
+    apply IHEXEC. reflexivity.
+  + assert (forall s1' s2' s3' c' e' s' i' o' , 
+      [|e'|] s' => (Z.one) -> (((s', i', o')) == s1' ;; s3' ==> c' -> 
+      ((s', i' , o')) == (COND e' THEN s1' ELSE s2' END) ;; s3' ==> c')). {
+        intros. 
+        inversion H0.
+        apply bs_Seq with c'1. apply bs_If_True.
+        assumption. assumption. assumption.
+      }
+      inversion DEF. eapply H. eassumption. apply IHEXEC.
+      reflexivity.
+- destruct k; inversion DEF.
+  + apply bs_If_False. assumption.
+    apply IHEXEC. reflexivity.
+  + assert (forall s1' s2' s3' c' e' s' i' o' , 
+      [|e'|] s' => (Z.zero) -> (((s', i', o')) == s2' ;; s3' ==> c' -> 
+      ((s', i' , o')) == (COND e' THEN s1' ELSE s2' END) ;; s3' ==> c')). {
+        intros. 
+        inversion H1.
+        apply bs_Seq with c'1. apply bs_If_False.
+        assumption. assumption. assumption.
+      }
+      eapply H. eassumption. apply IHEXEC.
+      reflexivity.
+- destruct k. 
+  + specialize (SmokeTest.while_unfolds e s) as WU.
+    inversion DEF. apply WU. 
+    apply bs_If_True. assumption. apply IHEXEC.
+    reflexivity.
+  + assert (forall s1' s2' c' e' s' i' o' , 
+    [|e'|] s' => (Z.one) -> (((s', i', o')) == s1' ;; (WHILE e' DO s1' END) ;; s2' ==> c' -> 
+    ((s', i' , o')) == (WHILE e' DO s1' END) ;; s2' ==> c')). {
+    intros. 
+    inversion H0. inversion STEP2.
+    eapply bs_Seq. eapply bs_While_True.
+    assumption. eassumption. eassumption. eassumption.
+    } specialize (SmokeTest.while_unfolds e s) as WU.
+    inversion DEF. apply H. assumption.
+    apply IHEXEC. reflexivity.
+- destruct k.
+  + inversion EXEC. inversion DEF. apply bs_While_False.
+    assumption.
+  + assert (forall s1' s2' c' e' s' i' o' , 
+      [|e'|] s' => (Z.zero) -> (((s', i', o')) == s2' ==> c' -> 
+     ((s', i' , o')) == (WHILE e' DO s1' END) ;; s2' ==> c')). {
+        intros. eapply bs_Seq. apply bs_While_False.
+        assumption. assumption.
+     }
+    inversion DEF. apply H. assumption.
+    apply IHEXEC. reflexivity. 
+Qed.
+
 
 Lemma cps_bs (s1 s2 : stmt) (c c' : conf) (STEP : !s2 |- c -- !s1 --> c'):
    c == s1 ;; s2 ==> c'.
@@ -1045,8 +1121,35 @@ Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
       (EXEC : c1 == s ==> c2)
       (STEP : k |- c2 -- !(SKIP) --> c3) :
   k |- c1 -- !(s) --> c3.
-Proof. admit. Admitted.
-
+Proof.
+  generalize dependent k.
+  induction EXEC; intros.
+  - assumption.
+  - apply cps_Assign with z. assumption.
+    inversion STEP. assumption.
+  - apply cps_Read. inversion STEP. assumption.
+  - apply cps_Write with z. assumption.
+    inversion STEP. assumption.
+  - apply cps_Seq. apply IHEXEC1.
+    destruct k; unfold Kapp.
+    + apply cps_Skip. apply IHEXEC2. assumption.
+    + apply cps_Skip. apply cps_Seq.
+      unfold Kapp. apply IHEXEC2. assumption.
+  - apply cps_If_True. assumption.
+    apply IHEXEC. assumption.
+  - apply cps_If_False. assumption.
+    apply IHEXEC. assumption.
+  - apply cps_While_True. assumption.
+    destruct k; unfold Kapp.
+    + apply IHEXEC1. apply cps_Skip. 
+      apply IHEXEC2. assumption.
+    + apply IHEXEC1. apply cps_Skip.
+      apply cps_Seq. unfold Kapp.
+      apply IHEXEC2. assumption.
+  - apply cps_While_False. assumption.
+    inversion STEP. assumption.
+Qed.
+     
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
 Proof.
