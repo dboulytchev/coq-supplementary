@@ -466,13 +466,56 @@ Proof. revert EXEC1 EXEC2. revert c c1 c2. induction s; intros.
     * reflexivity.
 Qed.
 
+Definition equivalent_states (s1 s2 : state Z) :=
+  forall id, Expr.equivalent_states s1 s2 id.
+
+Lemma equivalent_states_update : 
+forall st st' x z, equivalent_states st st' ->equivalent_states ((st)[x <- z]) ((st')[x <- z]) .
+Proof. 
+  intros. intro. intro. specialize (Id.id_eq_dec id x) as H'.
+  destruct H'. 
+  - subst id. split; intros.
+    inversion H0. apply st_binds_hd. contradiction.
+    inversion H0. apply st_binds_hd. contradiction.
+  - split; intro. 
+  inversion H0. rewrite H1 in *. contradiction.
+  apply st_binds_tl. assumption. apply H. assumption.
+  inversion H0. rewrite H1 in *. contradiction.
+  apply st_binds_tl. assumption. apply H. assumption.
+Qed.
+
+Lemma bs_equiv_states
+  (s            : stmt)
+  (i o i' o'    : list Z)
+  (st1 st2 st1' : state Z)
+  (HE1          : equivalent_states st1 st1')  
+  (H            : (st1, i, o) == s ==> (st2, i', o')) :
+  exists st2',  equivalent_states st2 st2' /\ (st1', i, o) == s ==> (st2', i', o').
+Proof.
+  generalize dependent st1.
+  generalize dependent st2.
+
+  dependent induction H; intros.
+  - exists st1'. auto.
+  - exists ((st1' [x <- z])). split.
+    + apply equivalent_states_update. assumption.
+    + constructor. apply Expr.variable_relevance with st1; auto.
+  - exists ((st1' [x <- z])). split.
+    + apply equivalent_states_update. assumption.
+    + auto.
+  - exists st1'. split. 
+    + assumption.
+    + apply bs_Write. apply Expr.variable_relevance with st2; auto.
+  - destruct c' as [[st' i0] o0].
+    specialize (IHbs_int1 ) 
+admit. Admitted.
+  
 (* Contextual equivalence is equivalent to the semantic one *)
 (* TODO: no longer needed *)
 Ltac by_eq_congruence e s s1 s2 H :=
   remember (eq_congruence e s s1 s2 H) as Congruence;
   match goal with H: Congruence = _ |- _ => clear H end;
   repeat (match goal with H: _ /\ _ |- _ => inversion_clear H end); assumption.
-
   
 (* Lemma bs_eq_eq_ceq.
 *)
@@ -484,6 +527,8 @@ Proof.
   destruct H0 as [st H0]; exists st;
   apply H; assumption.  
 Qed.
+
+(*
 
 Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 -> s1 ~c~ s2.
 Proof.
@@ -500,6 +545,7 @@ Proof.
     + simpl. apply eq_congruence_cond_else. assumption.
     + simpl. apply eq_congruence_while. assumption.
 Qed.
+*)
 
 (*
 The s1 ~c~ s2 -> s1 ~~~ s2 is false
@@ -507,7 +553,33 @@ The s1 ~c~ s2 -> s1 ~~~ s2 is false
 Admitted. 
 
 *)
-
+(*
+Lemma eq_c : ((Id 0 ::= Nat Z.zero) ;; (Id 0 ::= Nat Z.one)) ~c~
+              (Id 0 ::= (Nat Z.one)).
+Proof.
+  unfold contextual_equivalent.
+  intro C.
+  unfold eval_equivalent.
+  intros i o. split; intro H.
+  { generalize dependent o. induction C; intros o H.
+    { simpl in *. inversion H. inversion H0. subst. inversion STEP1. subst.
+      unfold update in STEP2. simpl in STEP2. inversion STEP2. subst.
+      econstructor. constructor. constructor.
+    }
+    { simpl in *. inversion_clear H. inversion_clear H0. destruct c', p.
+      specialize (IHC l).
+      assert (A: <| C <~ (Id 0 ::= Nat Z.zero) ;; (Id 0 ::= Nat Z.one) |> i => l
+      
+Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
+Proof.
+  split; intro H.
+  { admit. }
+  { unfold contextual_equivalent in H. unfold bs_equivalent. unfold eval_equivalent in H.
+    intros c c'. split; intro Hbs.
+    simpl in H. destruct c, c', p, p0.
+    specialize (H l1 l0). inversion H. 
+ *)   
+      
 (* Small-step semantics *)
 Module SmallStep.
   
@@ -924,7 +996,6 @@ Module Renaming.
       econstructor. apply renaming_invariant_bs_inv with r.
       eassumption.
   Qed. 
-
 End Renaming.
 
 (* CPS semantics *)
@@ -956,35 +1027,35 @@ Inductive cps_int : cont -> cont -> conf -> conf -> Prop :=
     k |- (s, i, o) -- !(x ::= e) --> c'
 | cps_Read        : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (x : id) (z : Z)
-                      (CSTEP : KEmpty |- (s [x <- z], i, o) -- k --> c'),
+                           (CSTEP : KEmpty |- (s [x <- z], i, o) -- k --> c'),
     k |- (s, z::i, o) -- !(READ x) --> c'
 | cps_Write       : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (z : Z)
-                      (CVAL : [| e |] s => z)
-                      (CSTEP : KEmpty |- (s, i, z::o) -- k --> c'),
+                           (CVAL : [| e |] s => z)
+                           (CSTEP : KEmpty |- (s, i, z::o) -- k --> c'),
     k |- (s, i, o) -- !(WRITE e) --> c'
 | cps_Seq         : forall (c c' : conf) (k : cont) (s1 s2 : stmt)
                            (CSTEP : !s2 @ k |- c -- !s1 --> c'),
     k |- c -- !(s1 ;; s2) --> c'
 | cps_If_True     : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s1 s2 : stmt)
-                      (CVAL : [| e |] s => Z.one)
-                      (CSTEP : k |- (s, i, o) -- !s1 --> c'),
+                           (CVAL : [| e |] s => Z.one)
+                           (CSTEP : k |- (s, i, o) -- !s1 --> c'),
     k |- (s, i, o) -- !(COND e THEN s1 ELSE s2 END) --> c'
 | cps_If_False    : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s1 s2 : stmt)
-                      (CVAL : [| e |] s => Z.zero)
-                      (CSTEP : k |- (s, i, o) -- !s2 --> c'),
+                           (CVAL : [| e |] s => Z.zero)
+                           (CSTEP : k |- (s, i, o) -- !s2 --> c'),
     k |- (s, i, o) -- !(COND e THEN s1 ELSE s2 END) --> c'
 | cps_While_True  : forall (st : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s : stmt)
-                      (CVAL : [| e |] st => Z.one)
-                      (CSTEP : !(WHILE e DO s END) @ k |- (st, i, o) -- !s --> c'),
+                           (CVAL : [| e |] st => Z.one)
+                           (CSTEP : !(WHILE e DO s END) @ k |- (st, i, o) -- !s --> c'),
     k |- (st, i, o) -- !(WHILE e DO s END) --> c'
 | cps_While_False : forall (st : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s : stmt)
-                      (CVAL : [| e |] st => Z.zero)
-                      (CSTEP : KEmpty |- (st, i, o) -- k --> c'),
+                           (CVAL : [| e |] st => Z.zero)
+                           (CSTEP : KEmpty |- (st, i, o) -- k --> c'),
     k |- (st, i, o) -- !(WHILE e DO s END) --> c'
 where "k |- c1 -- s --> c2" := (cps_int k s c1 c2).
 
