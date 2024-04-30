@@ -532,23 +532,7 @@ Module SmallStep.
                           (SS2 : ((s) |- e2 -->> (Nat zb)))
                           (EVAL : ([|Bop b e1 e2|] s => zc))
                           : ((s) |- (Bop b e1 e2) -->> (Nat zc)).
-  Proof. 
-    dependent induction e1. 
-    { dependent induction e2 generalizing b. 
-      { inv EVAL; econstructor; eauto; eauto. }
-      { inv EVAL; inv VALB; remember (ss_Var s i zb0 VAR); econstructor; eauto; eauto. } 
-      { admit. } }
-    { dependent induction e2 generalizing b.
-      { inv EVAL; inv VALA; remember (ss_Var s i za0 VAR); econstructor; eauto; eauto. }
-      { inv EVAL; inv VALA; inv VALB; 
-        remember (ss_Var s i za0 VAR); remember (ss_Var s i0 zb0 VAR0); 
-        remember (ss_Left s (Var i) (Var i0) (Nat za0)); 
-        remember (ss_Right s (Nat za0) (Var i0) (Nat zb0));
-        remember (ss_Bop s za0 zb0); 
-        econstructor; eauto; econstructor; eauto; econstructor; eauto; eauto. }
-      { admit. } }
-    admit.
-  Admitted.
+  Proof. admit. Admitted.
 
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
@@ -580,10 +564,18 @@ Module Renaming.
   Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.
   
   Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
-  Proof. admit. Admitted.
+  Proof. 
+    destruct r. unfold Bijective in *. inv b. inv H. unfold renamings_inv.
+    assert (H2: Bijective x0). { unfold Bijective. eexists. split; eassumption. } 
+    exists (exist Bijective x0 H2). intro. simpl. auto.
+  Qed.
 
   Lemma renaming_inv2 (r : renaming) : exists (r' : renaming), renamings_inv r r'.
-  Proof. admit. Admitted.
+  Proof. 
+    destruct r. unfold Bijective in *. inv b. inv H. unfold renamings_inv.
+    assert (H2: Bijective x0). { unfold Bijective. eexists. split; eassumption. } 
+    exists (exist Bijective x0 H2). intro. simpl. auto.
+  Qed.
 
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with
@@ -614,7 +606,13 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (st   : state Z) : rename_state r (rename_state r' st) = st.
-  Proof. admit. Admitted.
+  Proof. 
+    induction st; simpl; auto.
+    unfold renamings_inv in Hinv.
+    destruct a, r, r'. simpl. rewrite -> IHst.
+    assert (x (x0 i) = i). { auto. }
+    rewrite -> H. reflexivity.
+  Qed.
       
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
   Proof. 
