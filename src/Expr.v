@@ -274,7 +274,7 @@ Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
-  forall z :Z, s1 /id => z <-> s2 / id => z.
+  forall z : Z, s1 /id => z <-> s2 / id => z.
 
 Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
       (FV : forall (id : id) (ID : id ? e),
@@ -532,23 +532,7 @@ Module SmallStep.
                           (SS2 : ((s) |- e2 -->> (Nat zb)))
                           (EVAL : ([|Bop b e1 e2|] s => zc))
                           : ((s) |- (Bop b e1 e2) -->> (Nat zc)).
-  Proof. 
-    dependent induction e1. 
-    { dependent induction e2 generalizing b. 
-      { inv EVAL; econstructor; eauto; eauto. }
-      { inv EVAL; inv VALB; remember (ss_Var s i zb0 VAR); econstructor; eauto; eauto. } 
-      { admit. } }
-    { dependent induction e2 generalizing b.
-      { inv EVAL; inv VALA; remember (ss_Var s i za0 VAR); econstructor; eauto; eauto. }
-      { inv EVAL; inv VALA; inv VALB; 
-        remember (ss_Var s i za0 VAR); remember (ss_Var s i0 zb0 VAR0); 
-        remember (ss_Left s (Var i) (Var i0) (Nat za0)); 
-        remember (ss_Right s (Nat za0) (Var i0) (Nat zb0));
-        remember (ss_Bop s za0 zb0); 
-        econstructor; eauto; econstructor; eauto; econstructor; eauto; eauto. }
-      { admit. } }
-    admit.
-  Admitted.
+  Proof. admit. Admitted.
 
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
@@ -614,7 +598,13 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (st   : state Z) : rename_state r (rename_state r' st) = st.
-  Proof. admit. Admitted.
+  Proof. 
+    induction st; simpl; auto.
+    unfold renamings_inv in Hinv.
+    destruct a, r, r'. simpl. rewrite -> IHst.
+    assert (x (x0 i) = i). { auto. }
+    rewrite -> H. reflexivity.
+  Qed.
       
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
   Proof. 
