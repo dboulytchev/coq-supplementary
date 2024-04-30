@@ -496,7 +496,21 @@ Lemma wf_app (p q  : prog)
              (l    : nat)
              (Hwf  : prog_wf_rec q p = true)
              (Hocc : label_occurs_once l q = true) : prog_wf_rec q (p ++ [JMP l]) = true.
-Proof. admit. Admitted.
+Proof. 
+  induction p. 
+  { simpl. rewrite -> Hocc. auto. }
+  destruct a. simpl.
+  { apply Bool.andb_true_iff in Hwf. destruct Hwf as (Ha & Hb). 
+    remember (IHp Hb). rewrite -> e. inv Hocc. }
+  { inv Hwf. apply Bool.andb_true_iff in H0. destruct H0 as (Ha & Hb).
+    remember (IHp Hb). simpl. rewrite -> e. inv Hocc. }
+  { inv Hwf. apply Bool.andb_true_iff in H0. destruct H0 as (Ha & Hb).
+    remember (IHp Hb). simpl. rewrite -> e. inv Hocc. }
+  { inv Hwf. assert (true = true). { auto. }
+    remember (IHp H). simpl. assumption. }
+  { inv Hwf. assert (true = true). { auto. }
+    remember (IHp H). simpl. assumption. }
+Qed.
 
 Lemma wf_rev (p q : prog) (Hwf : prog_wf_rec q p = true) : prog_wf_rec q (rev p) = true.
 Proof. admit. Admitted.
@@ -508,7 +522,10 @@ Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
   end.
 
 Lemma cons_comm_app (A : Type) (a : A) (l1 l2 : list A) : l1 ++ a :: l2 = (l1 ++ [a]) ++ l2.
-Proof. admit. Admitted.
+Proof. 
+  induction l1; auto.
+  rewrite <- app_assoc. simpl. reflexivity.
+Qed.
 
 Definition compile_expr (e : expr) : prog :=
   convert_straightline (StraightLine.compile_expr e).
