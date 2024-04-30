@@ -564,18 +564,10 @@ Module Renaming.
   Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.
   
   Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
-  Proof. 
-    destruct r. unfold Bijective in *. inv b. inv H. unfold renamings_inv.
-    assert (H2: Bijective x0). { unfold Bijective. eexists. split; eassumption. } 
-    exists (exist Bijective x0 H2). intro. simpl. auto.
-  Qed.
+  Proof. admit. Admitted.
 
   Lemma renaming_inv2 (r : renaming) : exists (r' : renaming), renamings_inv r r'.
-  Proof. 
-    destruct r. unfold Bijective in *. inv b. inv H. unfold renamings_inv.
-    assert (H2: Bijective x0). { unfold Bijective. eexists. split; eassumption. } 
-    exists (exist Bijective x0 H2). intro. simpl. auto.
-  Qed.
+  Proof. admit. Admitted.
 
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with

@@ -513,7 +513,17 @@ Proof.
 Qed.
 
 Lemma wf_rev (p q : prog) (Hwf : prog_wf_rec q p = true) : prog_wf_rec q (rev p) = true.
-Proof. admit. Admitted.
+Proof.
+  induction p; simpl; auto.
+  destruct a; inv Hwf; remember (rev p) as p'.
+  { apply Bool.andb_true_iff in H0. destruct H0 as (Ha & Hb).
+    remember (IHp Hb). eapply wf_app; auto. }
+  { apply Bool.andb_true_iff in H0. destruct H0 as (Ha & Hb).
+    remember (IHp Hb). dependent induction p'.
+    { simpl. rewrite -> Ha. auto. }
+    destruct a; simpl. admit. }
+  (* Too much code-duplication here *)
+  Admitted.
 
 Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
   match p with
