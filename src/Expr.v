@@ -274,7 +274,7 @@ Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
-  forall z :Z, s1 /id => z <-> s2 / id => z.
+  forall z : Z, s1 /id => z <-> s2 / id => z.
 
 Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
       (FV : forall (id : id) (ID : id ? e),
