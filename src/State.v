@@ -7,6 +7,8 @@ Require Export Arith Arith.EqNat.
 Require Export Id.
 
 (* From hahn Require Import HahnBase. *)
+Declare Scope state_scope.
+Open Scope state_scope.
 
 Section S.
 
@@ -19,11 +21,11 @@ Section S.
   Inductive st_binds : state -> id -> A -> Prop :=
     st_binds_hd : forall st id x, ((id, x) :: st) / id => x
   | st_binds_tl : forall st id x id' x', id <> id' -> st / id => x -> ((id', x')::st) / id => x
-  where "st / x => y" := (st_binds st x y).
+  where "st / x => y" := (st_binds st x y) : state_scope.
 
   Definition update (st : state) (id : id) (a : A) : state := (id, a) :: st.
 
-  Notation "st [ x '<-' y ]" := (update st x y) (at level 0).
+  Notation "st [ x '<-' y ]" := (update st x y) (at level 0) : state_scope.
 
   (* Functional version of binding-in-a-state relation *)
   Fixpoint st_eval (st : state) (x : id) : option A :=

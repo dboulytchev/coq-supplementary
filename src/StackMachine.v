@@ -8,6 +8,9 @@ Require Export State.
 Require Export Expr.
 Require Export Stmt.
 
+Declare Scope sm_scope.
+Open Scope sm_scope.
+
 (* Configuration *)
 Definition conf := (list Z * state Z * list Z * list Z)%type.
 
@@ -181,7 +184,7 @@ Module StraightLine.
                       (s i o : list Z) (c' : conf)
                       (EXEC : (n::s, m, i, o) -- q --> c'),
       (s, m, i, o) -- (C n)::q --> c'
-  where "c1 '--' q '-->' c2" := (sm_int c1 q c2).
+  where "c1 '--' q '-->' c2" := (sm_int c1 q c2) : sm_scope.
 
   (* Expression compiler *)
   Fixpoint compile_expr (e : expr) :=
@@ -200,7 +203,7 @@ Module StraightLine.
     (s, st, i, o) -- (compile_expr e) ++ p --> c.
   Proof. admit. Admitted.
 
-  #[export] Hint Resolve compiled_expr_correct_cont.
+  #[export] Hint Resolve compiled_expr_correct_cont : core.
 
   Lemma compiled_expr_correct
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
@@ -284,7 +287,7 @@ Fixpoint at_label (l : nat) (p : prog) : prog :=
   | _     :: p' => at_label l p'
   end.
 
-Notation "c1 '==' q '==>' c2" := (StraightLine.sm_int c1 q c2) (at level 0).
+Notation "c1 '==' q '==>' c2" := (StraightLine.sm_int c1 q c2) (at level 0) : sm_scope.
 Reserved Notation "P '|-' c1 '--' q '-->' c2" (at level 0).
 
 Inductive sm_int : prog -> conf -> prog -> conf -> Prop :=
@@ -336,7 +339,7 @@ Inductive sm_int : prog -> conf -> prog -> conf -> Prop :=
                         (HZ    : z <> 0%Z)
                         (H : P |- (s, m, i, o) -- at_label l P --> c'), P |- (z :: s, m, i, o) -- JNZ l :: p --> c'
 | sm_Empty : forall (c : conf) (P : prog), P |- c -- [] --> c
-where "P '|-' c1 '--' q '-->' c2" := (sm_int P c1 q c2).
+where "P '|-' c1 '--' q '-->' c2" := (sm_int P c1 q c2) : sm_scope.
 
 Fixpoint label_occurs_once_rec (occured : bool) (n: nat) (p : prog) : bool :=
   match p with

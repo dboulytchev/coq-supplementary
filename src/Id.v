@@ -3,6 +3,9 @@
 Require Import Arith Arith.EqNat.
 Require Import Lia.
 
+Declare Scope id_scope.
+Global Open Scope id_scope.
+
 Inductive id : Type :=
   Id : nat -> id.
 
@@ -12,15 +15,15 @@ Reserved Notation "m i<  n" (at level 70, no associativity).
 
 Inductive le_id : id -> id -> Prop :=
   le_conv : forall n m, n <= m -> (Id n) i<= (Id m)
-where "n i<= m" := (le_id n m).
+where "n i<= m" := (le_id n m) : id_scope.
 
 Inductive lt_id : id -> id -> Prop :=
   lt_conv : forall n m, n < m -> (Id n) i< (Id m)
-where "n i< m" := (lt_id n m).
+where "n i< m" := (lt_id n m) : id_scope.
 
 Inductive gt_id : id -> id -> Prop :=
   gt_conv : forall n m, n > m -> (Id n) i> (Id m)
-where "n i> m" := (gt_id n m).
+where "n i> m" := (gt_id n m) : id_scope.
 
 Ltac prove_with th :=
   intros;
@@ -122,11 +125,3 @@ Proof.
   inversion H1. inversion H2.
   lia.
 Qed.
-
-(* Require Import Coq.Classes.RelationClasses.
-
-Theorem id_neq_sym (x y : id) : x <> y -> y <> x.
-Proof. auto. Qed.
-
-#[global]
-Instance id_neq_Symmetric : Symmetric (not (eq : id -> id -> Prop)) := id_neq_sym. *)

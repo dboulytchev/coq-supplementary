@@ -9,6 +9,9 @@ Require Export Expr.
 
 (* From hahn Require Import HahnBase. *)
 
+Declare Scope stmt_scope.
+Open Scope stmt_scope.
+
 (* AST for statements *)
 Inductive stmt : Type :=
 | SKIP  : stmt
@@ -20,10 +23,10 @@ Inductive stmt : Type :=
 | While : expr -> stmt -> stmt.
 
 (* Supplementary notation *)
-Notation "x  '::=' e"                         := (Assn  x e    ) (at level 37, no associativity).
-Notation "s1 ';;'  s2"                        := (Seq   s1 s2  ) (at level 35, right associativity).
-Notation "'COND' e 'THEN' s1 'ELSE' s2 'END'" := (If    e s1 s2) (at level 36, no associativity).
-Notation "'WHILE' e 'DO' s 'END'"             := (While e s    ) (at level 36, no associativity).
+Notation "x  '::=' e"                         := (Assn  x e    ) (at level 37, no associativity) : stmt_scope.
+Notation "s1 ';;'  s2"                        := (Seq   s1 s2  ) (at level 35, right associativity) : stmt_scope.
+Notation "'COND' e 'THEN' s1 'ELSE' s2 'END'" := (If    e s1 s2) (at level 36, no associativity) : stmt_scope.
+Notation "'WHILE' e 'DO' s 'END'"             := (While e s    ) (at level 36, no associativity) : stmt_scope.
 
 (* Configuration *)
 Definition conf := (state Z * list Z * list Z)%type.
@@ -62,7 +65,7 @@ Inductive bs_int : stmt -> conf -> conf -> Prop :=
 | bs_While_False : forall (st : state Z) (i o : list Z) (e : expr) (s : stmt)
                           (CVAL : [| e |] st => Z.zero),
                           (st, i, o) == WHILE e DO s END ==> (st, i, o)
-where "c1 == s ==> c2" := (bs_int s c1 c2).
+where "c1 == s ==> c2" := (bs_int s c1 c2) : stmt_scope.
 
 #[export] Hint Constructors bs_int : core.
 
@@ -70,13 +73,13 @@ where "c1 == s ==> c2" := (bs_int s c1 c2).
 Definition eval (s : stmt) (i o : list Z) : Prop :=
   exists st, ([], i, []) == s ==> (st, [], o).
 
-Notation "<| s |> i => o" := (eval s i o) (at level 0).
+Notation "<| s |> i => o" := (eval s i o) (at level 0) : stmt_scope.
 
 (* "Surface" equivalence *)
 Definition eval_equivalent (s1 s2 : stmt) : Prop :=
   forall (i o : list Z),  <| s1 |> i => o <-> <| s2 |> i => o.
 
-Notation "s1 ~e~ s2" := (eval_equivalent s1 s2) (at level 0).
+Notation "s1 ~e~ s2" := (eval_equivalent s1 s2) (at level 0) : stmt_scope.
 
 (* Contextual equivalence *)
 Inductive Context : Type :=
@@ -98,13 +101,13 @@ Fixpoint plug (C : Context) (s : stmt) : stmt :=
   | WhileC   e  C  => While e (plug C s)
   end.
 
-Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
+Notation "C '<~' e" := (plug C e) (at level 43, no associativity) : stmt_scope.
 
 (* Contextual equivalence *)
 Definition contextual_equivalent (s1 s2 : stmt) :=
   forall (C : Context), (C <~ s1) ~e~ (C <~ s2).
 
-Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
+Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity) : stmt_scope.
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
 Proof.
@@ -127,7 +130,7 @@ Admitted.
 Definition bs_equivalent (s1 s2 : stmt) :=
   forall (c c' : conf), c == s1 ==> c' <-> c == s2 ==> c'.
 
-Notation "s1 '~~~' s2" := (bs_equivalent s1 s2) (at level 0).
+Notation "s1 '~~~' s2" := (bs_equivalent s1 s2) (at level 0) : stmt_scope.
 
 Ltac seq_inversion :=
   match goal with
@@ -383,7 +386,7 @@ Module SmallStep.
       (s, i, o) -- COND e THEN s1 ELSE s2 END --> (Some s2, (s, i, o))
   | ss_While       : forall (c : conf) (s : stmt) (e : expr),
       c -- WHILE e DO s END --> (Some (COND e THEN s ;; WHILE e DO s END ELSE SKIP END), c)
-  where "c1 -- s --> c2" := (ss_int_step s c1 c2).
+  where "c1 -- s --> c2" := (ss_int_step s c1 c2) : stmt_scope.
 
   Reserved Notation "c1 '--' s '-->>' c2" (at level 0).
 
@@ -392,7 +395,7 @@ Module SmallStep.
                     c -- s --> (None, c') -> c -- s -->> c'
   | ss_int_Step : forall (s s' : stmt) (c c' c'' : conf),
                     c -- s --> (Some s', c') -> c' -- s' -->> c'' -> c -- s -->> c''
-  where "c1 -- s -->> c2" := (ss_int s c1 c2).
+  where "c1 -- s -->> c2" := (ss_int s c1 c2) : stmt_scope.
 
   Lemma ss_int_step_deterministic (s : stmt)
         (c : conf) (c' c'' : option stmt * conf)
@@ -563,8 +566,8 @@ Definition Kapp (l r : cont) : cont :=
   | (_       , _       ) => l
   end.
 
-Notation "'!' s" := (KStmt s) (at level 0).
-Notation "s1 @ s2" := (Kapp s1 s2) (at level 0).
+Notation "'!' s" := (KStmt s) (at level 0) : stmt_scope.
+Notation "s1 @ s2" := (Kapp s1 s2) (at level 0) : stmt_scope.
 
 Reserved Notation "k '|-' c1 '--' s '-->' c2" (at level 0).
 
@@ -610,7 +613,7 @@ Inductive cps_int : cont -> cont -> conf -> conf -> Prop :=
                            (CVAL : [| e |] st => Z.zero)
                            (CSTEP : KEmpty |- (st, i, o) -- k --> c'),
     k |- (st, i, o) -- !(WHILE e DO s END) --> c'
-where "k |- c1 -- s --> c2" := (cps_int k s c1 c2).
+where "k |- c1 -- s --> c2" := (cps_int k s c1 c2) : stmt_scope.
 
 Ltac cps_bs_gen_helper k H HH :=
   destruct k eqn:K; subst; inversion H; subst;

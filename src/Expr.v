@@ -9,6 +9,9 @@ Import ListNotations.
 
 (* From hahn Require Import HahnBase. *)
 
+Declare Scope expr_scope.
+Open Scope expr_scope.
+
 (* Type of binary operators *)
 Inductive bop : Type :=
 | Add : bop
@@ -32,19 +35,19 @@ Inductive expr : Type :=
 | Bop : bop -> expr -> expr -> expr.
 
 (* Supplementary notation *)
-Notation "x '[+]'  y" := (Bop Add x y) (at level 40, left associativity).
-Notation "x '[-]'  y" := (Bop Sub x y) (at level 40, left associativity).
-Notation "x '[*]'  y" := (Bop Mul x y) (at level 41, left associativity).
-Notation "x '[/]'  y" := (Bop Div x y) (at level 41, left associativity).
-Notation "x '[%]'  y" := (Bop Mod x y) (at level 41, left associativity).
-Notation "x '[<=]' y" := (Bop Le  x y) (at level 39, no associativity).
-Notation "x '[<]'  y" := (Bop Lt  x y) (at level 39, no associativity).
-Notation "x '[>=]' y" := (Bop Ge  x y) (at level 39, no associativity).
-Notation "x '[>]'  y" := (Bop Gt  x y) (at level 39, no associativity).
-Notation "x '[==]' y" := (Bop Eq  x y) (at level 39, no associativity).
-Notation "x '[/=]' y" := (Bop Ne  x y) (at level 39, no associativity).
-Notation "x '[&]'  y" := (Bop And x y) (at level 38, left associativity).
-Notation "x '[\/]' y" := (Bop Or  x y) (at level 38, left associativity).
+Notation "x '[+]'  y" := (Bop Add x y) (at level 40, left associativity) : expr_scope.
+Notation "x '[-]'  y" := (Bop Sub x y) (at level 40, left associativity) : expr_scope.
+Notation "x '[*]'  y" := (Bop Mul x y) (at level 41, left associativity) : expr_scope.
+Notation "x '[/]'  y" := (Bop Div x y) (at level 41, left associativity) : expr_scope.
+Notation "x '[%]'  y" := (Bop Mod x y) (at level 41, left associativity) : expr_scope.
+Notation "x '[<=]' y" := (Bop Le  x y) (at level 39, no associativity) : expr_scope.
+Notation "x '[<]'  y" := (Bop Lt  x y) (at level 39, no associativity) : expr_scope.
+Notation "x '[>=]' y" := (Bop Ge  x y) (at level 39, no associativity) : expr_scope.
+Notation "x '[>]'  y" := (Bop Gt  x y) (at level 39, no associativity) : expr_scope.
+Notation "x '[==]' y" := (Bop Eq  x y) (at level 39, no associativity) : expr_scope.
+Notation "x '[/=]' y" := (Bop Ne  x y) (at level 39, no associativity) : expr_scope.
+Notation "x '[&]'  y" := (Bop And x y) (at level 38, left associativity) : expr_scope.
+Notation "x '[\/]' y" := (Bop Or  x y) (at level 38, left associativity) : expr_scope.
 
 Definition zbool (x : Z) : Prop := x = Z.one \/ x = Z.zero.
 
@@ -199,7 +202,7 @@ Inductive subexpr : expr -> expr -> Prop :=
   subexpr_refl : forall e : expr, e << e
 | subexpr_left : forall e e' e'' : expr, forall op : bop, e << e' -> e << (Bop op e' e'')
 | subexpr_right : forall e e' e'' : expr, forall op : bop, e << e'' -> e << (Bop op e' e'')
-where "e1 << e2" := (subexpr e1 e2).
+where "e1 << e2" := (subexpr e1 e2) : expr_scope.
 
 Lemma strictness (e e' : expr) (HSub : e' << e) (st : state Z) (z : Z) (HV : [| e |] st => z) :
   exists z' : Z, [| e' |] st => z'.
@@ -219,7 +222,7 @@ Reserved Notation "x ? e" (at level 0).
 Inductive V : expr -> id -> Prop :=
   v_Var : forall (id : id), id ? (Var id)
 | v_Bop : forall (id : id) (a b : expr) (op : bop), id ? a \/ id ? b -> id ? (Bop op a b)
-where "x ? e" := (V e x).
+where "x ? e" := (V e x) : expr_scope.
 
 (* If an expression is defined in some state, then each its' variable is
    defined in that state
@@ -289,7 +292,7 @@ Qed.
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z),
     [| e1 |] s => n <-> [| e2 |] s => n.
-Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
+Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity) : expr_scope.
 
 Lemma eq_refl (e : expr): e ~~ e.
 Proof.
@@ -321,13 +324,13 @@ Fixpoint plug (C : Context) (e : expr) : expr :=
   | BopR b e1 C => Bop b e1 (plug C e)
   end.
 
-Notation "C '<~' e" := (plug C e) (at level 43, no associativity).
+Notation "C '<~' e" := (plug C e) (at level 43, no associativity) : expr_scope.
 
 Definition contextual_equivalent (e1 e2 : expr) : Prop :=
   forall (C : Context), (C <~ e1) ~~ (C <~ e2).
 
 Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
-                            (at level 42, no associativity).
+                            (at level 42, no associativity) : expr_scope.
 
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
@@ -367,7 +370,7 @@ Module SmallStep.
                       (zl zr z : Z)
                       (op      : bop)
                       (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))
-  where "st |- e --> e'" := (ss_step st e e').
+  where "st |- e --> e'" := (ss_step st e e') : expr_scope.
 
   #[export] Hint Constructors ss_step : core.
 
@@ -380,7 +383,7 @@ Module SmallStep.
                      (e e' e'' : expr)
                      (HStep : s |- e --> e')
                      (Heval: s |- e' -->> e''), s |- e -->> e''
-  where "st |- e -->> e'"  := (ss_eval st e e').
+  where "st |- e -->> e'"  := (ss_eval st e e') : expr_scope.
 
   #[export] Hint Constructors ss_eval : core.
 
