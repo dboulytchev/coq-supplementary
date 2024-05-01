@@ -239,34 +239,6 @@ Ltac by_eq_congruence e s s1 s2 H :=
   remember (eq_congruence e s s1 s2 H) as Congruence;
   match goal with H: Congruence = _ |- _ => clear H end;
   repeat (match goal with H: _ /\ _ |- _ => inversion_clear H end); assumption.
-(*
-Lemma eq_c : ((Id 0 ::= Nat Z.zero) ;; (Id 0 ::= Nat Z.one)) ~c~
-              (Id 0 ::= (Nat Z.one)).
-Proof.
-  unfold contextual_equivalent.
-  intro C.
-  unfold eval_equivalent.
-  intros i o. split; intro H.
-  { generalize dependent o. induction C; intros o H.
-    { simpl in *. inversion H. inversion H0. subst. inversion STEP1. subst.
-      unfold update in STEP2. simpl in STEP2. inversion STEP2. subst.
-      econstructor. constructor. constructor.
-    }
-    { simpl in *. inversion_clear H. inversion_clear H0. destruct c', p.
-      specialize (IHC l).
-      assert (A: <| C <~ (Id 0 ::= Nat Z.zero) ;; (Id 0 ::= Nat Z.one) |> i => l
-      
-  
-
-Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
-Proof.
-  split; intro H.
-  { admit. }
-  { unfold contextual_equivalent in H. unfold bs_equivalent. unfold eval_equivalent in H.
-    intros c c'. split; intro Hbs.
-    simpl in H. destruct c, c', p, p0.
-    specialize (H l1 l0). inversion H. 
- *)   
       
 (* Small-step semantics *)
 Module SmallStep.
@@ -365,17 +337,11 @@ Module Renaming.
     (r r' : Renaming.renaming)
     (Hinv : Renaming.renamings_inv r r')
     (s    : stmt) : rename r (rename r' s) = s.
-  Proof.
-      induction s; simpl; 
-      try rewrite (Hinv i); try rewrite Renaming.re_rename_expr; try assumption;
-      try rewrite IHs1; try rewrite IHs2; try rewrite IHs; try reflexivity.
-  Qed.
-      
+  Proof. admit. Admitted.
+  
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
     Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
-  Proof.
-    induction st; simpl; destruct r; simpl; unfold update; reflexivity.
-  Qed.
+  Proof. admit. Admitted.
   
   #[export] Hint Resolve Renaming.eval_renaming_invariance : core.
 
@@ -384,62 +350,18 @@ Module Renaming.
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
-  Proof.
-    induction Hbs; simpl.
-    { constructor. }
-    { destruct r. simpl. constructor. apply Renaming.eval_renaming_invariance. assumption. }
-    { destruct r. simpl. constructor. }
-    { constructor. apply Renaming.eval_renaming_invariance. assumption. }
-    { econstructor; eassumption. }
-    { constructor. apply Renaming.eval_renaming_invariance. assumption.
-      repeat simpl in IHHbs. assumption.
-    }
-    { apply bs_If_False. apply Renaming.eval_renaming_invariance. assumption.
-      repeat simpl in IHHbs. assumption.
-    }
-    { econstructor.
-      { apply Renaming.eval_renaming_invariance. assumption. }
-      { repeat simpl in IHHbs1. eassumption. }
-      { repeat simpl in IHHbs2. assumption. }
-    }
-    { apply bs_While_False. apply Renaming.eval_renaming_invariance. assumption. }
-  Qed.
+  Proof. admit. Admitted.
   
   Lemma renaming_invariant_bs_inv
     (s         : stmt)
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
-  Proof.
-    remember (Renaming.renaming_inv r). inversion e.
-    apply renaming_invariant_bs with (r:=x) in Hbs.
-    rewrite re_rename in Hbs. unfold rename_conf in Hbs.
-    destruct c, c', p, p0. do 2 rewrite Renaming.re_rename_state in Hbs.
-    all: assumption.
-  Qed.
+  Proof. admit. Admitted.
     
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
-  Proof.
-    unfold eval_equivalent. intros i o. split; intro H.
-    { inversion H. exists (Renaming.rename_state r x).
-      assert (A: rename_conf r ([], i, []) = ([], i, [])). simpl. reflexivity.
-      assert (B: rename_conf r (x, [], o) = (Renaming.rename_state r x, [], o)). simpl. reflexivity.
-      rewrite <-A. rewrite <-B. apply renaming_invariant_bs with (r:=r) in H0. assumption.
-    }
-    { inversion H.
-      assert (A: rename_conf r ([], i, []) = ([], i, [])). simpl. reflexivity.
-      rewrite <-A in H0.
-      remember (Renaming.renaming_inv2 r). inversion e. 
-      exists (Renaming.rename_state x0 x).
-      apply renaming_invariant_bs_inv with (r:=r). 
-      rewrite <-(Renaming.re_rename_state r x0 H1 x) in H0.
-      assert (R: ((Renaming.rename_state r (Renaming.rename_state x0 x), [], o)) =
-                   rename_conf r (Renaming.rename_state x0 x, [], o)). simpl. reflexivity.
-      rewrite R in H0.
-      assumption.
-    }
-  Qed.
-        
+  Proof. admit. Admitted.
+  
 End Renaming.
 
 (* CPS semantics *)

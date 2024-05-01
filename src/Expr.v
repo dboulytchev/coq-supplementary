@@ -362,20 +362,10 @@ Module Renaming.
   Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.
   
   Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
-  Proof.
-    destruct r. unfold Bijective in b. inversion b. inversion_clear H.
-    assert (B: Bijective x0). unfold Bijective. exists x. split; assumption.
-    exists (exist _ x0 B).
-    unfold renamings_inv. intro x1. simpl. auto.
-  Qed.    
+  Proof. admit. Admitted.
 
   Lemma renaming_inv2 (r : renaming) : exists (r' : renaming), renamings_inv r r'.
-  Proof.
-    destruct r. unfold Bijective in b. inversion b. inversion_clear H.
-    assert (B: Bijective x0). unfold Bijective. exists x. split; assumption.
-    exists (exist _ x0 B).
-    unfold renamings_inv. intro x1. simpl. auto.
-  Qed.  
+  Proof. admit. Admitted.
 
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with
@@ -388,13 +378,8 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (e    : expr) : rename_expr r (rename_expr r' e) = e.
-  Proof.
-    unfold renamings_inv in Hinv. 
-    induction e; simpl; try reflexivity.
-    { rewrite Hinv. reflexivity. }
-    { rewrite IHe1, IHe2. reflexivity. }
-  Qed.
-
+  Proof. admit. Admitted.
+  
   Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
     match st with
     | [] => []
@@ -406,11 +391,7 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (st   : state Z) : rename_state r (rename_state r' st) = st.
-  Proof.
-    unfold renamings_inv in Hinv.
-    induction st; simpl; try reflexivity.
-    { destruct a, r'. simpl. destruct r. rewrite IHst. rewrite Hinv. reflexivity. }
-  Qed.
+  Proof. admit. Admitted.
       
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
   Proof. admit. Admitted.
