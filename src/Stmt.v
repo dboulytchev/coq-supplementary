@@ -7,6 +7,8 @@ Require Export Id.
 Require Export State.
 Require Export Expr.
 
+Require Import Coq.Program.Equality.
+
 (* AST for statements *)
 Inductive stmt : Type :=
 | SKIP  : stmt
@@ -105,10 +107,62 @@ Definition contextual_equivalent (s1 s2 : stmt) :=
 Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
-Proof. admit. Admitted.
+Proof.
+  unfold contextual_equivalent in *.
+  unfold eval_equivalent in *.
+  intros.
+
+  specialize H with Hole i o.
+  simpl in H.
+  auto.
+Qed.
+
+Definition contra1 : stmt := (Id 0 ::= Nat 0).
+Definition contra2 : stmt := (Id 0 ::= Nat 1).
 
 Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
-Proof. admit. Admitted.
+Proof.
+  exists contra1, contra2.
+  split.
+  - unfold eval_equivalent, eval.
+    split; intros;
+      destruct H;
+      inversion H; subst;
+      inversion VAL; subst.
+    + exists  [(Id 0, 1%Z)].
+      unfold contra2.
+      repeat constructor.
+    + exists [(Id 0, 0%Z)].
+      unfold contra1.
+      repeat constructor.
+  - unfold not, eval_equivalent, contextual_equivalent.
+    intros.
+    unfold contra1, contra2 in *.
+    specialize H with (SeqL Hole (WRITE (Var (Id 0)))).
+    unfold eval_equivalent in *.
+    unfold eval in H.
+    simpl in H.
+    specialize (H ([]) ([0%Z])).
+
+    destruct H.
+    assert (HA: (exists st : state Z, bs_int ((Id 0 ::= Nat 1);; WRITE (Var (Id 0))) ([], [], []) (st, [], [0%Z])) -> False).
+      { intros.
+        destruct H1.
+        inversion H1. subst.
+        inversion STEP1. subst. unfold update in STEP2, STEP1.
+        inversion VAL. subst.
+        inversion STEP2. subst.
+        inversion VAL0.
+        inversion VAR. subst. apply H10. reflexivity. }
+
+    assert (HA': exists st : state Z, bs_int ((Id 0 ::= Nat 0);; WRITE (Var (Id 0))) ([], [], []) (st, [], [0%Z])).
+      { exists [(Id 0, 0%Z)].
+        econstructor; repeat constructor. }
+
+    apply H in HA'.
+    apply HA in HA'.
+    assumption.
+Qed.
 
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
@@ -467,6 +521,14 @@ Qed.
 Definition equivalent_states (s1 s2 : state Z) :=
   forall id, Expr.equivalent_states s1 s2 id.
 
+Lemma eq_st_result (e: expr) st1 st2:
+  equivalent_states st1 st2 -> forall z, [|e|] st1 => z -> [|e|] st2 => z.
+Proof.
+  intros.
+  induction H0; (try now econstructor; auto).
+  + constructor. apply H. assumption.
+Qed.
+
 Lemma bs_equiv_states
   (s            : stmt)
   (i o i' o'    : list Z)
@@ -715,11 +777,26 @@ Module Renaming.
     (r r' : Renaming.renaming)
     (Hinv : Renaming.renamings_inv r r')
     (s    : stmt) : rename r (rename r' s) = s.
-  Proof. admit. Admitted.
+  Proof.
+    dependent induction s;
+    try reflexivity;
+    (try now simpl; (try rewrite Hinv; try rewrite Expr.Renaming.re_rename_expr); reflexivity).
+    * simpl.
+      rewrite Expr.Renaming.re_rename_expr.
+      { rewrite Hinv. reflexivity. }
+      assumption.
+    * simpl. rewrite Expr.Renaming.re_rename_expr. reflexivity. assumption.
+    * simpl. rewrite IHs1; rewrite IHs2. reflexivity.
+    * simpl. rewrite IHs1, IHs2. rewrite Expr.Renaming.re_rename_expr. reflexivity. assumption.
+    * simpl. rewrite IHs, Expr.Renaming.re_rename_expr. reflexivity.
+      assumption.
+  Qed.
 
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
     Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
-  Proof. admit. Admitted.
+  Proof.
+    simpl. destruct r. reflexivity.
+  Qed.
 
   #[export] Hint Resolve Renaming.eval_renaming_invariance : core.
 
@@ -728,14 +805,65 @@ Module Renaming.
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
-  Proof. admit. Admitted.
+  Proof.
+    dependent induction Hbs.
+    - constructor.
+    - simpl. destruct r. simpl. constructor.
+      apply Expr.Renaming.eval_renaming_invariance. assumption.
+    - simpl. destruct r. simpl. constructor.
+    - simpl. destruct r. simpl. constructor.
+      apply Expr.Renaming.eval_renaming_invariance. assumption.
+    - simpl. econstructor; eassumption.
+    - simpl. constructor.
+      { apply Expr.Renaming.eval_renaming_invariance. assumption. }
+      assumption.
+    - simpl. apply bs_If_False. apply Expr.Renaming.eval_renaming_invariance.
+      { assumption. }
+      assumption.
+    - simpl. econstructor.
+      { apply Expr.Renaming.eval_renaming_invariance. assumption. }
+      { eassumption. }
+      assumption.
+    - apply bs_While_False. apply Expr.Renaming.eval_renaming_invariance. assumption.
+  Qed.
+
+  Lemma conf_rename c c' r : rename_conf r c = rename_conf r c' -> c = c'.
+  Proof.
+    unfold rename_conf.
+    destruct c, p.
+    destruct c', p.
+    intros.
+    inversion H. subst.
+    f_equal.
+    f_equal.
+
+    destruct (Expr.Renaming.renaming_inv r).
+    eapply f_equal in H1.
+    do 2 erewrite Expr.Renaming.re_rename_state in H1.
+    assumption.
+    (* TODO syntax error *)
+    (* *: eassumption. *)
+    - eassumption.
+    - eassumption.
+    - eassumption.
+  Qed.
 
   Lemma renaming_invariant_bs_inv
     (s         : stmt)
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
-  Proof. admit. Admitted.
+  Proof.
+    dependent induction s.
+    - inversion Hbs.
+      apply conf_rename in H. subst.
+      constructor.
+    - inversion Hbs. subst.
+      unfold rename_conf in H3.
+      destruct c'. destruct p.
+    (* TODO *)
+
+  Admitted.
 
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
   Proof. admit. Admitted.

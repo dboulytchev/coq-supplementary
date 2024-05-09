@@ -599,7 +599,9 @@ Proof.
   - inversion H2; subst.
     + inversion LEFT.
       (* that is not needed when now Equality imported *)
-    + inversion H0. subst. inversion RIGHT.
+    +
+      (* inversion H0. subst. *) (* TODO seems like bug in coq lsp *)
+      inversion RIGHT.
     +
       (* TODO Require Import Coq.Program.Equality. problem *)
       destruct (eval_deterministic  _ _ _ _ EVAL EVAL0).
