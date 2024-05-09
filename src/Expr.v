@@ -7,6 +7,8 @@ Require Export Lia.
 Require Import List.
 Import ListNotations.
 
+Require Import Coq.Program.Equality.
+
 (* Type of binary operators *)
 Inductive bop : Type :=
 | Add : bop
@@ -477,10 +479,39 @@ Module SmallStep.
     forall s, ~ exists e', (s |- e --> e').
 
   Lemma value_is_normal_form (e : expr) (HV: is_value e) : normal_form e.
-  Proof. admit. Admitted.
+  Proof.
+    unfold normal_form.
+    unfold not.
+    intros.
+    inversion HV. subst.
+    inversion H. inversion H0.
+  Qed.
 
   Lemma normal_form_is_not_a_value : ~ forall (e : expr), normal_form e -> is_value e.
-  Proof. admit. Admitted.
+  Proof.
+    unfold not.
+    intros.
+    unfold normal_form in H.
+    specialize H with ((Nat 1) [/] (Nat 0)).
+
+    assert (HA: (is_value (Nat 1 [/] Nat 0)) <-> False).
+      { split.
+        { intros. inversion H0. }
+        { intros. inversion H0. } }
+
+    apply HA.
+    apply H.
+    clear HA H.
+
+    unfold not.
+    intros.
+    destruct H.
+    inversion H; subst.
+    { inversion LEFT. }
+    { inversion RIGHT. }
+    { inversion EVAL. subst.
+      inversion VALB. subst. apply NZERO. reflexivity. }
+  Qed.
 
   Lemma no_step_from_value (e : expr) (HV: is_value e) : forall s, ~ exists e', (s |- e --> e').
   Proof.
@@ -497,7 +528,11 @@ Definition zero_sum_contra: expr :=
   z_sum [+] z_sum.
 
   Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
-  Proof. admit. Admitted.
+  Proof.
+    induction Heval; subst.
+    - constructor.
+    - assumption.
+  Qed.
 
 Definition zero_sum_result_l: expr :=
   let z := Nat Z.zero in
@@ -560,13 +595,13 @@ Proof.
   inversion H1; subst.
   inversion H2; subst.
 
-
   - destruct (state_deterministic _ _ _ _ _ VAL VAL0). reflexivity.
   - inversion H2; subst.
     + inversion LEFT.
-    + inversion RIGHT.
-    + Print eval_deterministic.
-
+      (* that is not needed when now Equality imported *)
+    + inversion H0. subst. inversion RIGHT.
+    +
+      (* TODO Require Import Coq.Program.Equality. problem *)
       destruct (eval_deterministic  _ _ _ _ EVAL EVAL0).
       reflexivity.
 Qed.
@@ -574,26 +609,69 @@ Qed.
 Lemma ss_eval_equiv (e : expr)
                     (s : state Z)
                     (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
-Proof. admit. Admitted.
+Proof. admit. Admitted. (* ??? *)
 
 End SmallStep.
 
 Module Renaming.
 
   Definition renaming := { f : id -> id | Bijective f }.
+  Print Bijective.
 
-  Fixpoint rename_id (r : renaming) (x : id) : id :=
-    match r with
-      exist _ f _ => f x
-    end.
+  Definition rename_id (r : renaming) (x : id) : id :=
+    match r with exist _ f g => f x end.
 
   Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.
 
   Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
-  Proof. admit. Admitted.
+  Proof.
+    unfold renamings_inv.
+    destruct  r.
+    inversion b.
+
+    assert (HA: Bijective x0).
+      { unfold Bijective.
+        destruct H.
+
+        exists x. auto. }
+
+    unfold renaming.
+
+    exists (exist Bijective x0 HA).
+    intros. simpl. unfold rename_id.
+    destruct H.
+    auto.
+  Qed.
 
   Lemma renaming_inv2 (r : renaming) : exists (r' : renaming), renamings_inv r r'.
-  Proof. admit. Admitted.
+  Proof.
+    destruct r.
+    inversion b.
+    destruct H.
+
+    assert (HA: Bijective x0).
+      { unfold Bijective.
+        exists x. auto. }
+
+    exists (exist Bijective x0 HA).
+    unfold renamings_inv. intro.
+    simpl. auto.
+  Qed.
+
+  Lemma renaming_inv_inv r1 : exists r2, renamings_inv r1 r2 /\ renamings_inv r2 r1.
+  Proof.
+    unfold renamings_inv.
+    destruct  r1.
+    inversion b.
+
+    assert (HA: Bijective x0).
+      { unfold Bijective.
+        exists x. split; destruct H; auto. }
+
+    exists (exist Bijective x0 HA).
+
+    split; (intros; simpl; destruct H; auto).
+  Qed.
 
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with
@@ -606,7 +684,14 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (e    : expr) : rename_expr r (rename_expr r' e) = e.
-  Proof. admit. Admitted.
+  Proof.
+    induction e.
+    - reflexivity.
+    - simpl. rewrite Hinv. reflexivity.
+    - simpl.
+      rewrite IHe1, IHe2.
+      reflexivity.
+  Qed.
 
   Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
     match st with
@@ -619,13 +704,147 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (st   : state Z) : rename_state r (rename_state r' st) = st.
-  Proof. admit. Admitted.
+  Proof.
+    induction st.
+    - reflexivity.
+    - simpl.
+      destruct a. simpl.
+      destruct r'. simpl.
+      destruct r. simpl.
+
+      rewrite IHst.
+      clear IHst.
+      rewrite Hinv.
+
+      reflexivity.
+  Qed.
 
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
-  Proof. admit. Admitted.
+  Proof.
+    unfold Injective.
+    unfold Bijective in BH.
+    intros.
+    destruct BH. destruct H0.
+
+    eapply f_equal in H.
+    do 2 erewrite H0 in H.
+
+    assumption.
+  Qed.
 
   Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
-  Proof. admit. Admitted.
+  Proof.
+    split.
+    - generalize dependent z; induction e; intros.
+      + simpl.
+        inversion H. subst.
+        constructor.
+      + simpl. unfold rename_id.
+        destruct r.
+        inversion H. subst.
+        induction VAR; subst.
+        { simpl. constructor. constructor. }
+        { simpl.
+          assert (HA: x id <> x id').
+            { unfold not.
+            intros.
+            eapply bijective_injective in b as b'.
+            apply b' in H1.
+            contradiction H0. }
+
+          constructor.
+          eapply st_binds_tl.
+          - assumption.
+          - assert (HA': [|Var id|] st => x0).
+              { constructor. assumption. }
+
+             clear H VAR H0 HA.
+             apply IHVAR in HA'. clear IHVAR.
+
+             inversion HA'. subst.
+             assumption. }
+
+        + simpl. inversion H; subst;
+          try (now
+          apply IHe1 in VALA;
+          apply IHe2 in VALB;
+          econstructor; eassumption).
+    - generalize dependent z. induction e; intros.
+      + inversion H. subst. constructor.
+      + simpl in H. inversion H; subst.
+
+        dependent induction VAR.
+        constructor.
+
+        { destruct (renaming_inv r).
+
+          clear H.
+          eapply f_equal in x.
+
+          assert (HA: st = rename_state x0 (rename_state r st)). {
+            symmetry.
+            eapply re_rename_state.
+            assumption.
+          }
+
+          rewrite <- HA in x.
+          rewrite <- x.
+          simpl.
+          destruct x0.
+          unfold rename_id.
+          destruct r.
+          simpl.
+          rewrite H0.
+          constructor. }
+        { destruct (renaming_inv_inv r).
+
+          assert (HA: st = rename_state x0 (rename_state r st)). {
+            symmetry.
+            eapply re_rename_state.
+            destruct H1.
+            assumption.
+          }
+
+          eapply f_equal in x.
+          rewrite <- HA in x.
+
+          rewrite <- x.
+          simpl. destruct x0.
+
+          constructor.
+          apply st_binds_tl.
+          { unfold not in *.
+            intros.
+            apply H0.
+            rewrite H2. clear H2.
+            unfold rename_id. destruct r.
+
+            destruct H1.
+            apply H1. }
+          { assert (HA': [|Var i|] ((rename_state (exist (fun f : id -> id => Bijective f) x0 b) st0)) => (z) ->
+              st_binds Z (rename_state (exist (fun f : id -> id => Bijective f) x0 b) st0) i z).
+
+              { intros. inversion H2. subst. assumption. }
+              apply HA'. clear HA'.
+
+              eapply IHVAR with r.
+              + simpl.
+                rewrite re_rename_state.
+                { constructor. assumption. }
+                destruct H1. auto.
+              + reflexivity.
+              + rewrite re_rename_state.
+                { reflexivity. }
+                destruct H1. auto.
+              + reflexivity.
+              + reflexivity. } (* TODO how to write it with `all` ?*)
+        }
+      + simpl in H.
+        inversion H; subst; try (now
+        apply IHe1 in VALA;
+        apply IHe2 in VALB;
+        econstructor; eassumption).
+  Qed.
 
 End Renaming.
