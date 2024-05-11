@@ -64,6 +64,8 @@ Inductive bs_int : stmt -> conf -> conf -> Prop :=
                           (st, i, o) == WHILE e DO s END ==> (st, i, o)
 where "c1 == s ==> c2" := (bs_int s c1 c2).
 
+#[export] Hint Constructors bs_int : core.
+
 (* "Surface" semantics *)
 Definition eval (s : stmt) (i o : list Z) : Prop :=
   exists st, ([], i, []) == s ==> (st, [], o).
@@ -75,7 +77,7 @@ Definition eval_equivalent (s1 s2 : stmt) : Prop :=
   forall (i o : list Z),  <| s1 |> i => o <-> <| s2 |> i => o.
 
 Notation "s1 ~e~ s2" := (eval_equivalent s1 s2) (at level 0).
-
+ 
 (* Contextual equivalence *)
 Inductive Context : Type :=
 | Hole 
@@ -219,16 +221,25 @@ Lemma bs_int_deterministic (c c1 c2 : conf) (s : stmt)
   c1 = c2.
 Proof. admit. Admitted.
 
+Definition equivalent_states (s1 s2 : state Z) :=
+  forall id, Expr.equivalent_states s1 s2 id.
+
+Lemma bs_equiv_states
+  (s            : stmt)
+  (i o i' o'    : list Z)
+  (st1 st2 st1' : state Z)
+  (HE1          : equivalent_states st1 st1')  
+  (H            : (st1, i, o) == s ==> (st2, i', o')) :
+  exists st2',  equivalent_states st2 st2' /\ (st1', i, o) == s ==> (st2', i', o').
+Proof. admit. Admitted.
+  
 (* Contextual equivalence is equivalent to the semantic one *)
 (* TODO: no longer needed *)
 Ltac by_eq_congruence e s s1 s2 H :=
   remember (eq_congruence e s s1 s2 H) as Congruence;
   match goal with H: Congruence = _ |- _ => clear H end;
   repeat (match goal with H: _ /\ _ |- _ => inversion_clear H end); assumption.
-    
-Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
-Proof. admit. Admitted.
-
+      
 (* Small-step semantics *)
 Module SmallStep.
   
@@ -304,29 +315,53 @@ End SmallStep.
 
 Module Renaming.
 
-  Definition renaming := Expr.Renaming.renaming.
+  Definition renaming := Renaming.renaming.
+
+  Definition rename_conf (r : renaming) (c : conf) : conf :=
+    match c with
+    | (st, i, o) => (Renaming.rename_state r st, i, o)
+    end.
   
   Fixpoint rename (r : renaming) (s : stmt) : stmt :=
-    match r with
-    | exist _ f _ =>
-        match s with
-        | SKIP                       => SKIP
-        | x ::= e                    => (f x) ::= Renaming.rename_expr r e
-        | READ x                     => READ (f x)
-        | WRITE e                    => WRITE (Renaming.rename_expr r e)
-        | s1 ;; s2                   => (rename r s1) ;; (rename r s2)
-        | COND e THEN s1 ELSE s2 END => COND (Renaming.rename_expr r e) THEN (rename r s1) ELSE (rename r s2) END
-        | WHILE e DO s END           => WHILE (Renaming.rename_expr r e) DO (rename r s) END             
-        end
-    end.
+    match s with
+    | SKIP                       => SKIP
+    | x ::= e                    => (Renaming.rename_id r x) ::= Renaming.rename_expr r e
+    | READ x                     => READ (Renaming.rename_id r x)
+    | WRITE e                    => WRITE (Renaming.rename_expr r e)
+    | s1 ;; s2                   => (rename r s1) ;; (rename r s2)
+    | COND e THEN s1 ELSE s2 END => COND (Renaming.rename_expr r e) THEN (rename r s1) ELSE (rename r s2) END
+    | WHILE e DO s END           => WHILE (Renaming.rename_expr r e) DO (rename r s) END             
+    end.   
 
+  Lemma re_rename
+    (r r' : Renaming.renaming)
+    (Hinv : Renaming.renamings_inv r r')
+    (s    : stmt) : rename r (rename r' s) = s.
+  Proof. admit. Admitted.
+  
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
     Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
+  Proof. admit. Admitted.
+  
+  #[export] Hint Resolve Renaming.eval_renaming_invariance : core.
+
+  Lemma renaming_invariant_bs
+    (s         : stmt)
+    (r         : Renaming.renaming)
+    (c c'      : conf)
+    (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
+  Proof. admit. Admitted.
+  
+  Lemma renaming_invariant_bs_inv
+    (s         : stmt)
+    (r         : Renaming.renaming)
+    (c c'      : conf)
+    (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
   Proof. admit. Admitted.
     
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
   Proof. admit. Admitted.
-    
+  
 End Renaming.
 
 (* CPS semantics *)
@@ -358,35 +393,35 @@ Inductive cps_int : cont -> cont -> conf -> conf -> Prop :=
     k |- (s, i, o) -- !(x ::= e) --> c'
 | cps_Read        : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (x : id) (z : Z)
-                      (CSTEP : KEmpty |- (s [x <- z], i, o) -- k --> c'),
+                           (CSTEP : KEmpty |- (s [x <- z], i, o) -- k --> c'),
     k |- (s, z::i, o) -- !(READ x) --> c'
 | cps_Write       : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (z : Z)
-                      (CVAL : [| e |] s => z)
-                      (CSTEP : KEmpty |- (s, i, z::o) -- k --> c'),
+                           (CVAL : [| e |] s => z)
+                           (CSTEP : KEmpty |- (s, i, z::o) -- k --> c'),
     k |- (s, i, o) -- !(WRITE e) --> c'
 | cps_Seq         : forall (c c' : conf) (k : cont) (s1 s2 : stmt)
                            (CSTEP : !s2 @ k |- c -- !s1 --> c'),
     k |- c -- !(s1 ;; s2) --> c'
 | cps_If_True     : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s1 s2 : stmt)
-                      (CVAL : [| e |] s => Z.one)
-                      (CSTEP : k |- (s, i, o) -- !s1 --> c'),
+                           (CVAL : [| e |] s => Z.one)
+                           (CSTEP : k |- (s, i, o) -- !s1 --> c'),
     k |- (s, i, o) -- !(COND e THEN s1 ELSE s2 END) --> c'
 | cps_If_False    : forall (s : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s1 s2 : stmt)
-                      (CVAL : [| e |] s => Z.zero)
-                      (CSTEP : k |- (s, i, o) -- !s2 --> c'),
+                           (CVAL : [| e |] s => Z.zero)
+                           (CSTEP : k |- (s, i, o) -- !s2 --> c'),
     k |- (s, i, o) -- !(COND e THEN s1 ELSE s2 END) --> c'
 | cps_While_True  : forall (st : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s : stmt)
-                      (CVAL : [| e |] st => Z.one)
-                      (CSTEP : !(WHILE e DO s END) @ k |- (st, i, o) -- !s --> c'),
+                           (CVAL : [| e |] st => Z.one)
+                           (CSTEP : !(WHILE e DO s END) @ k |- (st, i, o) -- !s --> c'),
     k |- (st, i, o) -- !(WHILE e DO s END) --> c'
 | cps_While_False : forall (st : state Z) (i o : list Z) (c' : conf)
                            (k : cont) (e : expr) (s : stmt)
-                      (CVAL : [| e |] st => Z.zero)
-                      (CSTEP : KEmpty |- (st, i, o) -- k --> c'),
+                           (CVAL : [| e |] st => Z.zero)
+                           (CSTEP : KEmpty |- (st, i, o) -- k --> c'),
     k |- (st, i, o) -- !(WHILE e DO s END) --> c'
 where "k |- c1 -- s --> c2" := (cps_int k s c1 c2).
 

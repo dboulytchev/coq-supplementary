@@ -236,7 +236,7 @@ Proof. admit. Admitted.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
-  forall z :Z, s1 /id => z <-> s2 / id => z.
+  forall z : Z, s1 /id => z <-> s2 / id => z.
 
 Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
       (FV : forall (id : id) (ID : id ? e),
@@ -353,12 +353,20 @@ End SmallStep.
 Module Renaming.
   
   Definition renaming := { f : id -> id | Bijective f }.
-
+  
   Fixpoint rename_id (r : renaming) (x : id) : id :=
     match r with
       exist _ f _ => f x
     end.
+
+  Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.
   
+  Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
+  Proof. admit. Admitted.
+
+  Lemma renaming_inv2 (r : renaming) : exists (r' : renaming), renamings_inv r r'.
+  Proof. admit. Admitted.
+
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with
     | Var x => Var (rename_id r x) 
@@ -366,6 +374,12 @@ Module Renaming.
     | Bop op e1 e2 => Bop op (rename_expr r e1) (rename_expr r e2) 
     end.
 
+  Lemma re_rename_expr
+    (r r' : renaming)
+    (Hinv : renamings_inv r r')
+    (e    : expr) : rename_expr r (rename_expr r' e) = e.
+  Proof. admit. Admitted.
+  
   Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
     match st with
     | [] => []
@@ -373,6 +387,12 @@ Module Renaming.
         match r with exist _ f _ => (f id, x) :: rename_state r tl end
     end.
 
+  Lemma re_rename_state
+    (r r' : renaming)
+    (Hinv : renamings_inv r r')
+    (st   : state Z) : rename_state r (rename_state r' st) = st.
+  Proof. admit. Admitted.
+      
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
   Proof. admit. Admitted.
   
