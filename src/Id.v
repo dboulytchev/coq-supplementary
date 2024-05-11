@@ -95,33 +95,57 @@ Qed.
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
 Proof.
-  intros id1 id2 H1 H2.
-  unfold gt_id, lt_id, id_gt, id_lt in *.
-  destruct id1 as [n1]. destruct id2 as [n2].
-  inversion H1. inversion H2.
-  lia.
+  intros. destruct id1. destruct id2.
+  induction n as [| n' Hn]; induction n0 as [| n0' Hn0'].
+  inversion H. lia.
+  inversion H. lia.
+  inversion H0. lia.
+  inversion H; inversion H0. lia.
 Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
 Proof.
-  intros id1 id2 Hle Hgt.
-  unfold gt_id, le_id, id_gt, id_le in *.
-  destruct id1 as [n1]. destruct id2 as [n2].
-  unfold id_le, id_lt in *.
-  inversion Hle as [m n H1 H H0]. inversion Hgt as [n3 m0 H2 H3 H4].
-  rewrite H in H1. rewrite H0 in H3.
-  lia.
+  intros. destruct id1. destruct id2.
+  inversion H; inversion H0. 
+  subst m. subst m0. subst n0. subst n2. lia.
 Qed.
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  specialize (gt_eq_gt_id_dec id1 id2).
+  intro H1.
+  destruct H1.
+  + destruct s.
+    - exfalso.
+      eapply le_gt_id_false.
+      apply H. apply g.
+    - auto.  
+  + apply Sumbool.sumbool_not. auto.
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros id1 id2 H.
+  specialize (gt_eq_gt_id_dec id1 id2).
+  intro H1.
+  destruct H1.
+  + destruct s.
+    - auto.
+    - destruct H. auto.
+  + auto. 
+Qed.
     
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n1] [n2] H1 H2.
+  inversion H1.
+  inversion H2.
+  rewrite -> H0 in H4.
+  apply Nat.lt_irrefl in H4.
+  auto.
+Qed.
