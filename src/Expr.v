@@ -458,10 +458,90 @@ Module SmallStep.
     induction Heval. apply isv_Intro. exact IHHeval.
   Qed.
 
+  Lemma ss_bop_step_left (e1 e1' e2 : expr)
+                  (s : state Z)
+                  (b : bop)
+                  (z : Z)
+                  (LEFT : s |- e1 -->> e1')
+                  (HSTEP: s |- Bop b e1' e2 -->> (Nat z)): s |- Bop b e1 e2 -->> (Nat z).
+  Proof.
+    dependent induction LEFT. assumption.
+    econstructor.
+    - eapply ss_Left. eauto.
+    - apply IHLEFT. eauto.
+  Qed.
+
+  Lemma ss_bop_step_right (e1 e2 e2' : expr)
+                  (s : state Z)
+                  (b : bop)
+                  (z : Z)
+                  (RIGHT : s |- e2 -->> e2')
+                  (STEP: s |- Bop b e1 e2' -->> (Nat z)): s |- Bop b e1 e2 -->> (Nat z).
+  Proof.
+    dependent induction RIGHT. assumption.
+    econstructor.
+    - eapply ss_Right. eauto.
+    - apply IHRIGHT. eauto.
+  Qed.
+
+  Lemma ss_bop_step (e1 e1' e2 e2' : expr)
+                 (s : state Z)
+                 (b: bop)
+                 (z : Z)
+                 (LEFT : s |- e1 -->> e1')
+                 (RIGHT: s |- e2 -->> e2')
+                 (HEBOP: s |- Bop b e1' e2' -->> (Nat z)) : s |- Bop b e1 e2 -->> (Nat z).
+  Proof. 
+    eapply ss_bop_step_left.
+    - apply LEFT.
+    - eapply ss_bop_step_right.
+      + apply RIGHT.
+      + apply HEBOP.
+  Qed.
+
+  Lemma ss_bop_bs_trans (e1 e2 : expr)
+                 (s : state Z)
+                 (b: bop)
+                 (z z1 z2 : Z)
+                 (HEV1 : s |- e1 -->> (Nat z1))
+                 (HEV2: s |- e2 -->> (Nat z2))
+                 (HEBOP: [|Bop b (Nat z1) (Nat z2)|] s => z) : s |- Bop b e1 e2 -->> (Nat z).
+  Proof. 
+    eapply ss_bop_step; try eassumption. econstructor.
+    - eapply ss_Bop. eauto.
+    - econstructor.
+  Qed.
+
+  Lemma ss_bs_step_equiv (s   : state Z)
+                         (e e': expr)
+                         (z : Z)
+                         (HST: (s) |- e --> e')
+                         (HEX: [|e'|] s => z) : [|e|] s => (z).
+  Proof.
+    dependent induction e.
+    - inversion HST.
+    - inversion HST. subst. inversion HEX. subst. eauto.
+    - dependent induction b; inversion HST; subst; inversion HEX; subst; eauto.
+  Qed.
+
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
-   Proof. admit. Admitted.
+   Proof.
+    constructor; intro.
+    - dependent induction H.
+      constructor. 
+      econstructor. constructor. eassumption. constructor.
+      1-17: eapply ss_bop_bs_trans; (try eassumption); econstructor; (try econstructor); eassumption.
+      + eapply ss_bop_bs_trans. (try eassumption). eassumption. auto. 
+      + eapply ss_bop_bs_trans. (try eassumption). eassumption. auto.
+    - dependent induction H.
+      + auto.
+      + specialize (IHss_eval z). assert (Nat z = Nat z).
+        * reflexivity.
+        * apply IHss_eval in H0.
+          specialize (ss_bs_step_equiv s e e' z HStep H0). intro. assumption.
+  Qed.
   
 End SmallStep.
 
