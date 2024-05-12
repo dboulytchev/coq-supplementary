@@ -475,10 +475,145 @@ Lemma wf_app (p q  : prog)
              (l    : nat)
              (Hwf  : prog_wf_rec q p = true)
              (Hocc : label_occurs_once l q = true) : prog_wf_rec q (p ++ [JMP l]) = true.
-Proof. admit. Admitted.
+Proof.
+  induction p.
+  - simpl. rewrite Hocc. simpl. reflexivity.
+  - simpl in Hwf. simpl. destruct a.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * apply IHp. apply Hwf.
+    * apply IHp. apply Hwf.
+Qed.
+
+Lemma wf_app_JZ (p q  : prog)
+             (l    : nat)
+             (Hwf  : prog_wf_rec q p = true)
+             (Hocc : label_occurs_once l q = true) : prog_wf_rec q (p ++ [JZ l]) = true.
+Proof.
+  induction p.
+  - simpl. rewrite Hocc. simpl. reflexivity.
+  - simpl in Hwf. simpl. destruct a.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * apply IHp. apply Hwf.
+    * apply IHp. apply Hwf.
+Qed.
+
+Lemma wf_app_JNZ (p q  : prog)
+             (l    : nat)
+             (Hwf  : prog_wf_rec q p = true)
+             (Hocc : label_occurs_once l q = true) : prog_wf_rec q (p ++ [JNZ l]) = true.
+Proof.
+  induction p.
+  - simpl. rewrite Hocc. simpl. reflexivity.
+  - simpl in Hwf. simpl. destruct a.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * apply IHp. apply Hwf.
+    * apply IHp. apply Hwf.
+Qed.
+
+Lemma wf_app_LAB (p q  : prog)
+             (l    : nat)
+             (Hwf  : prog_wf_rec q p = true) : prog_wf_rec q (p ++ [LAB l]) = true.
+Proof.
+  induction p.
+  - auto.
+  - simpl in Hwf. simpl. destruct a.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * apply IHp. apply Hwf.
+    * apply IHp. apply Hwf.
+Qed.
+
+Lemma wf_app_B (p q  : prog)
+             (i    : StraightLine.insn)
+             (Hwf  : prog_wf_rec q p = true) : prog_wf_rec q (p ++ [B i]) = true.
+Proof.
+  induction p.
+  - auto.
+  - simpl. simpl in Hwf. destruct a.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf.
+      rewrite Bool.andb_true_iff. split.
+      + apply H.
+      + apply IHp. apply H0.
+Qed.
 
 Lemma wf_rev (p q : prog) (Hwf : prog_wf_rec q p = true) : prog_wf_rec q (rev p) = true.
-Proof. admit. Admitted.
+Proof.
+  induction p.
+  - auto.
+  - simpl. simpl in Hwf. destruct a.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf. apply wf_app.
+      + apply IHp. apply H0.
+      + apply H.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf. apply wf_app_JZ.
+      + apply IHp. apply H0.
+      + apply H.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf. apply wf_app_JNZ.
+      + apply IHp. apply H0.
+      + apply H.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf. apply wf_app_LAB.
+      apply IHp. apply H0.
+    * rewrite Bool.andb_true_iff in Hwf. destruct Hwf. apply wf_app_B.
+      + apply IHp. apply H0.
+Qed.
 
 Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
   match p with
@@ -487,7 +622,11 @@ Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
   end.
 
 Lemma cons_comm_app (A : Type) (a : A) (l1 l2 : list A) : l1 ++ a :: l2 = (l1 ++ [a]) ++ l2.
-Proof. admit. Admitted.
+Proof.
+  induction l1.
+  - simpl. reflexivity.
+  - simpl. rewrite IHl1. reflexivity.
+Qed.
 
 Definition compile_expr (e : expr) : prog :=
   convert_straightline (StraightLine.compile_expr e).
