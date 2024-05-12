@@ -3,6 +3,7 @@ Require Import BinInt ZArith_dec.
 Require Export Id.
 Require Export State.
 Require Export Lia.
+Require Import Coq.Program.Equality.
 
 Require Import List.
 Import ListNotations.
@@ -456,11 +457,11 @@ Module SmallStep.
   Proof. 
     induction Heval. apply isv_Intro. exact IHHeval.
   Qed.
-  
+
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
-  Proof. admit. Admitted.
+   Proof. admit. Admitted.
   
 End SmallStep.
 
@@ -528,9 +529,54 @@ Module Renaming.
      destruct BH. destruct H0. 
      rewrite <- (H0 x). rewrite <- (H0 y). rewrite H. reflexivity. 
   Qed.
-  
+
+  Lemma eval_renaming_invariance_helper (e : expr) (st : state Z) (z : Z) (r : renaming) :
+    [| e |] st => z -> [| rename_expr r e |] (rename_state r st) => z.
+  Proof. 
+    intro. generalize st z r H. clear H r z st. induction e; intros; inversion H; clear H.
+    - apply bs_Nat.
+    - apply bs_Var. subst. induction VAR; destruct r.
+      + apply st_binds_hd.
+      + apply st_binds_tl; simpl.
+        intro. remember (bijective_injective x0 b). assert (id = id'). apply i. 
+        * exact H0. 
+        * contradiction.
+        * exact IHVAR.
+    - apply bs_Add. apply IHe1. exact VALA. apply IHe2. exact VALB.
+    - apply bs_Sub. apply IHe1. exact VALA. apply IHe2. exact VALB.
+    - apply bs_Mul. apply IHe1. exact VALA. apply IHe2. exact VALB.
+    - apply bs_Div. apply IHe1. exact VALA. apply IHe2. exact VALB. exact NZERO.
+    - apply bs_Mod. apply IHe1. exact VALA. apply IHe2. exact VALB. exact NZERO.
+    - apply bs_Le_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Le_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Lt_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Lt_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Ge_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Ge_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Gt_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Gt_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Eq_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Eq_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Ne_T with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_Ne_F with za zb. apply IHe1. exact VALA. apply IHe2. exact VALB. exact OP.
+    - apply bs_And. apply IHe1. exact VALA. apply IHe2. exact VALB. exact BOOLA. exact BOOLB.
+    - apply bs_Or. apply IHe1. exact VALA. apply IHe2. exact VALB. exact BOOLA. exact BOOLB.
+  Qed.
+
   Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
-  Proof. admit. Admitted.
+  Proof. 
+    split; intro.
+    - apply eval_renaming_invariance_helper. exact H.
+    - destruct (renaming_inv r).
+      assert ([|rename_expr x (rename_expr r e)|] (rename_state x (rename_state r st)) => z). 
+      + apply eval_renaming_invariance_helper. exact H.
+      + assert (rename_expr x (rename_expr r e) = e).
+        * apply re_rename_expr. exact H0.
+        * assert (rename_state x (rename_state r st) = st).
+          apply re_rename_state. 
+          ** exact H0.
+          ** rewrite -> H2 in H1. rewrite -> H3 in H1. exact H1.
+  Qed.
     
 End Renaming.
