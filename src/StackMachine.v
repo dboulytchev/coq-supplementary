@@ -225,7 +225,7 @@ Module StraightLine.
         (e : expr) (st : state Z) (s i o : list Z) (n : Z) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o) <-> [| e |] st => n.
   Proof. admit. Admitted.
-  
+      
   Fixpoint compile (s : stmt) (H : StraightLine s) : prog :=
     match H with
     | sl_Assn x e          => compile_expr e ++ [S x]
@@ -368,12 +368,7 @@ Lemma wf_app (p q  : prog)
              (l    : nat)
              (Hwf  : prog_wf_rec q p = true)
              (Hocc : label_occurs_once l q = true) : prog_wf_rec q (p ++ [JMP l]) = true.
-Proof.
-  induction p.
-  { simpl. intuition. }
-  { simpl in Hwf. destruct a; simpl; apply Bool.andb_true_iff in Hwf; inversion Hwf; intuition.
-  }
-Qed.
+Proof. admit. Admitted.
 
 Lemma wf_rev (p q : prog) (Hwf : prog_wf_rec q p = true) : prog_wf_rec q (rev p) = true.
 Proof. admit. Admitted.
@@ -385,32 +380,7 @@ Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
   end.
 
 Lemma cons_comm_app (A : Type) (a : A) (l1 l2 : list A) : l1 ++ a :: l2 = (l1 ++ [a]) ++ l2.
-Proof.
-  induction l1; auto.
-  simpl. rewrite <- IHl1. reflexivity.
-Qed.
-  (*
-Lemma straightline_wf_gen (p    : StraightLine.prog)
-                          (q    : prog             )
-                          (Hqwf : prog_wf_rec q q = true ) :
-  prog_wf_rec q (q ++ convert_straightline p) = true.
-Proof.
-  generalize dependent q. induction p; intros q Hqwf.
-  { simpl. rewrite app_nil_r. assumption. }
-  { simpl. rewrite cons_comm_app.
+Proof. admit. Admitted.
 
-
-    apply IHp.
-    assert (A: prog_wf (B a :: q) = true).
-      unfold prog_wf. simpl. induction q. auto. 
-    
-    induction q.
-    { simpl. unfold prog_wf. simpl. reflexivity. }
-    { simpl. unfold prog_wf. 
-
-    Search list.
-  { auto. }
-  { simpl. unfold prog_wf. simpl.
-    *)
 Definition compile_expr (e : expr) : prog :=
   convert_straightline (StraightLine.compile_expr e).
