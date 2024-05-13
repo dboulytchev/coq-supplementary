@@ -299,14 +299,73 @@ Qed.
 Definition equivalent_states (s1 s2 : state Z) :=
   forall id, Expr.equivalent_states s1 s2 id.
 
+Lemma equivalent_states_update 
+  (st st' : state Z)
+  (x : id)
+  (z : Z)
+  (H: equivalent_states st st') :  equivalent_states ((st)[x <- z]) ((st')[x <- z]) .
+Proof. 
+  intro. intro. specialize (id_eq_dec id x) as H'.
+  destruct H'. 
+  - subst id. split; intros.
+    inversion H0. apply st_binds_hd. contradiction.
+    inversion H0. apply st_binds_hd. contradiction.
+  - split; intro. 
+  inversion H0. rewrite H1 in *. contradiction.
+  apply st_binds_tl. assumption. apply H. assumption.
+  inversion H0. rewrite H1 in *. contradiction.
+  apply st_binds_tl. assumption. apply H. assumption.
+Qed.
+
+Lemma equivalent_states_eval
+  (s1 s2 : state Z)
+  (HE : equivalent_states s1 s2)
+  (e : expr) (z : Z)
+  (H : [|e|] s1 => z) : [|e|] s2 => z.
+Proof. induction H; intros.
+  apply bs_Nat.
+  apply bs_Var. apply HE. apply VAR.
+  all: try by econstructor; try apply (IHeval1 HE); try apply (IHeval2 HE).
+Qed.
+
 Lemma bs_equiv_states
   (s            : stmt)
   (i o i' o'    : list Z)
   (st1 st2 st1' : state Z)
-  (HE1          : equivalent_states st1 st1')  
+  (HE1          : equivalent_states st1 st1')
   (H            : (st1, i, o) == s ==> (st2, i', o')) :
   exists st2',  equivalent_states st2 st2' /\ (st1', i, o) == s ==> (st2', i', o').
-Proof. admit. Admitted.
+Proof. remember (st1, i, o). remember (st2, i', o'). generalize i o i' o' st1 st2 st1' HE1 Heqp Heqp0. 
+       clear Heqp0 Heqp HE1 st1' st2 st1 o' i' o i. 
+  induction H; intros.
+  subst. inversion Heqp0. subst. exists st1'. split. apply HE1. apply bs_Skip.
+  all: inversion Heqp; inversion Heqp0; subst.
+  - exists (st1' [x <- z]). split. apply equivalent_states_update. apply HE1. apply bs_Assign.
+    apply equivalent_states_eval with st1. apply HE1. apply VAL.
+  - exists (st1' [x <- z]). split. 
+    apply equivalent_states_update. apply HE1. apply bs_Read.
+  - exists st1'. split. 
+    apply HE1. 
+    apply bs_Write. apply equivalent_states_eval with st2. apply HE1. apply VAL.
+  - destruct c'. destruct p. 
+    assert ((s, l0, l) = (s, l0, l)). reflexivity. 
+    destruct (IHbs_int1 i o l0 l st1 s st1' HE1 H1 H3). destruct H4. 
+    destruct (IHbs_int2 l0 l i' o' s st2 x H4 H3 H2). destruct H6. 
+    exists x0. split. apply H6. apply bs_Seq with (x, l0, l). apply H5. apply H7.
+  - destruct (IHbs_int i0 o0 i' o' st1 st2 st1' HE1 Heqp H0). destruct H1. 
+    exists x. split. apply H1. 
+    apply bs_If_True. apply equivalent_states_eval with st1. apply HE1. apply CVAL. apply H2.
+  - destruct (IHbs_int i0 o0 i' o' st1 st2 st1' HE1 Heqp H0). destruct H1.
+    exists x. split. apply H1. apply bs_If_False. apply equivalent_states_eval with st1. apply HE1. apply CVAL. apply H2.
+  - destruct c'. destruct p. 
+    assert ((s0, l0, l) = (s0, l0, l)). reflexivity. 
+    destruct (IHbs_int1 i0 o0 l0 l st1 s0 st1' HE1 Heqp H2). destruct H3. 
+    destruct (IHbs_int2 l0 l i' o' s0 st2 x H3 H2 H1). destruct H5. 
+    exists x0. split. apply H5. apply bs_While_True with (x, l0, l). 
+    apply equivalent_states_eval with st1. apply HE1. apply CVAL. apply H4. apply H6.
+  - exists st1'. split. apply HE1. apply bs_While_False. apply equivalent_states_eval with st2. apply HE1. apply CVAL.
+Qed.
+    
   
 (* Contextual equivalence is equivalent to the semantic one *)
 (* TODO: no longer needed *)
