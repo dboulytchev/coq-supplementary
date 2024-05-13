@@ -60,15 +60,6 @@ Ltac prove_with th :=
   try (constructor; assumption); congruence.
 
 Lemma lt_eq_lt_id_dec: forall (id1 id2 : id), {id1 i< id2} + {id1 = id2} + {id2 i< id1}.
-<<<<<<< HEAD
-Proof. prove_with lt_eq_lt_dec. Qed.
-  
-Lemma gt_eq_gt_id_dec: forall (id1 id2 : id), {id1 i> id2} + {id1 = id2} + {id2 i> id1}.
-Proof. prove_with gt_eq_gt_dec. Qed.
-
-Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
-Proof. prove_with le_gt_dec. Qed.
-=======
 Proof. 
   intros id1 id2. 
   destruct id1, id2. 
@@ -100,7 +91,6 @@ Proof.
   + right. constructor. assumption.
 Qed.
 
->>>>>>> 09e6753 (Proof some of Id lemmas.)
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
 Proof.
@@ -151,7 +141,7 @@ Proof.
   + constructor.
   + remember (nat_compare_le n n).
     apply i0 in H.
-    contradiction.
+    contradiction.  
 Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
@@ -170,9 +160,9 @@ Proof.
   destruct H6.
   inversion H.
   remember (gt_asym n0 m0).
-  apply n4 in H4.
-  contradiction.
-Qed.
+    apply n4 in H4.
+    contradiction.
+  Qed.
 
 
 Lemma le_gt_id_false : forall id1 id2 : id,
@@ -242,4 +232,4 @@ Proof.
   destruct id1, id2, H0.
   inversion H.
   lia.
-Qed.  
+Qed.

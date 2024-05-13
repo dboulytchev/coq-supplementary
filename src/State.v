@@ -41,18 +41,24 @@ Section S.
     (SN : st_eval st x = n)
     (SM : st_eval st x = m) :
     n = m.
-<<<<<<< HEAD
-  Proof using Type.
-    subst n. subst m. reflexivity.
+  Proof.
+    induction st.
+    { unfold st_eval in SN.
+      unfold st_eval in SM.
+      subst.
+      reflexivity.
+    }
+    { 
+      destruct a.
+      inversion SN; inversion SM; subst; trivial.
+    }
   Qed.
+
     
   Lemma state_deterministic (st : state) (x : id) (n m : A)   
     (SN : st / x => n)
     (SM : st / x => m) :
     n = m. 
-  Proof. admit. Admitted.
-  
-=======
   Proof.
     induction st.
     { inversion SN. }
@@ -75,7 +81,7 @@ Section S.
     }
   Qed.
 
->>>>>>> 7fb1ed5 (Some proofs done.)
+  
   Lemma update_eq (st : state) (x : id) (n : A) :
     st [x <- n] / x => n.
   Proof.
@@ -84,10 +90,6 @@ Section S.
 
   Lemma update_neq (st : state) (x2 x1 : id) (n m : A)
         (NEQ : x2 <> x1) : st / x1 => m <-> st [x2 <- n] / x1 => m.
-<<<<<<< HEAD
-  Proof. admit. Admitted.
-  
-=======
   Proof.
     split; intros.
     {
@@ -105,7 +107,6 @@ Section S.
   Qed.
 
 
->>>>>>> 7fb1ed5 (Some proofs done.)
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
   Proof.
