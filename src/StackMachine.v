@@ -1,5 +1,6 @@
 Require Import BinInt ZArith_dec.
 Require Import List.
+Require Import Coq.Program.Equality.
 Import ListNotations.
 Require Import Lia.
 
@@ -198,7 +199,15 @@ Module StraightLine.
         (VAL : [| e |] st => n)
         (EXEC: (n::s, st, i, o) -- p --> c) :        
     (s, st, i, o) -- (compile_expr e) ++ p --> c.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction e. 
+    - dependent destruction VAL. simpl.
+      apply sm_Const. apply EXEC.
+    - dependent destruction VAL. simpl.
+      eapply sm_Load. apply VAR. apply EXEC.
+    - dependent destruction VAL; simpl; rewrite app_ass.
+      all: (eapply IHe1; try apply VAL1; rewrite app_ass; eapply IHe2; try apply VAL2; constructor; assumption; assumption).
+  Qed.
 
   #[export] Hint Resolve compiled_expr_correct_cont.
   
@@ -206,25 +215,49 @@ Module StraightLine.
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
         (VAL : [| e |] st => n) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o).
-  Proof. admit. Admitted.
-  
+  Proof. 
+    rewrite (app_nil_end (compile_expr e)). 
+    apply compiled_expr_correct_cont with n. exact VAL. apply sm_End. constructor.
+  Qed.
+
   Lemma compiled_expr_not_incorrect_cont
         (e : expr) (st : state Z) (s i o : list Z) (p : prog) (c : conf)
         (EXEC : (s, st, i, o) -- compile_expr e ++ p --> c) :
     exists (n : Z), [| e |] st => n /\ (n :: s, st, i, o) -- p --> c.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction e; simpl in EXEC.
+    - exists z. split. apply bs_Nat. inversion EXEC. subst. apply EXEC0.
+    - inversion EXEC. subst. exists z. split.
+      + apply bs_Var. apply VAR.
+      + apply EXEC0.
+    - repeat rewrite app_ass in EXEC.
+      specialize (IHe1 st s i o (compile_expr e2 ++ [B b] ++ p) c).
+      destruct IHe1 as [za [VAL1 EXEC1]]. apply EXEC.
+      specialize (IHe2 st (za::s) i o ([B b] ++ p) c EXEC1).
+      destruct IHe2 as [zb [VAL2 EXEC2]]. 
+      simpl in EXEC2. inversion EXEC2; subst; eauto.
+  Qed.
   
   Lemma compiled_expr_not_incorrect
         (e : expr) (st : state Z)
         (s i o : list Z) (n : Z)
         (EXEC : (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o)) :
     [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof. 
+    rewrite (app_nil_end (compile_expr e)) in EXEC.
+    assert (exists n0, [|e|] st => n0 /\ (n0 :: s, st, i, o) -- [] --> (n :: s, st, i, o)).
+    - apply compiled_expr_not_incorrect_cont. exact EXEC.
+    - destruct H. destruct H. inversion H0. subst. exact H.
+  Qed.
   
   Lemma expr_compiler_correct
         (e : expr) (st : state Z) (s i o : list Z) (n : Z) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o) <-> [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof. 
+    split; intro.
+    - apply compiled_expr_not_incorrect with s i o. exact H.
+    - apply compiled_expr_correct. exact H.
+  Qed.
       
   Fixpoint compile (s : stmt) (H : StraightLine s) : prog :=
     match H with
@@ -241,30 +274,88 @@ Module StraightLine.
         (H : (st, i, o) == p ==> (st', i', o')) (q : prog) (c : conf)
         (EXEC : ([], st', i', o') -- q --> c) :
     ([], st, i, o) -- (compile p Sp) ++ q --> c.
-  Proof. admit. Admitted.
+  Proof. 
+   dependent induction Sp; simpl; inversion H; subst.
+    - rewrite <- (app_assoc (compile_expr e) ([S x]) q). simpl.
+      apply compiled_expr_correct_cont with z. exact VAL. apply sm_Store. exact EXEC.
+    - apply sm_Read. apply sm_Store. apply EXEC.
+    - rewrite <- app_assoc.
+      apply compiled_expr_correct_cont with z. apply VAL.
+      apply sm_Write. apply EXEC.
+    - apply EXEC.
+    - rewrite <- app_assoc.
+      destruct c' as [[st'' i''] o'']. eapply IHSp1. apply i''. apply o''.
+      apply STEP1. eapply IHSp2. apply i''. apply o''. apply STEP2.
+      apply EXEC.
+  Qed.
   
   Lemma compiled_straightline_correct
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : (st, i, o) == p ==> (st', i', o')) :
     ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof. 
+    rewrite (app_nil_end (compile p Sp)).
+    eapply compiled_straightline_correct_cont.
+    - apply i.
+    - apply o.
+    - apply EXEC.
+    - apply sm_End. constructor.
+  Qed.
   
   Lemma compiled_straightline_not_incorrect_cont
         (p : stmt) (Sp : StraightLine p) (st : state Z) (i o : list Z) (q : prog) (c : conf)
         (EXEC: ([], st, i, o) -- (compile p Sp) ++ q --> c) :
     exists (st' : state Z) (i' o' : list Z), (st, i, o) == p ==> (st', i', o') /\ ([], st', i', o') -- q --> c.
-  Proof. admit. Admitted.
+  Proof.
+    dependent induction Sp.
+    - simpl in EXEC. rewrite <- app_assoc in EXEC.
+      eapply compiled_expr_not_incorrect_cont in EXEC.
+      destruct EXEC as [x0 [H0 H1]]. exists (st[x <- x0]), i, o.
+      split. 
+      + apply bs_Assign. apply H0.
+      + inversion H1. subst. apply EXEC.
+    - replace (compile (READ x) (sl_Read x)) with [R; S x] in EXEC. replace ([R ; S x] ++ q) with (R :: (S x) :: q) in EXEC.
+      inversion EXEC. subst. inversion EXEC0. subst.
+      + exists st [x <- z], i0, o. split. apply bs_Read. exact EXEC1. 
+      + reflexivity. 
+      + reflexivity.
+    - assert (exists n : Z, [|e|] st => n /\ ([n], st, i, o) -- [W] ++ q --> c).
+      apply compiled_expr_not_incorrect_cont. rewrite -> (app_assoc (compile_expr e) ([W]) q). 
+      + exact EXEC.
+      + destruct H. destruct H. inversion H0. subst.
+        exists st, i, (x :: o). split. apply bs_Write. exact H. exact EXEC0.
+    - simpl in EXEC.
+      exists st, i, o. split.
+      + apply bs_Skip.
+      + apply EXEC.
+    - assert (exists (st' : state Z) (i' o' : list Z), (st, i, o) == s1 ==> (st', i', o') /\ ([], st', i', o') -- compile s2 Sp2 ++ q --> c).
+      apply IHSp1. rewrite -> (app_assoc (compile s1 Sp1) (compile s2 Sp2) q).
+      + exact EXEC.
+      + destruct H. destruct H. destruct H. destruct H.
+        assert (exists (st' : state Z) (i' o' : list Z), (x, x0, x1) == s2 ==> (st', i', o') /\ ([], st', i', o') -- q --> c).
+        * apply IHSp2. exact H0.
+        * destruct H1. destruct H1. destruct H1. destruct H1.
+          exists x2, x3, x4. split. apply bs_Seq with (x, x0, x1). exact H. exact H1. exact H2.
+  Qed.
   
   Lemma compiled_straightline_not_incorrect
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : ([], st, i, o) -- compile p Sp --> ([], st', i', o')) :
     (st, i, o) == p ==> (st', i', o').
-  Proof. admit. Admitted.
+  Proof. 
+    assert (exists (st_ : state Z) (i_ o_ : list Z), (st, i, o) == p ==> (st_, i_, o_) /\ ([], st_, i_, o_) -- [] --> ([], st', i', o')).
+    - apply compiled_straightline_not_incorrect_cont with Sp. rewrite <- (app_nil_end (compile p Sp)). exact EXEC.
+    - destruct H. destruct H. destruct H. destruct H. inversion H0. subst. exact H.
+  Qed.
   
   Theorem straightline_compiler_correct
           (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z) :
     (st, i, o) == p ==> (st', i', o') <-> ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof. 
+    split.
+    - apply compiled_straightline_correct.
+    - apply compiled_straightline_not_incorrect.
+  Qed.
   
 End StraightLine.
   
@@ -276,6 +367,33 @@ Inductive insn : Set :=
 | B   : StraightLine.insn -> insn.
 
 Definition prog := list insn.
+
+Fixpoint label_occurs_ones_rec (occured : bool) (n: nat) (p : prog) : bool :=
+  match p with
+    LAB m :: p' => if eq_nat_dec n m
+                   then if occured
+                        then false
+                        else label_occurs_ones_rec true n p'
+                   else label_occurs_ones_rec occured n p'
+  | _     :: p' => label_occurs_ones_rec occured n p'
+  | []          => occured
+  end.
+
+Definition label_occurs_ones (n : nat) (p : prog) : bool := label_occurs_ones_rec false n p.
+
+Fixpoint prog_wf_rec (prog p : prog) : bool :=
+  match p with
+    []      => true
+  | i :: p' => match i with
+                 JMP l => label_occurs_ones l prog
+               | JZ  l => label_occurs_ones l prog
+               | JNZ l => label_occurs_ones l prog
+               | _     => true
+               end && prog_wf_rec prog p'
+                                  
+  end.
+
+Definition prog_wf (p : prog) : bool := prog_wf_rec p p.
 
 Fixpoint at_label (l : nat) (p : prog) : prog :=
   match p with
@@ -289,98 +407,52 @@ Reserved Notation "P '|-' c1 '--' q '-->' c2" (at level 0).
 
 Inductive sm_int : prog -> conf -> prog -> conf -> Prop :=  
 | sm_Base      : forall (c c' c'' : conf)
-                        (P p      : prog)
-                        (i        : StraightLine.insn)
-                        (H        : c == [i] ==> c')
-                        (HP       : P |- c' -- p --> c''), P |- c -- B i :: p --> c''
+                        (P p : prog)
+                        (i   : StraightLine.insn)
+                        (H   : c == [i] ==> c')
+                        (HP  : P |- c' -- p --> c''), P |- c -- B i :: p --> c''
            
 | sm_Label     : forall (c c' : conf)
-                        (P p  : prog)
-                        (l    : nat)
-                        (H    : P |- c -- p --> c'), P |- c -- LAB l :: p --> c'
+                        (P p : prog)
+                        (l : nat)
+                        (H : P |- c -- p --> c'), P |- c -- LAB l :: p --> c'
                                                          
 | sm_JMP       : forall (c c' : conf)
-                        (P p  : prog)
-                        (l    : nat)
-                        (H    : P |- c -- at_label l P --> c'), P |- c -- JMP l :: p --> c'
+                        (P p : prog)
+                        (l : nat)
+                        (H : P |- c -- at_label l P --> c'), P |- c -- JMP l :: p --> c'
                                                                     
 | sm_JZ_False  : forall (s i o : list Z)
-                        (m     : state Z)
-                        (c'    : conf)
-                        (P p   : prog)
-                        (l     : nat)
-                        (z     : Z)
-                        (HZ    : z <> 0%Z)
-                        (H     : P |- (s, m, i, o) -- p --> c'), P |- (z :: s, m, i, o) -- JZ l :: p --> c'
+                        (m : state Z)
+                        (c' : conf)
+                        (P p : prog)
+                        (l : nat)
+                        (z : Z)
+                        (HZ : z <> 0%Z)
+                        (H : P |- (s, m, i, o) -- p --> c'), P |- (z :: s, m, i, o) -- JZ l :: p --> c'
                                                                                     
 | sm_JZ_True   : forall (s i o : list Z)
-                        (m     : state Z)
-                        (c'    : conf)
-                        (P p   : prog)
-                        (l     : nat)
-                        (H     : P |- (s, m, i, o) -- at_label l P --> c'), P |- (0%Z :: s, m, i, o) -- JZ l :: p --> c'
+                        (m : state Z)
+                        (c' : conf)
+                        (P p : prog)
+                        (l : nat)
+                        (H : P |- (s, m, i, o) -- at_label l P --> c'), P |- (0%Z :: s, m, i, o) -- JZ l :: p --> c'
                                                                                                  
 | sm_JNZ_False : forall (s i o : list Z)
-                        (m     : state Z)
-                        (c'    : conf)
-                        (P p   : prog)
-                        (l     : nat)
+                        (m : state Z)
+                        (c' : conf)
+                        (P p : prog)
+                        (l : nat)
                         (H : P |- (s, m, i, o) -- p --> c'), P |- (0%Z :: s, m, i, o) -- JNZ l :: p --> c'
                                                                                       
 | sm_JNZ_True  : forall (s i o : list Z)
-                        (m     : state Z)
-                        (c'    : conf)
-                        (P p   : prog)
-                        (l     : nat)
-                        (z     : Z)
-                        (HZ    : z <> 0%Z)
+                        (m : state Z)
+                        (c' : conf)
+                        (P p : prog)
+                        (l : nat)
+                        (z : Z)
+                        (HZ : z <> 0%Z)
                         (H : P |- (s, m, i, o) -- at_label l P --> c'), P |- (z :: s, m, i, o) -- JNZ l :: p --> c'
 | sm_Empty : forall (c : conf) (P : prog), P |- c -- [] --> c 
 where "P '|-' c1 '--' q '-->' c2" := (sm_int P c1 q c2).
 
-Fixpoint label_occurs_once_rec (occured : bool) (n: nat) (p : prog) : bool :=
-  match p with
-    LAB m :: p' => if eq_nat_dec n m
-                   then if occured
-                        then false
-                        else label_occurs_once_rec true n p'
-                   else label_occurs_once_rec occured n p'
-  | _     :: p' => label_occurs_once_rec occured n p'
-  | []          => occured
-  end.
-
-Definition label_occurs_once (n : nat) (p : prog) : bool := label_occurs_once_rec false n p.
-
-Fixpoint prog_wf_rec (prog p : prog) : bool :=
-  match p with
-    []      => true
-  | i :: p' => match i with
-                 JMP l => label_occurs_once l prog
-               | JZ  l => label_occurs_once l prog
-               | JNZ l => label_occurs_once l prog
-               | _     => true
-               end && prog_wf_rec prog p'                                  
-  end.
-   
-Definition prog_wf (p : prog) : bool := prog_wf_rec p p.
-
-Lemma wf_app (p q  : prog)
-             (l    : nat)
-             (Hwf  : prog_wf_rec q p = true)
-             (Hocc : label_occurs_once l q = true) : prog_wf_rec q (p ++ [JMP l]) = true.
-Proof. admit. Admitted.
-
-Lemma wf_rev (p q : prog) (Hwf : prog_wf_rec q p = true) : prog_wf_rec q (rev p) = true.
-Proof. admit. Admitted.
-
-Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
-  match p with
-    []      => []
-  | i :: p' => B i :: convert_straightline p'
-  end.
-
-Lemma cons_comm_app (A : Type) (a : A) (l1 l2 : list A) : l1 ++ a :: l2 = (l1 ++ [a]) ++ l2.
-Proof. admit. Admitted.
-
-Definition compile_expr (e : expr) : prog :=
-  convert_straightline (StraightLine.compile_expr e).
