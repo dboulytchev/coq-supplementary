@@ -44,15 +44,7 @@ Section S.
   Proof using Type.
     subst n. subst m. reflexivity.
   Qed.
-    
-  Lemma state_deterministic' (st : state) (x : id) (n m : option A)
-    (SN : st_eval st x = n)
-    (SM : st_eval st x = m) :
-    n = m.
-  Proof using Type.
-    subst n. subst m. reflexivity.
-  Qed.
-    
+
   Lemma state_deterministic (st : state) (x : id) (n m : A)   
     (SN : st / x => n)
     (SM : st / x => m) :

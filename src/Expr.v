@@ -180,12 +180,18 @@ where "[| e |] st => z" := (eval e st z).
 Module SmokeTest.
 
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. admit. Admitted.
+  Proof.
+    apply bs_Nat.
+  Qed.
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. admit. Admitted.
+  Proof.
+    inversion HH. subst. inversion VALB. subst.
+    assert ((za * 2)%Z = (za + za)%Z). { lia. }
+    rewrite H. apply bs_Add. apply VALA. apply VALA.
+  Qed.
 
 End SmokeTest.
 
@@ -200,7 +206,16 @@ where "e1 << e2" := (subexpr e1 e2).
 
 Lemma strictness (e e' : expr) (HSub : e' << e) (st : state Z) (z : Z) (HV : [| e |] st => z) :
   exists z' : Z, [| e' |] st => z'.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  induction e;
+  intros; inversion HSub.
+  exists z. apply bs_Nat.
+  exists z. exact HV.
+  exists z. exact HV.
+  inversion HV; exact (IHe1 H1 za VALA).
+  inversion HV; exact (IHe2 H1 zb VALB).
+Qed.
 
 Reserved Notation "x ? e" (at level 0).
 
@@ -218,7 +233,14 @@ Lemma defined_expression
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  induction e; intros; inversion ID.
+  - subst. exists z. inversion RED. exact VAR.
+  - destruct H3.
+    + inversion RED; exact (IHe1 H3 za VALA).
+    + inversion RED; exact (IHe2 H3 zb VALB).
+Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -226,13 +248,25 @@ Proof. admit. Admitted.
 Lemma undefined_variable (e : expr) (s : state Z) (id : id)
       (ID : id ? e) (UNDEF : forall (z : Z), ~ (s / id => z)) :
   forall (z : Z), ~ ([| e |] s => z).
-Proof. admit. Admitted.
+Proof.
+  induction e; intros; inversion ID; subst; intuition.
+  - inversion H. apply (@UNDEF z). assumption.
+  - inversion H; apply (H1 za VALA).
+  - inversion H; apply (H1 zb VALB).
+Qed.
 
 (* The evaluation relation is deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
-Proof. admit. Admitted.
+Proof.
+  induction e.
+  - inversion E1. inversion E2. subst. reflexivity.
+  - inversion E1. inversion E2. subst. apply (state_deterministic Z s i z1 z2 VAR VAR0).
+  - inversion E1; subst; inversion E2; subst;
+    
+    try reflexivity; try contradiction. 
+Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
