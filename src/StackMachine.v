@@ -206,7 +206,17 @@ Module StraightLine.
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
         (VAL : [| e |] st => n) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o).
-  Proof. admit. Admitted.
+  Proof.
+    specialize (compiled_expr_correct_cont e st s i o n ([]) ((n :: s, st, i, o)) VAL).
+    intros.
+    assert (((n :: s, st, i, o)) -- [] --> ((n :: s, st, i, o))).
+    { repeat constructor. }
+    specialize (H H0).
+    auto.
+    specialize (app_nil_r (compile_expr e)) as He.
+    rewrite ->He in H.
+    assumption.
+  Qed.    
   
   Lemma compiled_expr_not_incorrect_cont
         (e : expr) (st : state Z) (s i o : list Z) (p : prog) (c : conf)
@@ -219,12 +229,32 @@ Module StraightLine.
         (s i o : list Z) (n : Z)
         (EXEC : (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o)) :
     [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof.
+    specialize (app_nil_end (compile_expr e)) as He.
+    rewrite ->He in EXEC.
+    specialize (compiled_expr_not_incorrect_cont e st s i o ([]) ((n :: s, st, i, o)) EXEC) as H.
+    inversion_clear H.
+    inversion_clear H0.
+    inversion H1.
+    subst.
+    assumption.
+  Qed.
   
   Lemma expr_compiler_correct
         (e : expr) (st : state Z) (s i o : list Z) (n : Z) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o) <-> [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof.
+    split;
+    intros.
+    {
+      eapply compiled_expr_not_incorrect.
+      eassumption.
+    }
+    {
+      apply compiled_expr_correct.
+      assumption.
+    }
+  Qed.
       
   Fixpoint compile (s : stmt) (H : StraightLine s) : prog :=
     match H with
@@ -264,7 +294,18 @@ Module StraightLine.
   Theorem straightline_compiler_correct
           (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z) :
     (st, i, o) == p ==> (st', i', o') <-> ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof.
+    split;
+    intros.
+    {
+      apply compiled_straightline_correct.
+      assumption.
+    }
+    {
+      eapply compiled_straightline_not_incorrect.
+      eassumption.
+    }
+  Qed.
   
 End StraightLine.
   
@@ -368,7 +409,22 @@ Lemma wf_app (p q  : prog)
              (l    : nat)
              (Hwf  : prog_wf_rec q p = true)
              (Hocc : label_occurs_once l q = true) : prog_wf_rec q (p ++ [JMP l]) = true.
-Proof. admit. Admitted.
+Proof.
+  induction p.
+  {
+    simpl.
+    intuition.
+  }
+  {
+    simpl.
+    simpl in Hwf.
+    apply Bool.andb_true_iff in Hwf.
+    inversion Hwf.
+    apply IHp in H0 as H1.
+    destruct a;
+    intuition.
+  }
+Qed.
 
 Lemma wf_rev (p q : prog) (Hwf : prog_wf_rec q p = true) : prog_wf_rec q (rev p) = true.
 Proof. admit. Admitted.
