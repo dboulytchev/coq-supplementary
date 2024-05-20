@@ -1088,26 +1088,145 @@ Module Renaming.
     | s1 ;; s2                   => (rename r s1) ;; (rename r s2)
     | COND e THEN s1 ELSE s2 END => COND (Renaming.rename_expr r e) THEN (rename r s1) ELSE (rename r s2) END
     | WHILE e DO s END           => WHILE (Renaming.rename_expr r e) DO (rename r s) END             
-    end.   
+    end.
+
+  Lemma expr_rename
+    (r r' : Renaming.renaming)
+    (Hinv : Renaming.renamings_inv r r')
+    (e    : expr) : Renaming.rename_expr r (Renaming.rename_expr r' e) = e.
+  Proof.
+    induction e.
+    {
+      simpl.
+      reflexivity.
+    }
+    {
+      simpl.
+      specialize (Hinv i) as Hi.
+      rewrite ->Hi.
+      reflexivity.
+    }
+    {
+      simpl.
+      rewrite ->IHe1.
+      rewrite ->IHe2.
+      reflexivity.
+    }
+  Qed.
 
   Lemma re_rename
     (r r' : Renaming.renaming)
     (Hinv : Renaming.renamings_inv r r')
     (s    : stmt) : rename r (rename r' s) = s.
-  Proof. admit. Admitted.
+  Proof.
+    unfold Renaming.renamings_inv in Hinv.
+    induction s;
+    simpl.
+    {
+      reflexivity.
+    }
+    {
+      specialize (Hinv i) as Hi.
+      rewrite ->Hi.
+
+      specialize (expr_rename r r' Hinv e) as Hexpr.
+      rewrite ->Hexpr.
+
+      reflexivity.
+    }
+    {
+      specialize (Hinv i).
+      rewrite ->Hinv.
+      reflexivity.
+    }
+    {
+      specialize (expr_rename r r' Hinv e) as Hexpr.
+      rewrite ->Hexpr.
+      reflexivity.
+    }
+    {
+      rewrite ->IHs1.
+      rewrite ->IHs2.
+      reflexivity.
+    }
+    {
+      specialize (expr_rename r r' Hinv e) as Hexpr.
+      rewrite ->Hexpr.
+      rewrite ->IHs1.
+      rewrite ->IHs2.
+      reflexivity.
+    }
+    {
+      specialize (expr_rename r r' Hinv e) as Hexpr.
+      rewrite ->Hexpr.
+      rewrite ->IHs.
+      reflexivity.
+    }
+  Qed.
   
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
     Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
-  Proof. admit. Admitted.
+  Proof.
+    induction st;
+    unfold update;
+    destruct r;
+    simpl;
+    reflexivity.
+  Qed.
   
-  #[export] Hint Resolve Renaming.eval_renaming_invariance : core.
+  (* #[export] Hint Resolve Renaming.eval_renaming_invariance : core. *)
 
   Lemma renaming_invariant_bs
     (s         : stmt)
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
-  Proof. admit. Admitted.
+  Proof.
+    induction Hbs;
+    destruct r.
+    {
+      constructor.
+    }
+    {
+      constructor.
+      apply Renaming.eval_renaming_invariance.
+      assumption.
+    }
+    {
+      constructor.
+    }
+    {
+      constructor.
+      apply Renaming.eval_renaming_invariance.
+      assumption.
+    }
+    {
+      econstructor;
+      eassumption.
+    }
+    {
+      constructor.
+      { apply Renaming.eval_renaming_invariance. assumption. }
+      { assumption. }
+    }
+    {
+      constructor 7.
+      { apply Renaming.eval_renaming_invariance. assumption. }
+      { assumption. }
+    }
+    {
+      econstructor.
+      { apply Renaming.eval_renaming_invariance. assumption. }
+      { eassumption. }
+      { assumption. }
+    }
+    {
+      constructor.
+      apply Renaming.eval_renaming_invariance.
+      assumption.
+    }
+  Qed.
+
   
   Lemma renaming_invariant_bs_inv
     (s         : stmt)
@@ -1115,6 +1234,7 @@ Module Renaming.
     (c c'      : conf)
     (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
   Proof. admit. Admitted.
+    
     
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
   Proof. admit. Admitted.
