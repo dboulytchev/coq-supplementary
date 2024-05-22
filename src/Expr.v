@@ -260,12 +260,13 @@ Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z)
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
 Proof.
-  induction e.
+  generalize dependent z1. generalize dependent z2.
+  induction e; intros.
   - inversion E1. inversion E2. subst. reflexivity.
   - inversion E1. inversion E2. subst. apply (state_deterministic Z s i z1 z2 VAR VAR0).
   - inversion E1; subst; inversion E2; subst;
-    
-    try reflexivity; try contradiction. 
+    try rewrite (IHe1 za VALA za0 VALA0) in *; try rewrite (IHe2 zb VALB zb0 VALB0) in *;
+    try reflexivity; try contradiction.
 Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
@@ -277,7 +278,15 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
           equivalent_states s1 s2 id)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  induction e; intros.
+  - inversion EV. constructor.
+  - inversion EV. constructor. apply FV. constructor. apply VAR.
+  - inversion_clear EV.
+    all: econstructor; eauto; [eapply IHe1 | eapply IHe2]; eauto;
+      intros; eapply FV; econstructor; eauto.
+Qed.
 
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z), 
@@ -285,14 +294,26 @@ Definition equivalent (e1 e2 : expr) : Prop :=
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
 Lemma eq_refl (e : expr): e ~~ e.
-Proof. admit. Admitted.
+Proof. split; auto. Qed.
 
 Lemma eq_symm (e1 e2 : expr) (EQ : e1 ~~ e2): e2 ~~ e1.
-Proof. admit. Admitted.
+Proof.
+  unfold equivalent in EQ.
+  unfold equivalent. symmetry.
+  generalize dependent s.
+  generalize dependent n.
+  assumption.
+Qed.
 
 Lemma eq_trans (e1 e2 e3 : expr) (EQ1 : e1 ~~ e2) (EQ2 : e2 ~~ e3):
   e1 ~~ e3.
-Proof. admit. Admitted.
+Proof.
+  unfold equivalent in EQ1, EQ2.
+  intros n s.
+  specialize (EQ1 n s).
+  specialize (EQ2 n s).
+  intuition.
+Qed.
 
 Inductive Context : Type :=
 | Hole : Context
@@ -316,7 +337,15 @@ Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
 
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
-Proof. admit. Admitted.
+Proof.
+  split.
+  - intros. unfold contextual_equivalent. intros.
+    induction C.
+    constructor; simpl; unfold equivalent in H; apply (H n s).
+    all: constructor; unfold equivalent in *; intros; inversion H0;
+      try apply IHC in VALA; try apply IHC in VALB; econstructor; eauto.
+  - intro. unfold contextual_equivalent in H. specialize (H Hole). auto.     
+Qed.
 
 Module SmallStep.
 
@@ -359,10 +388,14 @@ Module SmallStep.
     forall s, ~ exists e', (s |- e --> e').   
 
   Lemma value_is_normal_form (e : expr) (HV: is_value e) : normal_form e.
-  Proof. admit. Admitted.
+  Proof.
+    intro. intro. inversion HV. subst. destruct H. inversion H.
+  Qed.
 
   Lemma normal_form_is_not_a_value : ~ forall (e : expr), normal_form e -> is_value e.
-  Proof. admit. Admitted.
+  Proof.
+    intro.
+  Qed.
   
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
   Proof. admit. Admitted.
