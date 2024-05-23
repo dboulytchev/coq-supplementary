@@ -7,6 +7,8 @@ Require Export Id.
 Require Export State.
 Require Export Expr.
 
+Require Import Coq.Program.Equality.
+
 From hahn Require Import HahnBase.
 
 (* AST for statements *)
@@ -107,7 +109,9 @@ Definition contextual_equivalent (s1 s2 : stmt) :=
 Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
-Proof. admit. Admitted.
+Proof.
+  exact (H Hole).
+Qed.
 
 Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
 Proof. admit. Admitted.
@@ -136,25 +140,68 @@ Module SmokeTest.
   (* Associativity of sequential composition *)
   Lemma seq_assoc (s1 s2 s3 : stmt) :
     ((s1 ;; s2) ;; s3) ~~~ (s1 ;; (s2 ;; s3)).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent.
+    intros.
+    split.
+    - intro.
+      inversion_clear H. inversion_clear STEP1.
+      econstructor; eauto.
+    - intro.
+      inversion_clear H. inversion_clear STEP2.
+      econstructor; eauto.
+  Qed.
   
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent.
+    intros.
+    split.
+    - intro.
+      inversion_clear H.
+      econstructor. eauto.
+      econstructor. eauto.
+      auto.
+      apply bs_If_False. assumption. auto.
+    - intro.
+      inversion_clear H.
+      inversion_clear STEP.
+      econstructor; eauto.
+      inversion STEP. apply bs_While_False. assumption.
+  Qed.
       
   (* Terminating loop invariant *)
   Lemma while_false (e : expr) (s : stmt) (st : state Z)
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof. admit. Admitted.
+  Proof.
+    remember (WHILE e DO s END).
+    remember (st, i, o).
+    induction EXE; inversion Heqs0; subst.
+    - apply IHEXE2. reflexivity. reflexivity.
+    - inversion Heqp. subst. assumption.
+Qed.
   
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
     (WHILE (Nat 1) DO SKIP END) ~~~
     (COND (Nat 3) THEN SKIP ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent.
+    intros. split.
+    - intro.
+      inversion_clear H. inversion STEP.
+      destruct c' eqn:E. destruct p.
+      apply (while_false (Nat 1) SKIP s l0 l c'0) in WSTEP.
+      inversion WSTEP.
+      inversion CVAL.
+    - intro.
+      inversion_clear H;
+      inversion CVAL.
+  Qed.
   
   (* Loops with equivalent bodies are equivalent *)
   Lemma while_eq (e : expr) (s1 s2 : stmt)
