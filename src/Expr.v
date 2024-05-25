@@ -443,26 +443,71 @@ Module SmallStep.
     - assumption.
   Qed.
 
+  Lemma ss_eval_bop_equiv (s : state Z)
+                      (za zb z : Z)
+                      (e1 e2 : expr)
+                      (op : bop)
+                      (VALA : s |- e1 -->> (Nat za))
+                      (VALB : s |- e2 -->> (Nat zb))
+                      (EVAL : [| Bop op (Nat za) (Nat zb) |] s => z) :
+    s |- (Bop op e1 e2) -->> (Nat z).
+  Proof.
+    induction VALA.
+    - induction VALB.
+      + eapply se_Step. apply ss_Bop. apply EVAL. apply se_Stop.
+      + eapply se_Step. apply ss_Right. apply HStep.
+        apply IHVALB. apply EVAL.
+    - eapply se_Step. apply ss_Left. apply HStep. apply IHVALA.
+      apply VALB. apply EVAL.
+  Qed.
+
+  Require Import Coq.Program.Equality.
+  (* Застряли вместе с ДЮ *)
+  Lemma eval_ss_bop_equiv (st : state Z)
+                        (z : Z)
+                        (e1 e2 : expr)
+                        (op : bop)
+                        (VAL : st |- Bop op e1 e2 -->> (Nat z)) :
+    exists za zb, [| Bop op (Nat za) (Nat zb)|] st => z /\ st |- e1 -->> (Nat za) /\ st |- e2 -->> (Nat zb).
+  Proof.
+  (* eexists. eexists. split. *)
+  inversion VAL. subst. inversion Heval. subst.
+    + inversion HStep. subst. exists zl. exists zr. split.
+      * apply EVAL.
+      * split. constructor. constructor.
+    + subst.
+  (* remember (Bop op e1 e2) as e.
+  remember (Nat z). *)
+  Print ss_eval_ind.
+  dependent induction VAL.
+  (* - inversion Heqe. *)
+  inversion HStep; subst.
+  - specialize (IHVAL z l' e2 op).
+  (* - eapply (IHVAL z l' e2 op). *)
+  Admitted.
+
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
   Proof.
-    split; intros; generalize dependent z; intros.
-    - admit. (* Here's helper lemma is required to deal with bop's*)
-    (* -  induction e; intros; inversion H; subst.
-      + constructor.
-      + apply (se_Step) with (e' := Nat z); auto.
-      + apply IHe1 in VALA. apply IHe2 in VALB.
-        (* apply (se_Step) with (e' := Nat (za + zb)). *)
-        admit.
-      all: admit. *)
-    - induction e; intros.
-      + inversion H; subst.
-        * constructor.
-        * inversion HStep.
-      + inversion H; subst. inversion HStep; subst. constructor. admit.
-      + admit.
-  Admitted.
+    split; intros; generalize dependent z.
+    - induction e; intros; inversion H; subst.
+      { constructor. }
+      { eapply se_Step; [ constructor; apply VAR | auto ]. }
+      all: apply IHe1 in VALA; apply IHe2 in VALB; eapply ss_eval_bop_equiv;
+            [apply VALA | apply VALB | auto; econstructor; auto ].
+    - induction e; intros; inversion H; subst.
+      { constructor. }
+      { inversion HStep. }
+      { inversion HStep. subst.  inversion Heval; subst.
+        { constructor. apply VAL. }
+        { inversion HStep0. } }
+      { apply eval_ss_bop_equiv in H. inversion_clear H. inversion_clear H0.
+        specialize (IHe1 x). specialize (IHe2 x0).
+        inversion_clear H. inversion_clear H1.
+        apply IHe1 in H. apply IHe2 in H2.
+        inversion H0; inversion VALA; inversion VALB; subst; econstructor; eauto. }
+  Qed.
 End SmallStep.
 
 Module Renaming.
@@ -531,6 +576,26 @@ Module Renaming.
     rewrite <- (H x0), H1, H. reflexivity.
   Qed.
 
+  Lemma state_renamning_invariance (x : id) (st : state Z) (z : Z) (r : renaming) :
+    st / x => z <-> (rename_state r st) / (rename_id r x) => z.
+  Proof.
+    split; intros.
+    - induction st; inversion H; subst; destruct r; simpl; constructor.
+        * unfold not in *. intros. apply H2. apply (bijective_injective x0); assumption.
+        * apply IHst. assumption.
+    - generalize dependent z.
+      induction st; intros; inversion H; subst.
+      * destruct a, r. simpl in *.
+        inversion H1; subst. apply (bijective_injective x0) in H2.
+        subst. constructor. apply b.
+      * destruct a. destruct r eqn:R. simpl in *.
+        inversion H0; subst.
+        assert (x <> i).
+        { unfold not in *. intros. destruct H1. f_equal. apply H3. }
+        apply st_binds_tl. apply H3.
+        apply IHst. auto.
+  Qed.
+
   Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
   Proof.
@@ -538,15 +603,11 @@ Module Renaming.
     - induction H.
       all: try (econstructor; [ apply IHeval1 | apply IHeval2 | .. ]; repeat assumption).
       + constructor.
-      + constructor. induction s; inversion VAR; subst; destruct r; simpl; constructor.
-        * unfold not in *. intros. apply H1. apply (bijective_injective x); assumption.
-        * apply IHs. assumption.
+      + constructor. apply state_renamning_invariance. apply VAR.
     - generalize dependent z. induction e; intros.
       + inversion H; subst. constructor.
-      + inversion H; subst. constructor.
-        induction st; simpl in VAR. inversion VAR. admit. (* I have no clue *)
-
+      + inversion H; subst. constructor. eapply state_renamning_invariance. apply VAR.
       + inversion H; subst; try (econstructor; [ apply IHe1 | apply IHe2 | ..]; eauto).
-  Admitted.
+  Qed.
 
 End Renaming.

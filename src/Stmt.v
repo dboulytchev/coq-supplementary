@@ -121,10 +121,14 @@ Proof.
   split.
   - constructor; intros; inversion H; inversion H0; econstructor; eauto.
   - unfold not. intro. unfold contextual_equivalent in H.
-    specialize (H (SeqR (READ (Id 1)) Hole)).
+    specialize (H (SeqL Hole (WRITE (Var (Id 1))))).
     simpl in H. unfold eval_equivalent in H.
-    specialize (H ([]) ([])). destruct H.
-Admitted.
+    specialize (H ([]) ([2%Z])). inversion H. destruct H0.
+    + repeat econstructor.
+    + inversion H0. subst. inversion STEP1. subst. inversion VAL. subst.
+      inversion STEP2. subst. inversion VAL0. subst. inversion VAR. subst.
+      inversion H8.
+Qed.
 
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
@@ -341,6 +345,7 @@ Qed.
 Definition equivalent_states (s1 s2 : state Z) :=
   forall id, Expr.equivalent_states s1 s2 id.
 
+(* Не доказано у ДЮ *)
 Lemma bs_equiv_states
   (s            : stmt)
   (i o i' o'    : list Z)
