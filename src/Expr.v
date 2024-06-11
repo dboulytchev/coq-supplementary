@@ -608,10 +608,6 @@ Proof.
       reflexivity.
 Qed.
 
-Lemma ss_eval_equiv (e : expr)
-                    (s : state Z)
-                    (z : Z) : [| e |] s => z <-> (e = Nat z \/ s |- e --> (Nat z)).
-Proof. admit. Admitted. (* ??? *)
 
 End SmallStep.
 

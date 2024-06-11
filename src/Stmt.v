@@ -529,25 +529,60 @@ Proof.
   + constructor. apply H. assumption.
 Qed.
 
-Lemma bs_equiv_states
-  (s            : stmt)
-  (i o i' o'    : list Z)
-  (st1 st2 st1' : state Z)
-  (HE1          : equivalent_states st1 st1')
-  (H            : (st1, i, o) == s ==> (st2, i', o')) :
-  exists st2',  equivalent_states st2 st2' /\ (st1', i, o) == s ==> (st2', i', o').
-Proof. admit. Admitted.
+Lemma eq_st_result' (e: expr) st1 st2:
+  equivalent_states st1 st2 -> forall z1 z2, [|e|] st1 => z1 -> [|e|] st2 => z2 -> z1 = z2.
+Proof.
+  intros.
+  remember (eq_st_result e st1 st2 H z1 H0) as HE.
+  clear HeqHE.
+  destruct (eval_deterministic e st2 z2 z1 H1 HE).
+  reflexivity.
+Qed.
 
+Lemma st_eq_equiv st1 st2 : st1 = st2 -> equivalent_states st1 st2.
+Proof.
+  intros. inversion H.
+  unfold equivalent_states, Expr.equivalent_states.
+  intros. reflexivity.
+Qed.
 
-(* Contextual equivalence is equivalent to the semantic one *)
-(* TODO: no longer needed *)
-Ltac by_eq_congruence e s s1 s2 H :=
-  remember (eq_congruence e s s1 s2 H) as Congruence;
-  match goal with H: Congruence = _ |- _ => clear H end;
-  repeat (match goal with H: _ /\ _ |- _ => inversion_clear H end); assumption.
+Lemma st_assign_equiv st1 st2 v i : equivalent_states st1 st2 ->
+  equivalent_states (st1 [i <- v]) (st2 [i <- v]).
+Proof.
+  unfold equivalent_states, Expr.equivalent_states in *.
+  intros.
 
-Lemma eq_eq_ceq s1 s2: s1 ~~~ s2 <-> s1 ~c~ s2.
-Proof. admit. Admitted.
+  split; intros; inversion H0; subst;
+    try constructor;
+    try auto;
+      apply H; assumption.
+Qed.
+
+Definition equivalent_conf (c1 c2: conf): Prop.
+  destruct c1 as [[st1 i1] o1].
+  destruct c2 as [[st2 i2] o2].
+
+  exact (equivalent_states st1 st2 /\ i1 = i2 /\ o1 = o2).
+Defined.
+
+Lemma conf_equiv_state_equiv st1 st2 i1 i2 o1 o2:
+  equivalent_conf (st1, i1, o1) (st2, i2, o2) -> equivalent_states st1 st2.
+Proof.
+  intros.
+  inversion H.
+  assumption.
+Qed.
+
+Lemma conf_eq_equiv c1 c2 : c1 = c2 -> equivalent_conf c1 c2.
+Proof.
+  intros. inversion H.
+  destruct c2 as [[st i] o].
+
+  unfold equivalent_conf, equivalent_states.
+  split.
+    - intros. apply st_eq_equiv. reflexivity.
+    - auto.
+Qed.
 
 (* Small-step semantics *)
 Module SmallStep.
@@ -762,6 +797,18 @@ Module Renaming.
     | (st, i, o) => (Renaming.rename_state r st, i, o)
     end.
 
+  Lemma re_rename_conf r c r':
+  Renaming.renamings_inv r r' ->
+  c = rename_conf r (rename_conf r' c).
+  Proof.
+    intros.
+    destruct c. destruct p.
+    simpl.
+    rewrite Renaming.re_rename_state.
+    reflexivity.
+    auto.
+  Qed.
+
   Fixpoint rename (r : renaming) (s : stmt) : stmt :=
     match s with
     | SKIP                       => SKIP
@@ -827,6 +874,21 @@ Module Renaming.
     - apply bs_While_False. apply Expr.Renaming.eval_renaming_invariance. assumption.
   Qed.
 
+  Lemma state_rename st st' r: Renaming.rename_state r st = Renaming.rename_state r st' -> st = st'.
+  Proof.
+    intros.
+
+    destruct (Expr.Renaming.renaming_inv r).
+    eapply f_equal in H.
+    do 2 erewrite Expr.Renaming.re_rename_state in H.
+    assumption.
+    (* TODO syntax error *)
+    (* *: eassumption. *)
+    - eassumption.
+    - eassumption.
+    - eassumption.
+  Qed.
+
   Lemma conf_rename c c' r : rename_conf r c = rename_conf r c' -> c = c'.
   Proof.
     unfold rename_conf.
@@ -837,15 +899,36 @@ Module Renaming.
     f_equal.
     f_equal.
 
-    destruct (Expr.Renaming.renaming_inv r).
-    eapply f_equal in H1.
-    do 2 erewrite Expr.Renaming.re_rename_state in H1.
-    assumption.
-    (* TODO syntax error *)
-    (* *: eassumption. *)
-    - eassumption.
-    - eassumption.
-    - eassumption.
+    eapply state_rename.
+    eauto.
+  Qed.
+
+  Lemma update_rename (r: renaming) s0 s i z:
+  update Z (Renaming.rename_state r s0) (Renaming.rename_id r i) z = Renaming.rename_state r s ->
+  s = (i, z)  :: s0.
+  Proof.
+    intros.
+    destruct (Renaming.renaming_inv r).
+
+    simpl in H.
+
+    eapply state_rename with (r := r).
+    symmetry.
+
+    simpl.
+    destruct r.
+    auto.
+  Qed.
+
+  Lemma conf_is_conf_renaming c r: exists c', c = rename_conf r c'.
+  Proof.
+  destruct c. destruct p.
+  destruct (Expr.Renaming.renaming_inv2 r).
+  exists (rename_conf x (s, l0, l)).
+  simpl.
+  rewrite Renaming.re_rename_state.
+  reflexivity.
+  auto.
   Qed.
 
   Lemma renaming_invariant_bs_inv
@@ -854,19 +937,54 @@ Module Renaming.
     (c c'      : conf)
     (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
   Proof.
-    dependent induction s.
-    - inversion Hbs.
-      apply conf_rename in H. subst.
-      constructor.
-    - inversion Hbs. subst.
-      unfold rename_conf in H3.
-      destruct c'. destruct p.
-    (* TODO *)
+    destruct (Renaming.renaming_inv r).
 
-  Admitted.
+    remember (rename r s) as s'.
+    remember (rename_conf r c) as c_.
+    remember (rename_conf r c') as c'_.
+
+    apply f_equal with (f := rename x) in Heqs'.
+    rewrite re_rename in Heqs'.
+
+    apply f_equal with (f := rename_conf x) in Heqc_, Heqc'_.
+    rewrite <- (re_rename_conf) with (r := x) in Heqc_, Heqc'_.
+
+    subst.
+
+    apply renaming_invariant_bs. assumption.
+    assumption.
+    assumption.
+    assumption.
+  Qed.
 
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
-  Proof. admit. Admitted.
+  Proof.
+    assert (HA: Renaming.rename_state r ([]) = []). { reflexivity. }
+
+    unfold eval_equivalent, eval.
+    split; intros.
+    - destruct H. exists (Renaming.rename_state r x).
+
+      rewrite <- HA.
+      destruct (Renaming.renaming_inv r).
+      eapply renaming_invariant_bs_inv with (r := x0).
+
+      rewrite re_rename.
+      simpl.
+      rewrite (Renaming.re_rename_state).
+      assumption.
+      auto. auto.
+    - destruct H.
+      destruct (Renaming.renaming_inv_inv r).
+
+      exists (Renaming.rename_state x0 x).
+      eapply renaming_invariant_bs_inv with r.
+      simpl.
+      rewrite (Renaming.re_rename_state).
+      assumption.
+      destruct H0.
+      assumption.
+  Qed.
 
 End Renaming.
 
@@ -1139,19 +1257,44 @@ Proof.
     all: constructor; unfold Kapp; assumption.
 Qed.
 
-
 Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
       (EXEC : c1 == s ==> c2)
       (STEP : k |- c2 -- !(SKIP) --> c3) :
   k |- c1 -- !(s) --> c3.
 Proof.
-  admit. (* TODO *)
-Admitted.
+  generalize dependent k.
+
+  dependent induction EXEC; intros.
+  5: {
+    eapply cps_Seq.
+    eapply IHEXEC1.
+    destruct k.
+    { compute.
+      constructor.
+      eapply IHEXEC2; eauto. }
+    { constructor.
+      eapply cps_cont_to_seq.
+      compute.
+      eapply IHEXEC2; eauto. } }
+  - assumption.
+  - econstructor; eauto. inversion STEP. subst. eauto.
+  -  econstructor; eauto. inversion STEP. subst. eauto.
+  -  econstructor; eauto. inversion STEP. subst. eauto.
+  - econstructor; eauto.
+  - eapply cps_If_False; eauto.
+  - econstructor; eauto.
+    inversion STEP. subst.
+    eapply IHEXEC1.
+    constructor.
+    destruct k.
+    { compute. eauto. }
+    apply cps_cont_to_seq. compute. eauto.
+  - eapply cps_While_False; eauto.
+    inversion STEP. subst. eauto.
+Qed.
 
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
-Proof. admit. Admitted.
-
-(* Lemma cps_stmt_assoc s1 s2 s3 s (c c' : conf) : *)
-(*   (! (s1 ;; s2 ;; s3)) |- c -- ! (s) --> (c') <-> *)
-(*   (! ((s1 ;; s2) ;; s3)) |- c -- ! (s) --> (c'). *)
+Proof.
+  eapply bs_int_to_cps_int_cont. eauto. repeat constructor.
+Qed.
