@@ -533,9 +533,46 @@ Module Renaming.
     remember (H0 i). rewrite <- e. rewrite <- H. auto.
   Qed.
 
+  Lemma eval_renaming_invariance' (r : renaming) 
+                                      (st : state Z) 
+                                      (i : id)
+                                      (z : Z) :
+    ((st) / i => z) <-> ((rename_state r st) / rename_id r i => z).
+  Proof. split.
+    - intro. destruct r. induction H.
+      * constructor.
+      * constructor. simpl. apply injective_not_equal.
+        apply bijective_injective. auto. auto. auto.
+    - generalize dependent z. intro. induction st.
+      * intro. inversion H.
+      * destruct r, a. intro. inversion H.
+        + apply bijection_eq in H4. subst. apply st_binds_hd. auto.
+        + constructor.
+          -- intro. subst. contradiction.
+          -- auto.
+  Qed.
 
   Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
-  Proof. admit. Admitted.
+  Proof. split.
+    + generalize dependent z. induction e. 
+      * intros. simpl. inversion H. auto. 
+      * intros. simpl. inversion H. constructor. rewrite <- eval_renaming_invariance'. auto.
+      * induction st.
+        simpl. intro. intro. simpl in IHe1. simpl in IHe2.
+        all: intros; inversion H.
+        all: try econstructor.
+        all: (try apply IHe1, VALA).
+        all: (try apply IHe2, VALB).
+        all: auto.
+    + generalize dependent z. induction e.
+      - intros. inversion H. auto.
+      - intros. inversion H. apply (eval_renaming_invariance' r) in VAR. constructor. auto.
+      - intros. simpl. inversion H.
+        all: econstructor.
+        all: (try apply IHe1, VALA).
+        all: (try apply IHe2, VALB).
+        all: auto.
+  Qed.
     
 End Renaming.
