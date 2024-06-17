@@ -7,8 +7,6 @@ Require Export Lia.
 Require Import List.
 Import ListNotations.
 
-From hahn Require Import HahnBase.
-
 (* Type of binary operators *)
 Inductive bop : Type :=
 | Add : bop
@@ -180,12 +178,16 @@ where "[| e |] st => z" := (eval e st z).
 Module SmokeTest.
 
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. admit. Admitted.
+  Proof. apply bs_Nat. Qed.
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. admit. Admitted.
+  Proof. inversion HH. inversion VALB. subst. 
+    assert ((za * 2)%Z = (za + za)%Z).
+      lia.
+    rewrite H. constructor. auto. auto.
+  Qed.
 
 End SmokeTest.
 
@@ -200,7 +202,26 @@ where "e1 << e2" := (subexpr e1 e2).
 
 Lemma strictness (e e' : expr) (HSub : e' << e) (st : state Z) (z : Z) (HV : [| e |] st => z) :
   exists z' : Z, [| e' |] st => z'.
-Proof. admit. Admitted.
+Proof. generalize dependent z. induction e.
+  + intros. inversion HV. inversion HSub. subst. exists z0. auto.
+  + intros. inversion HV. inversion HSub. subst. exists z. auto.
+  + inversion HSub.
+    * intros. exists z. auto.
+    * intros. subst.
+      inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
+inversion HV. subst. eapply IHe1. auto. eauto.
 
 Reserved Notation "x ? e" (at level 0).
 
