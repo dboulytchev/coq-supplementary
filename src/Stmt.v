@@ -509,11 +509,26 @@ Module Renaming.
     (r r' : Renaming.renaming)
     (Hinv : Renaming.renamings_inv r r')
     (s    : stmt) : rename r (rename r' s) = s.
-  Proof. admit. Admitted.
+  Proof. induction s.
+    + auto.
+    + simpl. rewrite Hinv. rewrite Renaming.re_rename_expr. auto. auto.
+    + simpl. rewrite Hinv. auto.
+    + simpl. rewrite Renaming.re_rename_expr. auto. auto.
+    + simpl. rewrite IHs1. rewrite IHs2. auto. 
+    + simpl. rewrite Renaming.re_rename_expr.
+      - rewrite IHs1. rewrite IHs2. auto.
+      - auto.
+    + simpl. rewrite Renaming.re_rename_expr.
+      - rewrite IHs. auto.
+      - auto.
+    Qed. 
   
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
     Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
-  Proof. admit. Admitted.
+  Proof. induction st.
+    + destruct r. reflexivity.
+    + destruct r. reflexivity.
+  Qed.
   
   #[export] Hint Resolve Renaming.eval_renaming_invariance : core.
 
@@ -522,17 +537,50 @@ Module Renaming.
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
-  Proof. admit. Admitted.
+  Proof. destruct r. induction Hbs.
+    + econstructor.
+    + econstructor. apply Renaming.eval_renaming_invariance. auto.
+    + econstructor.
+    + econstructor. apply Renaming.eval_renaming_invariance. auto.
+    + econstructor. eauto. eauto. 
+    + econstructor. apply Renaming.eval_renaming_invariance. auto. auto.
+    + apply bs_If_False. apply Renaming.eval_renaming_invariance. auto. auto.
+    + econstructor. apply Renaming.eval_renaming_invariance. auto. eauto. eauto.
+    + apply bs_While_False. apply Renaming.eval_renaming_invariance. auto.
+  Qed.
   
   Lemma renaming_invariant_bs_inv
     (s         : stmt)
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
-  Proof. admit. Admitted.
+  Proof. intros. 
+    specialize (Renaming.renaming_inv r). intros.
+    destruct H.
+    apply renaming_invariant_bs with (r:=x) in Hbs.  
+    rewrite re_rename in Hbs.
+      + destruct c', c. destruct p0, p. unfold rename_conf in Hbs.
+        rewrite Renaming.re_rename_state in Hbs. rewrite Renaming.re_rename_state in Hbs.
+        auto. auto. auto.
+      + auto.
+  Qed.
     
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
-  Proof. admit. Admitted.
+  Proof. split.
+    + intro. destruct H. apply renaming_invariant_bs with (r:=r) in H.
+        unfold rename_conf in H. simpl in H.
+        exists (Renaming.rename_state r x). apply H.
+    + intro. destruct H.
+      assert (rename_conf r ([], i, []) = ([], i, [])).
+        unfold rename_conf. simpl. reflexivity.
+      destruct (Renaming.renaming_inv2 r).
+      assert (rename_conf r ((Renaming.rename_state x0 x), [], o) = (x, [], o)).
+        unfold rename_conf. rewrite Renaming.re_rename_state.
+        reflexivity. apply H1.
+      rewrite <- H2 in H. rewrite <- H0 in H.
+      apply renaming_invariant_bs_inv in H.
+      exists (Renaming.rename_state x0 x). apply H.
+  Qed.
   
 End Renaming.
 
