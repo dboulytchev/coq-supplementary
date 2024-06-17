@@ -416,22 +416,48 @@ Module SmallStep.
         (EXEC1 : c -- s --> c')
         (EXEC2 : c -- s --> c'') :
     c' = c''.
-  Proof. admit. Admitted.
+  Proof. generalize dependent c''. dependent induction EXEC1.
+    all: intros.
+    all: inversion EXEC2.
+    all: try by_eval_deterministic.
+    all: try eval_zero_not_one.
+    all: try apply IHEXEC1 in SSTEP.
+    all: try inversion SSTEP.
+    all: subst.
+    all: try reflexivity.
+  Qed.
   
   Lemma ss_int_deterministic (c c' c'' : conf) (s : stmt)
         (STEP1 : c -- s -->> c') (STEP2 : c -- s -->> c'') :
     c' = c''.
-  Proof. admit. Admitted.
+  Proof. generalize dependent c''. dependent induction STEP1.
+    + intro. intro. inversion STEP2.
+      - subst. apply (ss_int_step_deterministic s c (None, c'')) in H. inversion H. auto. auto.
+      - subst. apply (ss_int_step_deterministic s c(Some s', c'0)) in H. inversion H. auto.
+    + intro. intro. inversion STEP2.
+      - subst. apply (ss_int_step_deterministic s c (Some s', c')) in H0. inversion H0. auto.
+      - subst. apply (ss_int_step_deterministic s c (Some s'0, c'0)) in H. inversion H. subst.
+        apply IHSTEP1 in H1. auto. auto.
+  Qed.
   
   Lemma ss_bs_base (s : stmt) (c c' : conf) (STEP : c -- s --> (None, c')) :
     c == s ==> c'.
-  Proof. admit. Admitted.
+  Proof. inversion STEP.
+    all: econstructor; auto.
+  Qed.
 
   Lemma ss_ss_composition (c c' c'' : conf) (s1 s2 : stmt)
         (STEP1 : c -- s1 -->> c'') (STEP2 : c'' -- s2 -->> c') :
     c -- s1 ;; s2 -->> c'. 
-  Proof. admit. Admitted.
-  
+  Proof. generalize dependent c'. dependent induction STEP1.
+    + intros. eapply ss_int_Step.
+      - econstructor. eauto.
+      - auto.
+    + intros. apply IHSTEP1 in STEP2. apply (ss_int_Step (s;; s2) (s';; s2) c) in STEP2.
+      - apply STEP2.
+      - econstructor. auto.
+  Qed.
+
   Lemma ss_bs_step (c c' c'' : conf) (s s' : stmt)
         (STEP : c -- s --> (Some s', c'))
         (EXEC : c' == s' ==> c'') :
@@ -440,7 +466,22 @@ Module SmallStep.
   
   Theorem bs_ss_eq (s : stmt) (c c' : conf) :
     c == s ==> c' <-> c -- s -->> c'.
-  Proof. admit. Admitted.
+  Proof. split.
+    - intro. induction H.
+      1-4: try econstructor; try econstructor; auto.
+      + apply ss_ss_composition with c'. auto. auto.
+      + eapply ss_int_Step. econstructor. auto. auto.
+      + eapply ss_int_Step. apply ss_If_False. auto. auto.
+      + eapply ss_int_Step.
+        * econstructor.
+        * eapply ss_int_Step. econstructor. auto. 
+          eapply ss_ss_composition. eauto. auto.
+      + eapply ss_int_Step. econstructor. eapply ss_int_Step. apply ss_If_False. auto.
+        econstructor. econstructor.
+    - intro. induction H.
+      + apply ss_bs_base. auto.
+      + eapply ss_bs_step. eauto. eauto. 
+  Qed.
   
 End SmallStep.
 
