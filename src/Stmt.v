@@ -246,26 +246,61 @@ End SmokeTest.
 (* Semantic equivalence is a congruence *)
 Lemma eq_congruence_seq_r (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (s  ;; s1) ~~~ (s  ;; s2).
-Proof. admit. Admitted.
+Proof. intro. intro. split. intro. dependent induction H.
+  + econstructor. apply H. apply SmokeTest.conf_equivalent with (s2:=s2) in H0.
+    auto. auto.
+  + intro. dependent induction H. econstructor.
+    - eauto.
+    - apply SmokeTest.conf_equivalent with (s2:=s1) in H0. auto. apply bs_equiv_symm. auto.
+Qed.
 
 Lemma eq_congruence_seq_l (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (s1 ;; s) ~~~ (s2 ;; s).
-Proof. admit. Admitted.
+Proof. intro. intro. split. intro. dependent induction H.
+  + econstructor. apply SmokeTest.conf_equivalent with (s2:=s2) in H.
+    apply H. apply EQ. apply H0.
+  + intro. dependent induction H. econstructor.
+    - apply SmokeTest.conf_equivalent with (s2:=s1) in H.
+      apply H. apply bs_equiv_symm. apply EQ.
+    - apply H0.
+Qed.
+
+Lemma cond_else_conf_equivalent : forall (e: expr) (s s1 s2 : stmt), (s1 ~~~ s2) -> (forall (c1 c2 : conf),
+    (c1) == COND e THEN s ELSE s1 END ==> (c2) -> (c1) == COND e THEN s ELSE s2 END ==> (c2)).
+Proof. intros. dependent induction H0.
+  + apply bs_If_True. auto. auto. 
+  + apply bs_If_False. auto. apply SmokeTest.conf_equivalent with (s2:=s2) in H0.
+    auto. auto.
+Qed. 
 
 Lemma eq_congruence_cond_else
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   COND e THEN s  ELSE s1 END ~~~ COND e THEN s  ELSE s2 END.
-Proof. admit. Admitted.
+Proof. unfold bs_equivalent. intros. split.
+  + apply cond_else_conf_equivalent. auto. 
+  + apply cond_else_conf_equivalent. apply bs_equiv_symm. auto.
+Qed. 
+
+Lemma cond_then_conf_equivalent : forall (e: expr) (s s1 s2 : stmt), (s1 ~~~ s2) -> (forall (c1 c2 : conf),
+    (c1) ==  COND e THEN s1 ELSE s END ==> (c2) -> (c1) == COND e THEN s2 ELSE s END ==> (c2)).
+Proof. intros. dependent induction H0.
+  + apply bs_If_True. apply CVAL. apply SmokeTest.conf_equivalent with (s2:=s2) in H0. 
+    auto. auto.
+  + apply bs_If_False. auto. auto.
+Qed. 
 
 Lemma eq_congruence_cond_then
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   COND e THEN s1 ELSE s END ~~~ COND e THEN s2 ELSE s END.
-Proof. admit. Admitted.
+Proof. unfold bs_equivalent. intro. intro. split.
+  + apply cond_then_conf_equivalent. auto.
+  + apply cond_then_conf_equivalent. apply bs_equiv_symm. auto.
+Qed.
 
 Lemma eq_congruence_while
       (e : expr) (s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-Proof. admit. Admitted.
+Proof. apply SmokeTest.while_eq. auto. Qed.
 
 Lemma eq_congruence (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   ((s  ;; s1) ~~~ (s  ;; s2)) /\
@@ -273,7 +308,16 @@ Lemma eq_congruence (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (COND e THEN s  ELSE s1 END ~~~ COND e THEN s  ELSE s2 END) /\
   (COND e THEN s1 ELSE s  END ~~~ COND e THEN s2 ELSE s  END) /\
   (WHILE e DO s1 END ~~~ WHILE e DO s2 END).
-Proof. admit. Admitted.
+Proof. split. 
+  + apply eq_congruence_seq_r. auto.
+  + split.
+    - apply eq_congruence_seq_l. auto.
+    - split.
+      * apply eq_congruence_cond_else. auto.
+      * split.
+        ++ apply eq_congruence_cond_then. auto.
+        ++ apply eq_congruence_while. auto.
+Qed.
 
 (* Big-step semantics is deterministic *)
 Ltac by_eval_deterministic :=
@@ -292,7 +336,21 @@ Ltac eval_zero_not_one :=
 Lemma bs_int_deterministic (c c1 c2 : conf) (s : stmt)
       (EXEC1 : c == s ==> c1) (EXEC2 : c == s ==> c2) :
   c1 = c2.
-Proof. admit. Admitted.
+Proof. generalize dependent c2. dependent induction EXEC1.
+  all: intros.
+  all: inversion EXEC2.
+  all: try reflexivity.
+  all: try by_eval_deterministic.
+  all: try eval_zero_not_one.
+  all: try apply IHEXEC1.
+  all: try apply STEP.
+  all: try apply IHEXEC1_1 in STEP1.
+  all: try apply IHEXEC1_1 in STEP.
+  all: try apply IHEXEC1_2.
+  all: subst.
+  all: try apply STEP2.
+  all: try apply WSTEP.
+Qed.
 
 Definition equivalent_states (s1 s2 : state Z) :=
   forall id, Expr.equivalent_states s1 s2 id.
