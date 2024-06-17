@@ -657,27 +657,54 @@ Proof. admit. Admitted.
 
 Lemma cps_bs (s1 s2 : stmt) (c c' : conf) (STEP : !s2 |- c -- !s1 --> c'):
    c == s1 ;; s2 ==> c'.
-Proof. admit. Admitted.
+Proof. apply (cps_bs_gen (s1 ;; s2)) in STEP. auto. auto. Qed.
 
 Lemma cps_int_to_bs_int (c c' : conf) (s : stmt)
       (STEP : KEmpty |- c -- !(s) --> c') : 
   c == s ==> c'.
-Proof. admit. Admitted.
+Proof. apply (cps_bs_gen s) in STEP. auto. auto. Qed.
 
 Lemma cps_cont_to_seq c1 c2 k1 k2 k3
       (STEP : (k2 @ k3 |- c1 -- k1 --> c2)) :
   (k3 |- c1 -- k1 @ k2 --> c2).
-Proof. admit. Admitted.
+Proof. destruct k1, k2.
+  + inversion STEP. unfold Kapp in H. subst. apply cps_Empty.
+  + inversion STEP. destruct k3. inversion H0. inversion H0.
+  + inversion STEP; destruct k3; subst; unfold Kapp; eauto.
+  + inversion STEP; destruct k3; subst; unfold Kapp; apply cps_Seq; eauto.
+Qed.
 
 Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
       (EXEC : c1 == s ==> c2)
       (STEP : k |- c2 -- !(SKIP) --> c3) :
   k |- c1 -- !(s) --> c3.
-Proof. admit. Admitted.
+Proof. generalize dependent k. induction EXEC.
+  all: intros.
+  1-4: auto; econstructor; try apply VAL; inversion STEP; apply CSTEP.
+  - econstructor. eapply IHEXEC1. econstructor. destruct k.
+    * auto.
+    * econstructor. auto.
+  - econstructor. destruct k. auto. auto. auto.
+  - apply cps_If_False. auto. auto. 
+  - econstructor. auto. eapply IHEXEC1. destruct k. 
+    all: do 3 (auto; econstructor).
+  - apply cps_While_False. auto. inversion STEP. destruct k. auto. auto.
+Qed.
 
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
-Proof. admit. Admitted.
+Proof. dependent induction EXEC.
+  1-4: do 2 (eauto; econstructor).
+  + econstructor; eapply bs_int_to_cps_int_cont; eauto. 
+    econstructor; eapply bs_int_to_cps_int_cont; eauto. 
+    econstructor. econstructor.
+  + econstructor. auto. auto. 
+  + apply cps_If_False. auto. auto.
+  + econstructor. auto. eapply bs_int_to_cps_int_cont. eauto.
+    econstructor. eapply bs_int_to_cps_int_cont. eauto.
+    econstructor. econstructor.
+  + apply cps_While_False. auto. econstructor.
+Qed.
 
 (* Lemma cps_stmt_assoc s1 s2 s3 s (c c' : conf) : *)
 (*   (! (s1 ;; s2 ;; s3)) |- c -- ! (s) --> (c') <-> *)
