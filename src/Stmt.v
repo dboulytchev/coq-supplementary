@@ -6,8 +6,7 @@ Require Import BinInt ZArith_dec Zorder ZArith.
 Require Export Id.
 Require Export State.
 Require Export Expr.
-
-From hahn Require Import HahnBase.
+Require Import Coq.Program.Equality.
 
 (* AST for statements *)
 Inductive stmt : Type :=
@@ -107,16 +106,50 @@ Definition contextual_equivalent (s1 s2 : stmt) :=
 Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
-Proof. admit. Admitted.
+Proof. specialize (H Hole). apply H. Qed. 
 
 Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
-Proof. admit. Admitted.
+Proof. 
+  assert (WRITE ( (Nat 8) [-] Var (Id 0) )) ~e~ (WRITE (Var (Id 0) [-] (Nat 8))).
+    intro. intro. split.
+      + intro. inversion H. inversion H0. subst. inversion VAL. inversion VALB. inversion VAR.
+      + intro. inversion H. inversion H0. subst. inversion VAL. inversion VALA. inversion VAR.
+  + exists (WRITE ( (Nat 8) [-] Var (Id 0) )). exists (WRITE (Var (Id 0) [-] (Nat 8))).
+    split.
+      - apply H.
+      - intro. specialize (H0 (SeqR (Assn (Id 0) (Nat 3)) (Hole)) nil ([5%Z])).
+          unfold eval_equivalent in H0. unfold plug in H0. unfold eval in H0.
+          destruct H0. destruct H0. exists [((Id 0), 3%Z)].
+          econstructor. apply bs_Assign. apply bs_Nat.
+          econstructor.
+          assert ((8 - 3)%Z = 5%Z).
+            simpl. reflexivity. 
+          rewrite <- H0. apply bs_Sub. apply bs_Nat.
+          apply bs_Var. apply st_binds_hd.
+          inversion H0. subst. 
+          inversion STEP1. subst. 
+          inversion STEP2. subst.
+          inversion VAL. subst.
+          inversion STEP1. subst.
+          inversion VAL0. subst.
+          inversion VALB. subst.
+          inversion VALA. subst.
+          inversion VAR. subst. 
+          inversion H6. apply H8.
+          reflexivity. 
+Qed.
 
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
   forall (c c' : conf), c == s1 ==> c' <-> c == s2 ==> c'.
 
 Notation "s1 '~~~' s2" := (bs_equivalent s1 s2) (at level 0).
+
+Lemma bs_equiv_symm (s1 s2 : stmt) (EQ : s1 ~~~ s2) : s2 ~~~ s1.
+Proof. intro. intro. split. apply EQ. apply EQ. Qed.
+
+Lemma bs_equiv_trans (s1 s2 s3 : stmt) (EQ1 : s1 ~~~ s2) (EQ2 : s2 ~~~ s3) : s1 ~~~ s3.
+Proof. intro. intro. split; intro. apply EQ2. apply EQ1. exact H. apply EQ1. apply EQ2. exact H. Qed.
 
 Ltac seq_inversion :=
   match goal with
@@ -136,37 +169,77 @@ Module SmokeTest.
   (* Associativity of sequential composition *)
   Lemma seq_assoc (s1 s2 s3 : stmt) :
     ((s1 ;; s2) ;; s3) ~~~ (s1 ;; (s2 ;; s3)).
-  Proof. admit. Admitted.
+  Proof. intro. intro. split. intro. inversion H. subst.
+    inversion STEP1. subst. apply bs_Seq with c'1. exact STEP0. apply bs_Seq with c'0. exact STEP3. exact STEP2.
+    intro. inversion H. subst. inversion STEP2. apply bs_Seq with c'1. apply bs_Seq with c'0. exact STEP1. exact STEP0. exact STEP3. Qed.
   
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof. intro. intro. split; intro; inversion H; subst.
+    apply bs_If_True.  exact CVAL. apply bs_Seq with c'0. exact STEP. apply WSTEP.
+    apply bs_If_False. exact CVAL. apply bs_Skip.
+    inversion STEP. apply bs_While_True with c'0. exact CVAL. exact STEP1. exact STEP2.
+    inversion STEP. apply bs_While_False. exact CVAL.
+  Qed.
       
   (* Terminating loop invariant *)
   Lemma while_false (e : expr) (s : stmt) (st : state Z)
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof. admit. Admitted.
+  Proof. dependent induction EXE. 
+    + specialize (IHEXE2 e s st i o ). apply IHEXE2. reflexivity. reflexivity.
+    + auto.
+  Qed.
   
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
     (WHILE (Nat 1) DO SKIP END) ~~~
     (COND (Nat 3) THEN SKIP ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof. unfold bs_equivalent. intro. intro. split.
+    + intro. dependent induction H.
+      - inversion H. rewrite H3. apply IHbs_int2. reflexivity.
+      - inversion CVAL.
+    + intro. dependent induction H.
+      - inversion CVAL.
+      - inversion CVAL.
+  Qed.
   
+  Lemma conf_equivalent : forall (s1 s2 : stmt), (s1 ~~~ s2) -> (forall (c1 c2 : conf),
+     (c1 == s1 ==> c2) -> (c1 == s2 ==> c2)).
+  Proof. intros. 
+    destruct H with c1 c2. auto. 
+  Qed.
+  
+  Lemma while_conf_equivalent : forall (e: expr) (s1 s2 : stmt), (s1 ~~~ s2) -> (forall (c1 c2 : conf),
+     (c1 == WHILE e DO s1 END ==> c2) -> (c1 == WHILE e DO s2 END ==> c2)).
+  Proof. intros. dependent induction H0.
+    + apply (conf_equivalent s1 s2) in H0_.
+      - econstructor. auto. eauto.
+         specialize IHbs_int2 with e s1.
+         apply IHbs_int2. auto. auto.
+      - apply H.
+    + apply bs_While_False. auto.
+  Qed. 
+
   (* Loops with equivalent bodies are equivalent *)
   Lemma while_eq (e : expr) (s1 s2 : stmt)
         (EQ : s1 ~~~ s2) :
     WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-  Proof. admit. Admitted.
+  Proof. unfold bs_equivalent. intro. intro. split.
+    + intro. apply while_conf_equivalent with s1. apply EQ. apply H.
+    + intro. apply while_conf_equivalent with s2. apply bs_equiv_symm. apply EQ. apply H.
+  Qed.
   
   (* Loops with the constant true condition don't terminate *)
   (* Exercise 4.8 from Winskel's *)
   Lemma while_true_undefined c s c' :
     ~ c == WHILE (Nat 1) DO s END ==> c'.
-  Proof. admit. Admitted.
+  Proof. intro. dependent induction H.
+    + apply IHbs_int2 with s. auto.
+    + inversion CVAL.
+  Qed.
   
 End SmokeTest.
 
