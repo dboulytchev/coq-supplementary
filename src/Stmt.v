@@ -336,7 +336,7 @@ Ltac eval_zero_not_one :=
 Lemma bs_int_deterministic (c c1 c2 : conf) (s : stmt)
       (EXEC1 : c == s ==> c1) (EXEC2 : c == s ==> c2) :
   c1 = c2.
-Proof. generalize dependent c2. dependent induction EXEC1.
+Proof. generalize dependent c2. induction EXEC1.
   all: intros.
   all: inversion EXEC2.
   all: try reflexivity.
@@ -416,7 +416,7 @@ Module SmallStep.
         (EXEC1 : c -- s --> c')
         (EXEC2 : c -- s --> c'') :
     c' = c''.
-  Proof. generalize dependent c''. dependent induction EXEC1.
+  Proof. generalize dependent c''. induction EXEC1.
     all: intros.
     all: inversion EXEC2.
     all: try by_eval_deterministic.
@@ -430,7 +430,7 @@ Module SmallStep.
   Lemma ss_int_deterministic (c c' c'' : conf) (s : stmt)
         (STEP1 : c -- s -->> c') (STEP2 : c -- s -->> c'') :
     c' = c''.
-  Proof. generalize dependent c''. dependent induction STEP1.
+  Proof. generalize dependent c''. induction STEP1.
     + intro. intro. inversion STEP2.
       - subst. apply (ss_int_step_deterministic s c (None, c'')) in H. inversion H. auto. auto.
       - subst. apply (ss_int_step_deterministic s c(Some s', c'0)) in H. inversion H. auto.
@@ -449,7 +449,7 @@ Module SmallStep.
   Lemma ss_ss_composition (c c' c'' : conf) (s1 s2 : stmt)
         (STEP1 : c -- s1 -->> c'') (STEP2 : c'' -- s2 -->> c') :
     c -- s1 ;; s2 -->> c'. 
-  Proof. generalize dependent c'. dependent induction STEP1.
+  Proof. generalize dependent c'. induction STEP1.
     + intros. eapply ss_int_Step.
       - econstructor. eauto.
       - auto.
