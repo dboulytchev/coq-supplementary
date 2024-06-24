@@ -118,25 +118,24 @@ Proof.
     split.
       - apply H.
       - intro. specialize (H0 (SeqR (Assn (Id 0) (Nat 3)) (Hole)) nil ([5%Z])).
-          unfold eval_equivalent in H0. unfold plug in H0. unfold eval in H0.
-          destruct H0. destruct H0. exists [((Id 0), 3%Z)].
-          econstructor. apply bs_Assign. apply bs_Nat.
-          econstructor.
-          assert ((8 - 3)%Z = 5%Z).
-            simpl. reflexivity. 
-          rewrite <- H0. apply bs_Sub. apply bs_Nat.
-          apply bs_Var. apply st_binds_hd.
-          inversion H0. subst. 
-          inversion STEP1. subst. 
-          inversion STEP2. subst.
-          inversion VAL. subst.
-          inversion STEP1. subst.
-          inversion VAL0. subst.
-          inversion VALB. subst.
-          inversion VALA. subst.
-          inversion VAR. subst. 
-          inversion H6. apply H8.
-          reflexivity. 
+        simpl in H0. unfold eval in H0.
+        destruct H0, H0.
+          * exists [((Id 0), 3%Z)].
+            econstructor. constructor.
+            constructor. constructor.
+            assert ((8 - 3)%Z = 5%Z).
+              simpl. reflexivity. 
+            rewrite <- H0. constructor. constructor.
+            constructor. apply st_binds_hd.
+          * inversion H0. subst. 
+            inversion STEP1. subst. 
+            inversion STEP2. subst.
+            inversion VAL. subst.
+            inversion VAL0. subst.
+            inversion VALB. subst.
+            inversion VALA. subst.
+            inversion VAR. subst.
+            discriminate. contradiction. 
 Qed.
 
 (* Big step equivalence *)
@@ -169,18 +168,25 @@ Module SmokeTest.
   (* Associativity of sequential composition *)
   Lemma seq_assoc (s1 s2 s3 : stmt) :
     ((s1 ;; s2) ;; s3) ~~~ (s1 ;; (s2 ;; s3)).
-  Proof. intro. intro. split. intro. inversion H. subst.
-    inversion STEP1. subst. apply bs_Seq with c'1. exact STEP0. apply bs_Seq with c'0. exact STEP3. exact STEP2.
-    intro. inversion H. subst. inversion STEP2. apply bs_Seq with c'1. apply bs_Seq with c'0. exact STEP1. exact STEP0. exact STEP3. Qed.
+  Proof. intros. split.
+    + intro. inversion H. subst.
+      inversion STEP1. subst. apply bs_Seq with c'1.
+        * auto.
+        * apply bs_Seq with c'0; auto.
+    + intro. inversion H. subst. inversion STEP2. apply bs_Seq with c'1.
+        * apply bs_Seq with c'0; auto.
+        * auto.
+  Qed.
   
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof. intro. intro. split; intro; inversion H; subst.
-    apply bs_If_True.  exact CVAL. apply bs_Seq with c'0. exact STEP. apply WSTEP.
-    apply bs_If_False. exact CVAL. apply bs_Skip.
-    inversion STEP. apply bs_While_True with c'0. exact CVAL. exact STEP1. exact STEP2.
-    inversion STEP. apply bs_While_False. exact CVAL.
+  Proof. intros. split; intro; inversion H; subst.
+    apply bs_If_True. apply CVAL. apply bs_Seq with c'0; auto.
+    apply bs_If_False. apply CVAL. apply bs_Skip.
+    inversion STEP.
+      * apply bs_While_True with c'0; auto.
+      * inversion STEP. apply bs_While_False. auto.
   Qed.
       
   (* Terminating loop invariant *)
@@ -228,8 +234,8 @@ Module SmokeTest.
         (EQ : s1 ~~~ s2) :
     WHILE e DO s1 END ~~~ WHILE e DO s2 END.
   Proof. unfold bs_equivalent. intro. intro. split.
-    + intro. apply while_conf_equivalent with s1. apply EQ. apply H.
-    + intro. apply while_conf_equivalent with s2. apply bs_equiv_symm. apply EQ. apply H.
+    + intro. apply while_conf_equivalent with s1; auto.
+    + intro. apply while_conf_equivalent with s2. apply bs_equiv_symm. auto. auto.
   Qed.
   
   (* Loops with the constant true condition don't terminate *)
@@ -256,7 +262,7 @@ Qed.
 
 Lemma eq_congruence_seq_l (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (s1 ;; s) ~~~ (s2 ;; s).
-Proof. intro. intro. split. intro. dependent induction H.
+Proof. intros. split. intro. dependent induction H.
   + econstructor. apply SmokeTest.conf_equivalent with (s2:=s2) in H.
     apply H. apply EQ. apply H0.
   + intro. dependent induction H. econstructor.
@@ -538,12 +544,12 @@ Module Renaming.
     (c c'      : conf)
     (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
   Proof. destruct r. induction Hbs.
-    + econstructor.
-    + econstructor. apply Renaming.eval_renaming_invariance. auto.
-    + econstructor.
-    + econstructor. apply Renaming.eval_renaming_invariance. auto.
+    + constructor.
+    + constructor. apply Renaming.eval_renaming_invariance. auto.
+    + constructor.
+    + constructor. apply Renaming.eval_renaming_invariance. auto.
     + econstructor. eauto. eauto. 
-    + econstructor. apply Renaming.eval_renaming_invariance. auto. auto.
+    + constructor. apply Renaming.eval_renaming_invariance. auto. auto.
     + apply bs_If_False. apply Renaming.eval_renaming_invariance. auto. auto.
     + econstructor. apply Renaming.eval_renaming_invariance. auto. eauto. eauto.
     + apply bs_While_False. apply Renaming.eval_renaming_invariance. auto.
@@ -681,13 +687,13 @@ Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
 Proof. generalize dependent k. induction EXEC.
   all: intros.
   1-4: auto; econstructor; try apply VAL; inversion STEP; apply CSTEP.
-  - econstructor. eapply IHEXEC1. econstructor. destruct k.
+  - constructor. apply IHEXEC1. constructor. destruct k.
     * auto.
-    * econstructor. auto.
-  - econstructor. destruct k. auto. auto. auto.
-  - apply cps_If_False. auto. auto. 
-  - econstructor. auto. eapply IHEXEC1. destruct k. 
-    all: do 3 (auto; econstructor).
+    * constructor. auto.
+  - constructor; destruct k; auto.
+  - apply cps_If_False; auto. 
+  - constructor; auto; apply IHEXEC1; destruct k.
+    all: do 3 (auto; constructor).
   - apply cps_While_False. auto. inversion STEP. destruct k. auto. auto.
 Qed.
 
@@ -695,15 +701,15 @@ Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
 Proof. dependent induction EXEC.
   1-4: do 2 (eauto; econstructor).
-  + econstructor; eapply bs_int_to_cps_int_cont; eauto. 
-    econstructor; eapply bs_int_to_cps_int_cont; eauto. 
-    econstructor. econstructor.
-  + econstructor. auto. auto. 
-  + apply cps_If_False. auto. auto.
-  + econstructor. auto. eapply bs_int_to_cps_int_cont. eauto.
-    econstructor. eapply bs_int_to_cps_int_cont. eauto.
-    econstructor. econstructor.
-  + apply cps_While_False. auto. econstructor.
+  + constructor; eapply bs_int_to_cps_int_cont; eauto. 
+    constructor; eapply bs_int_to_cps_int_cont; eauto. 
+    constructor. constructor.
+  + constructor; auto. 
+  + apply cps_If_False; auto.
+  + constructor. auto. eapply bs_int_to_cps_int_cont. eauto.
+    constructor. eapply bs_int_to_cps_int_cont. eauto.
+    constructor. constructor.
+  + apply cps_While_False. auto. constructor.
 Qed.
 
 (* Lemma cps_stmt_assoc s1 s2 s3 s (c c' : conf) : *)

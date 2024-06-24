@@ -456,7 +456,7 @@ Module Renaming.
   
   Definition renaming := { f : id -> id | Bijective f }.
   
-  Fixpoint rename_id (r : renaming) (x : id) : id :=
+  Definition rename_id (r : renaming) (x : id) : id :=
     match r with
       exist _ f _ => f x
     end.
