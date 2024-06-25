@@ -7,8 +7,6 @@ Require Export Lia.
 Require Import List.
 Import ListNotations.
 
-From hahn Require Import HahnBase.
-
 (* Type of binary operators *)
 Inductive bop : Type :=
 | Add : bop
@@ -180,12 +178,16 @@ where "[| e |] st => z" := (eval e st z).
 Module SmokeTest.
 
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. admit. Admitted.
+  Proof. apply bs_Nat. Qed.
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. admit. Admitted.
+  Proof. inversion HH. inversion VALB. subst. 
+    assert ((za * 2)%Z = (za + za)%Z).
+      lia.
+    rewrite H. constructor. auto. auto.
+  Qed.
 
 End SmokeTest.
 
@@ -200,7 +202,15 @@ where "e1 << e2" := (subexpr e1 e2).
 
 Lemma strictness (e e' : expr) (HSub : e' << e) (st : state Z) (z : Z) (HV : [| e |] st => z) :
   exists z' : Z, [| e' |] st => z'.
-Proof. admit. Admitted.
+Proof. generalize dependent z. induction e.
+  + intros. inversion HV. inversion HSub. subst. exists z0. auto.
+  + intros. inversion HV. inversion HSub. subst. exists z. auto.
+  + inversion HSub.
+    * intros. exists z. auto.
+    * intros. subst; inversion HV; subst; eapply IHe1; eauto.
+    * intros. subst; inversion HV; subst; eapply IHe2; eauto.
+Qed.
+
 
 Reserved Notation "x ? e" (at level 0).
 
@@ -218,7 +228,15 @@ Lemma defined_expression
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. admit. Admitted.
+Proof. generalize dependent z. induction e.
+  - inversion ID.
+  - intros. exists z. inversion RED. inversion ID. subst. auto.
+  - intros. inversion ID. destruct H3.
+      * eapply (strictness (Bop b e1 e2) e1) in RED. destruct RED.
+        apply IHe1 with x. auto. auto. apply subexpr_left. apply subexpr_refl.
+      * eapply (strictness (Bop b e1 e2) e2) in RED. destruct RED.
+        apply IHe2 with x. auto. auto. apply subexpr_right. apply subexpr_refl.
+Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
@@ -226,13 +244,29 @@ Proof. admit. Admitted.
 Lemma undefined_variable (e : expr) (s : state Z) (id : id)
       (ID : id ? e) (UNDEF : forall (z : Z), ~ (s / id => z)) :
   forall (z : Z), ~ ([| e |] s => z).
-Proof. admit. Admitted.
+Proof. intros. intro.
+       apply (defined_expression e s z id) in H.
+      destruct H. specialize (UNDEF x). contradiction. auto.
+Qed.
 
 (* The evaluation relation is deterministic *)
 Lemma eval_deterministic (e : expr) (s : state Z) (z1 z2 : Z) 
       (E1 : [| e |] s => z1) (E2 : [| e |] s => z2) :
   z1 = z2.
-Proof. admit. Admitted.
+Proof. generalize dependent z1.
+      generalize dependent z2.
+      induction e.
+    + intros. inversion E1. inversion E2. subst. auto.
+    + intros. inversion E1. inversion E2. subst. 
+      eapply state_deterministic in VAR. eauto. auto.
+    + intros. destruct b.
+      all: inversion E2; inversion E1.
+      all: try apply (IHe1 za0) in VALA.
+      all: try apply (IHe2 zb0) in VALB.
+      all: subst.
+      all: auto.
+      all: contradiction.
+Qed.
 
 (* Equivalence of states w.r.t. an identifier *)
 Definition equivalent_states (s1 s2 : state Z) (id : id) :=
@@ -243,7 +277,19 @@ Lemma variable_relevance (e : expr) (s1 s2 : state Z) (z : Z)
           equivalent_states s1 s2 id)
       (EV : [| e |] s1 => z) :
   [| e |] s2 => z.
-Proof. admit. Admitted.
+Proof. 
+    induction EV.
+    constructor.
+    constructor. specialize (FV i). apply FV. subst. apply v_Var. auto.
+    all: econstructor; auto; auto.
+    all: try apply IHEV1.
+    all: try apply IHEV2.
+    all: intros.
+    all: try apply FV.
+    all: try apply v_Bop.
+    all: auto.
+Qed.
+
 
 Definition equivalent (e1 e2 : expr) : Prop :=
   forall (n : Z) (s : state Z), 
@@ -251,14 +297,20 @@ Definition equivalent (e1 e2 : expr) : Prop :=
 Notation "e1 '~~' e2" := (equivalent e1 e2) (at level 42, no associativity).
 
 Lemma eq_refl (e : expr): e ~~ e.
-Proof. admit. Admitted.
+Proof. intro. intro. reflexivity. Qed.
 
 Lemma eq_symm (e1 e2 : expr) (EQ : e1 ~~ e2): e2 ~~ e1.
-Proof. admit. Admitted.
+Proof. intro. intro. split.
+  + apply EQ.
+  + apply EQ.
+Qed.
 
 Lemma eq_trans (e1 e2 e3 : expr) (EQ1 : e1 ~~ e2) (EQ2 : e2 ~~ e3):
   e1 ~~ e3.
-Proof. admit. Admitted.
+Proof. intro. intro. split.
+  + intro. apply EQ1 in H. apply EQ2 in H. auto.
+  + intro. apply EQ2 in H. apply EQ1 in H. auto.
+Qed.
 
 Inductive Context : Type :=
 | Hole : Context
@@ -282,7 +334,23 @@ Notation "e1 '~c~' e2" := (contextual_equivalent e1 e2)
 
 Lemma eq_eq_ceq (e1 e2 : expr) :
   e1 ~~ e2 <-> e1 ~c~ e2.
-Proof. admit. Admitted.
+Proof. split.
+  * intro. intro. intro.
+    generalize dependent n.
+    induction C.
+    intros. auto. 
+    intros. auto. 
+    destruct b.
+    all: econstructor.
+    all: intro.
+    all: inversion H0.
+    all: econstructor.
+    all: try apply IHC.
+    all: try apply VALA.
+    all: try apply VALB.
+    all: auto.
+  * intro. specialize (H Hole). auto.
+Qed.
 
 Module SmallStep.
 
@@ -325,23 +393,57 @@ Module SmallStep.
     forall s, ~ exists e', (s |- e --> e').   
 
   Lemma value_is_normal_form (e : expr) (HV: is_value e) : normal_form e.
-  Proof. admit. Admitted.
+  Proof. intro. intro. inversion HV. subst. destruct H. inversion H. Qed.
 
   Lemma normal_form_is_not_a_value : ~ forall (e : expr), normal_form e -> is_value e.
-  Proof. admit. Admitted.
+  Proof. intro.
+    remember (Bop Div (Nat 0) (Nat 0)).
+    assert (normal_form e). 
+      intro. intro. destruct H0. subst.
+      inversion H0.
+      inversion LEFT.
+      inversion RIGHT.
+      inversion EVAL. inversion VALB. subst. contradiction.
+    apply H in H0. inversion H0. subst. inversion H1.
+  Qed.
   
   Lemma ss_nondeterministic : ~ forall (e e' e'' : expr) (s : state Z), s |- e --> e' -> s |- e --> e'' -> e' = e''.
-  Proof. admit. Admitted.
+  Proof. intro. 
+    remember (H
+    (Bop Mul (Bop Add (Nat 2) (Nat 1)) ((Bop Add (Nat 3) (Nat 4))))
+    (Bop Mul ((Nat (2 + 1))) (Bop Add (Nat 3) (Nat 4)))
+    (Bop Mul (Bop Add (Nat 2) (Nat 1)) (Nat (3 + 4)))
+    []).
+    assert (Bop Mul (Nat (2 + 1)) (Bop Add (Nat 3) (Nat 4)) <> (Bop Mul (Bop Add (Nat 2) (Nat 1)) (Nat (3 + 4)))).
+    intro. inversion H0.
+    apply H0. apply e.
+    apply ss_Left.  apply ss_Bop. apply bs_Add. auto. auto.
+    apply ss_Right. apply ss_Bop. apply bs_Add. auto. auto.
+  Qed.
   
   Lemma ss_deterministic_step (e e' : expr)
                          (s    : state Z)
                          (z z' : Z)
                          (H1   : s |- e --> (Nat z))
                          (H2   : s |- e --> e') : e' = Nat z.
-  Proof. admit. Admitted.
+  Proof. inversion H1.
+    + subst. inversion H2.
+      apply (state_deterministic _ s i z z0) in VAL0.
+        - subst. auto.
+        - auto.
+    + subst. inversion H2.
+      - inversion LEFT.
+      - inversion RIGHT.
+      - apply (eval_deterministic _ s z z0) in EVAL.
+        * subst. auto.
+        * auto.
+  Qed.
   
   Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
-  Proof. admit. Admitted.
+  Proof. induction Heval.
+    + apply isv_Intro.
+    + apply IHHeval.
+  Qed.
   
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
@@ -354,7 +456,7 @@ Module Renaming.
   
   Definition renaming := { f : id -> id | Bijective f }.
   
-  Fixpoint rename_id (r : renaming) (x : id) : id :=
+  Definition rename_id (r : renaming) (x : id) : id :=
     match r with
       exist _ f _ => f x
     end.
@@ -362,10 +464,20 @@ Module Renaming.
   Definition renamings_inv (r r' : renaming) := forall (x : id), rename_id r (rename_id r' x) = x.
   
   Lemma renaming_inv (r : renaming) : exists (r' : renaming), renamings_inv r' r.
-  Proof. admit. Admitted.
+  Proof. destruct r. destruct b.
+    assert (Bijective x0).
+      exists x. destruct a. auto.
+   exists (exist Bijective x0 H).
+   intro. destruct a. auto.
+  Qed.
 
   Lemma renaming_inv2 (r : renaming) : exists (r' : renaming), renamings_inv r r'.
-  Proof. admit. Admitted.
+  Proof. destruct r. destruct b.
+    assert (Bijective x0).
+      exists x. destruct a. auto.
+   exists (exist Bijective x0 H).
+   intro. destruct a. auto.
+  Qed.
 
   Fixpoint rename_expr (r : renaming) (e : expr) : expr :=
     match e with
@@ -378,7 +490,11 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (e    : expr) : rename_expr r (rename_expr r' e) = e.
-  Proof. admit. Admitted.
+  Proof. induction e.
+    + auto.
+    + simpl. specialize (Hinv i). rewrite Hinv. reflexivity.
+    + simpl. rewrite IHe1. rewrite IHe2. reflexivity. 
+  Qed.   
   
   Fixpoint rename_state (r : renaming) (st : state Z) : state Z :=
     match st with
@@ -391,13 +507,72 @@ Module Renaming.
     (r r' : renaming)
     (Hinv : renamings_inv r r')
     (st   : state Z) : rename_state r (rename_state r' st) = st.
-  Proof. admit. Admitted.
+  Proof. induction st.
+      * simpl. reflexivity.
+      * simpl. destruct a.  destruct r'. destruct r.
+        simpl. rewrite IHst. rewrite Hinv. reflexivity.
+  Qed.   
       
   Lemma bijective_injective (f : id -> id) (BH : Bijective f) : Injective f.
-  Proof. admit. Admitted.
-  
+  Proof. intros. 
+    unfold Injective.  
+    destruct BH. intros. 
+    destruct H. rewrite <- H. rewrite <- H0. rewrite H. reflexivity.
+  Qed.
+
+  Lemma injective_not_equal (x0 : id -> id) (Hinj : Injective x0) (id1 id2 : id) :
+    id1 <> id2 -> x0 id1 <> x0 id2.
+  Proof. intros. auto. Qed.
+
+  Lemma bijection_eq :
+    forall (x0 : id -> id) (x: Bijective x0) (i i0 : id),
+    x0 i0 = x0 i -> i = i0.
+  Proof.
+    intros.
+    destruct x. destruct H0. 
+    remember (H0 i). rewrite <- e. rewrite <- H. auto.
+  Qed.
+
+  Lemma eval_renaming_invariance' (r : renaming) 
+                                      (st : state Z) 
+                                      (i : id)
+                                      (z : Z) :
+    ((st) / i => z) <-> ((rename_state r st) / rename_id r i => z).
+  Proof. split.
+    - intro. destruct r. induction H.
+      * constructor.
+      * constructor. simpl. apply injective_not_equal.
+        apply bijective_injective. auto. auto. auto.
+    - generalize dependent z. intro. induction st.
+      * intro. inversion H.
+      * destruct r, a. intro. inversion H.
+        + apply bijection_eq in H4. subst. apply st_binds_hd. auto.
+        + constructor.
+          -- intro. subst. contradiction.
+          -- auto.
+  Qed.
+
   Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
-  Proof. admit. Admitted.
+  Proof. split.
+    + generalize dependent z. induction e. 
+      * intros. simpl. inversion H. auto. 
+      * intros. simpl. inversion H. constructor. rewrite <- eval_renaming_invariance'. auto.
+      * induction st.
+        simpl. intro. intro. simpl in IHe1. simpl in IHe2.
+        all: intros; inversion H.
+        all: try econstructor.
+        all: (try apply IHe1, VALA).
+        all: (try apply IHe2, VALB).
+        all: auto.
+    + generalize dependent z. induction e.
+      - intros. inversion H. auto.
+      - intros. inversion H. apply (eval_renaming_invariance' r) in VAR. constructor. auto.
+      - intros. simpl. inversion H.
+        all: econstructor.
+        all: (try apply IHe1, VALA).
+        all: (try apply IHe2, VALB).
+        all: auto.
+  Qed.
     
 End Renaming.
