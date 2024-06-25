@@ -3,9 +3,9 @@ Import ListNotations.
 Require Import Lia.
 
 Require Import BinInt ZArith_dec Zorder ZArith.
-Require Export Id.
-Require Export State.
-Require Export Expr.
+From semantics Require Export Id.
+From semantics Require Export State.
+From semantics Require Export Expr.
 
 From hahn Require Import HahnBase.
 
@@ -107,7 +107,7 @@ Definition contextual_equivalent (s1 s2 : stmt) :=
 Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
-Proof. admit. Admitted.
+Proof. exact (H Hole). Qed.
 
 Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
 Proof. admit. Admitted.
