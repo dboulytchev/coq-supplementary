@@ -8,6 +8,9 @@ From semantics Require Export Id.
 
 From hahn Require Import HahnBase.
 
+Ltac imm_replace expr replacement :=
+  replace expr with replacement; [|reflexivity].
+
 Section S.
 
   Variable A : Set.
@@ -72,9 +75,6 @@ Section S.
       - contradiction.
       - apply H6. }
   Qed.
-
-  Ltac imm_replace expr replacement :=
-    replace expr with replacement; [|reflexivity].
   
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
