@@ -451,11 +451,6 @@ Qed.
     - assumption.
   Qed.
   
-  Lemma ss_eval_equiv (e : expr)
-                      (s : state Z)
-                      (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
-  Proof. admit. Admitted.
-  
 End SmallStep.
 
 Module Renaming.
