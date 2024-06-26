@@ -12,7 +12,7 @@ Reserved Notation "m i<  n" (at level 70, no associativity).
 
 Inductive le_id : id -> id -> Prop :=
   le_conv : forall n m, n <= m -> (Id n) i<= (Id m)
-where "n i<= m" := (le_id n m).   
+where "n i<= m" := (le_id n m).
 
 Inductive lt_id : id -> id -> Prop :=
   lt_conv : forall n m, n < m -> (Id n) i< (Id m)
@@ -64,30 +64,91 @@ Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
 Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  Search(?x <>?y).
+  destruct id1, id2.
+  set (Nat.eq_dec n n0) as H.
+  inversion_clear H.
+  - left. auto.
+  - right. congruence.
+Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (id_eq_dec x x).
+  - reflexivity.
+  - congruence.
+Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (id_eq_dec x y).
+  - congruence.
+  - reflexivity.
+Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct id1, id2.
+  inversion_clear H.
+  inversion_clear H0.
+  Search(?x > ?y).
+  apply Arith_prebase.gt_asym_stt in H1.
+  congruence.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct id1, id2.
+  inversion_clear H.
+  inversion_clear H0.
+  Search(?x <= ?y -> ~ ?p).
+  apply Arith_prebase.le_not_gt_stt in H1.
+  congruence.
+Qed.
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (lt_eq_lt_id_dec id1 id2) as [[H1 | H2] | H3].
+  - right.
+    inversion_clear H1.
+    apply gt_conv.
+    lia.
+  - left.
+    apply H2.
+  - right.
+    inversion H3.
+    subst.
+    inversion H.
+    subst.
+    lia.
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (gt_eq_gt_id_dec id1 id2) as [[H1 | H2] | H3].
+  - left. apply H1.
+  - right. congruence.
+  - right. apply H3.
+Qed.
     
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct id1, id2.
+  inversion_clear H0.
+  inversion H.
+  lia.
+Qed.
