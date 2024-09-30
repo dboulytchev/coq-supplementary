@@ -1,0 +1,9 @@
+.lia.cache
+.vscode/settings.json
+Makefile.coq.conf
+src/.Expr.aux
+src/.Id.aux
+src/.StackMachine.aux
+src/.State.aux
+src/.Stmt.aux
+src/.vscode/settings.json
