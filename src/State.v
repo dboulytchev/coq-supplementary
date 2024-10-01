@@ -6,8 +6,6 @@ Require Import Lia.
 Require Export Arith Arith.EqNat.
 Require Export Id.
 
-From hahn Require Import HahnBase.
-
 Section S.
 
   Variable A : Set.
@@ -35,7 +33,7 @@ Section S.
  
   (* State a prove a lemma which claims that st_eval and
      st_binds are actually define the same relation.
-   *)
+  *)
 
   Lemma state_deterministic' (st : state) (x : id) (n m : option A)
     (SN : st_eval st x = n)
@@ -44,7 +42,7 @@ Section S.
   Proof using Type.
     subst n. subst m. reflexivity.
   Qed.
-    
+  
   Lemma state_deterministic (st : state) (x : id) (n m : A)   
     (SN : st / x => n)
     (SM : st / x => m) :
@@ -75,4 +73,20 @@ Section S.
     st [x1 <- n2][x2 <- n1] / x3 => m.
   Proof. admit. Admitted.
 
+  Lemma state_extensional_equivalence (st st' : state) (H: forall x z, st / x => z <-> st' / x => z) : st = st'.
+  Proof. admit. Admitted.
+
+  Definition state_equivalent (st st' : state) := forall x a, st / x => a <-> st' / x => a.
+
+  Notation "st1 ~~ st2" := (state_equivalent st1 st2) (at level 0).
+
+  Lemma st_equiv_refl (st: state) : st ~~ st.
+  Proof. admit. Admitted.
+
+  Lemma st_equiv_symm (st st': state) (H: st ~~ st') : st' ~~ st.
+  Proof. admit. Admitted.
+
+  Lemma st_equiv_trans (st st' st'': state) (H1: st ~~ st') (H2: st' ~~ st'') : st ~~ st''.
+  Proof. admit. Admitted.
+  
 End S.
