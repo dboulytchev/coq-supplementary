@@ -8,6 +8,7 @@ Require Export State.
 Require Export Expr.
 
 From hahn Require Import HahnBase.
+Require Import Coq.Program.Equality.
 
 (* AST for statements *)
 Inductive stmt : Type :=
@@ -107,10 +108,33 @@ Definition contextual_equivalent (s1 s2 : stmt) :=
 Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
-Proof. admit. Admitted.
+Proof. 
+  unfold contextual_equivalent in H.
+  specialize (H Hole).
+  simpl in H.
+  assumption.
+Qed.
 
 Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
-Proof. admit. Admitted.
+Proof.
+  exists ((Id 1) ::= (Nat 2)).
+  exists ((Id 1) ::= (Nat 0)).
+  split.
+  - constructor; intros; inversion H; inversion H0; econstructor; eauto.
+  - unfold not. 
+    intro. 
+    unfold contextual_equivalent in H.
+    specialize (H (SeqL Hole (WRITE (Var (Id 1))))).
+    simpl in H. 
+    unfold eval_equivalent in H.
+    specialize (H ([]) ([2%Z])). 
+    inversion H. 
+    destruct H0.
+    + repeat econstructor.
+    + inversion H0. subst. inversion STEP1. subst. inversion VAL. subst.
+      inversion STEP2. subst. inversion VAL0. subst. inversion VAR. subst.
+      inversion H8.
+Qed.
 
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
@@ -136,63 +160,155 @@ Module SmokeTest.
   (* Associativity of sequential composition *)
   Lemma seq_assoc (s1 s2 s3 : stmt) :
     ((s1 ;; s2) ;; s3) ~~~ (s1 ;; (s2 ;; s3)).
-  Proof. admit. Admitted.
+  Proof. 
+    split;
+    intros;
+    repeat seq_inversion;
+    seq_apply.
+  Qed.
   
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof. 
+    split; intros.
+      - inversion H; subst.
+        + apply bs_If_True.
+          * auto.
+          * apply bs_Seq with c'0.
+            apply STEP.
+            apply WSTEP.
+        + apply bs_If_False.
+          * auto.
+          * apply bs_Skip.
+      - inversion H; subst.
+        + inversion STEP; subst.
+          apply bs_While_True with c'0.
+          all: auto.
+        + inversion STEP; subst.
+          apply bs_While_False.
+          auto.
+  Qed.
       
   (* Terminating loop invariant *)
   Lemma while_false (e : expr) (s : stmt) (st : state Z)
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof. admit. Admitted.
+  Proof. 
+    remember (WHILE e DO s END) as prog.
+    remember ((st, i, o)) as state.
+    induction EXE; inversion Heqprog.
+    - subst. apply IHEXE2; reflexivity.
+    - inversion Heqstate. subst. assumption.
+  Qed.
   
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
     (WHILE (Nat 1) DO SKIP END) ~~~
     (COND (Nat 3) THEN SKIP ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof. 
+    split; intros.
+    - inversion H; subst.
+      + destruct c', p. apply while_false in H. inversion H.
+      + inversion CVAL.
+    - inversion H; subst; inversion CVAL.
+  Qed.
   
   (* Loops with equivalent bodies are equivalent *)
   Lemma while_eq (e : expr) (s1 s2 : stmt)
         (EQ : s1 ~~~ s2) :
     WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-  Proof. admit. Admitted.
+  Proof. 
+    split; intros.
+    - remember (WHILE e DO s1 END) in H.
+      induction H; inversion Heqs; subst.
+      + apply while_unfolds. constructor. assumption.
+        apply bs_Seq with (c':=c').
+        * destruct (EQ ((st, i, o)) c'). auto.
+        * apply IHbs_int2. reflexivity.
+      + constructor. assumption.
+    - remember (WHILE e DO s2 END) in H.
+      induction H; inversion Heqs; subst.
+      + apply while_unfolds. constructor. assumption.
+        apply bs_Seq with (c':=c').
+        * destruct (EQ ((st, i, o)) c'). auto.
+        * apply IHbs_int2. reflexivity.
+      + constructor. assumption.
+  Qed.
   
   (* Loops with the constant true condition don't terminate *)
   (* Exercise 4.8 from Winskel's *)
   Lemma while_true_undefined c s c' :
     ~ c == WHILE (Nat 1) DO s END ==> c'.
-  Proof. admit. Admitted.
+  Proof.
+    intro.
+    dependent induction H.
+      - eauto.
+      - inversion CVAL.
+  Qed.
   
 End SmokeTest.
 
 (* Semantic equivalence is a congruence *)
 Lemma eq_congruence_seq_r (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (s  ;; s1) ~~~ (s  ;; s2).
-Proof. admit. Admitted.
+Proof. 
+  split; intro; dependent induction H;
+  apply (bs_Seq c c' c''); auto;
+  apply EQ; auto.
+Qed.
 
 Lemma eq_congruence_seq_l (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (s1 ;; s) ~~~ (s2 ;; s).
-Proof. admit. Admitted.
+Proof. 
+  split; intro; dependent induction H;
+  apply (bs_Seq c c' c''); auto;
+  apply EQ; auto.
+Qed.
 
 Lemma eq_congruence_cond_else
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   COND e THEN s  ELSE s1 END ~~~ COND e THEN s  ELSE s2 END.
-Proof. admit. Admitted.
+Proof. 
+  split; intro.
+    - dependent destruction H.
+      + apply (bs_If_True); repeat(auto).
+      + apply (bs_If_False).
+        * auto.
+        * apply EQ. auto.
+    - dependent destruction H.
+      + apply (bs_If_True); repeat(auto).
+      + apply (bs_If_False).
+        * auto.
+        * apply EQ. auto.
+Qed.
 
 Lemma eq_congruence_cond_then
       (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   COND e THEN s1 ELSE s END ~~~ COND e THEN s2 ELSE s END.
-Proof. admit. Admitted.
+Proof. 
+  split; intro.
+    - dependent destruction H.
+      + apply (bs_If_True).
+        * auto.
+        * apply EQ. auto.
+      + apply (bs_If_False).
+        all: auto.
+    - dependent destruction H.
+      + apply (bs_If_True).
+        * auto.
+        * apply EQ. auto.
+      + apply (bs_If_False).
+        all: auto.
+Qed.
 
 Lemma eq_congruence_while
       (e : expr) (s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-Proof. admit. Admitted.
+Proof. 
+  apply SmokeTest.while_eq. assumption.
+Qed.
 
 Lemma eq_congruence (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   ((s  ;; s1) ~~~ (s  ;; s2)) /\
@@ -200,7 +316,13 @@ Lemma eq_congruence (e : expr) (s s1 s2 : stmt) (EQ : s1 ~~~ s2) :
   (COND e THEN s  ELSE s1 END ~~~ COND e THEN s  ELSE s2 END) /\
   (COND e THEN s1 ELSE s  END ~~~ COND e THEN s2 ELSE s  END) /\
   (WHILE e DO s1 END ~~~ WHILE e DO s2 END).
-Proof. admit. Admitted.
+Proof with assumption.
+  split. apply eq_congruence_seq_r...
+  split. apply eq_congruence_seq_l...
+  split. apply eq_congruence_cond_else...
+  split. apply eq_congruence_cond_then...
+  apply eq_congruence_while...
+Qed.
 
 (* Big-step semantics is deterministic *)
 Ltac by_eval_deterministic :=
@@ -219,7 +341,22 @@ Ltac eval_zero_not_one :=
 Lemma bs_int_deterministic (c c1 c2 : conf) (s : stmt)
       (EXEC1 : c == s ==> c1) (EXEC2 : c == s ==> c2) :
   c1 = c2.
-Proof. admit. Admitted.
+Proof. 
+  generalize dependent c2. induction EXEC1.
+  all: intros.
+  all: inversion EXEC2.
+  all: try reflexivity.
+  all: try by_eval_deterministic.
+  all: try eval_zero_not_one.
+  all: try apply IHEXEC1.
+  all: try apply STEP.
+  all: try apply IHEXEC1_1 in STEP1.
+  all: try apply IHEXEC1_1 in STEP.
+  all: try apply IHEXEC1_2.
+  all: subst.
+  all: try apply STEP2.
+  all: try apply WSTEP.
+Qed.
 
 Definition equivalent_states (s1 s2 : state Z) :=
   forall id, Expr.equivalent_states s1 s2 id.
@@ -285,31 +422,95 @@ Module SmallStep.
         (EXEC1 : c -- s --> c')
         (EXEC2 : c -- s --> c'') :
     c' = c''.
-  Proof. admit. Admitted.
+  Proof. 
+    generalize dependent c''. induction EXEC1.
+    all: intros.
+    all: inversion EXEC2.
+    all: try by_eval_deterministic.
+    all: try eval_zero_not_one.
+    all: try apply IHEXEC1 in SSTEP.
+    all: try inversion SSTEP.
+    all: subst.
+    all: try reflexivity.
+  Qed.
   
   Lemma ss_int_deterministic (c c' c'' : conf) (s : stmt)
         (STEP1 : c -- s -->> c') (STEP2 : c -- s -->> c'') :
     c' = c''.
-  Proof. admit. Admitted.
+  Proof. 
+    generalize dependent c''. induction STEP1.
+    - intro. intro. inversion STEP2.
+      + subst. apply (ss_int_step_deterministic s c (None, c'')) in H. inversion H. auto. auto.
+      + subst. apply (ss_int_step_deterministic s c(Some s', c'0)) in H. inversion H. auto.
+    - intro. intro. inversion STEP2.
+      + subst. apply (ss_int_step_deterministic s c (Some s', c')) in H0. inversion H0. auto.
+      + subst. apply (ss_int_step_deterministic s c (Some s'0, c'0)) in H. inversion H. subst.
+        apply IHSTEP1 in H1. auto. auto.
+  Qed.
   
   Lemma ss_bs_base (s : stmt) (c c' : conf) (STEP : c -- s --> (None, c')) :
     c == s ==> c'.
-  Proof. admit. Admitted.
+  Proof. 
+    inversion STEP.
+    all: econstructor; auto.
+  Qed.
 
   Lemma ss_ss_composition (c c' c'' : conf) (s1 s2 : stmt)
         (STEP1 : c -- s1 -->> c'') (STEP2 : c'' -- s2 -->> c') :
     c -- s1 ;; s2 -->> c'. 
-  Proof. admit. Admitted.
+  Proof. 
+    generalize dependent c'. induction STEP1.
+    - intros. eapply ss_int_Step.
+      + econstructor. eauto.
+      + auto.
+    - intros. apply IHSTEP1 in STEP2. apply (ss_int_Step (s;; s2) (s';; s2) c) in STEP2.
+      + apply STEP2.
+      + econstructor. auto.
+  Qed.
   
   Lemma ss_bs_step (c c' c'' : conf) (s s' : stmt)
         (STEP : c -- s --> (Some s', c'))
         (EXEC : c' == s' ==> c'') :
     c == s ==> c''.
-  Proof. admit. Admitted.
+  Proof. 
+    generalize dependent s'.
+    generalize dependent c.
+    generalize dependent c'.
+    generalize dependent c''.
+    induction s; intros; inversion STEP; intros; subst.
+    - apply bs_Seq with (c':=c').
+      + apply ss_bs_base. assumption.
+      + assumption.
+    - inversion EXEC; subst. apply (IHs1 c'0 c' c s1') in SSTEP.
+      + apply bs_Seq with (c':=c'0). assumption. assumption.
+      + assumption.
+    - constructor. assumption. assumption.
+    - apply bs_If_False. assumption. assumption.
+    - inversion EXEC; subst; destruct c'', p.
+      + inversion STEP0; subst. apply (bs_While_True ) with (c':=c').
+        assumption. assumption. assumption.
+      + inversion STEP0; subst. apply bs_While_False. assumption.
+  Qed.
   
   Theorem bs_ss_eq (s : stmt) (c c' : conf) :
     c == s ==> c' <-> c -- s -->> c'.
-  Proof. admit. Admitted.
+  Proof.
+    split.
+    - intro. induction H.
+      1-4: try econstructor; try econstructor; auto.
+      + apply ss_ss_composition with c'. auto. auto.
+      + eapply ss_int_Step. econstructor. auto. auto.
+      + eapply ss_int_Step. apply ss_If_False. auto. auto.
+      + eapply ss_int_Step.
+        * econstructor.
+        * eapply ss_int_Step. econstructor. auto. 
+          eapply ss_ss_composition. eauto. auto.
+      + eapply ss_int_Step. econstructor. eapply ss_int_Step. apply ss_If_False. auto.
+        econstructor. econstructor.
+    - intro. induction H.
+      + apply ss_bs_base. auto.
+      + eapply ss_bs_step. eauto. eauto. 
+  Qed.
   
 End SmallStep.
 
@@ -337,11 +538,17 @@ Module Renaming.
     (r r' : Renaming.renaming)
     (Hinv : Renaming.renamings_inv r r')
     (s    : stmt) : rename r (rename r' s) = s.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction s; simpl;
+    try rewrite Renaming.re_rename_expr; eauto; congruence.
+  Qed.
   
   Lemma rename_state_update_permute (st : state Z) (r : renaming) (x : id) (z : Z) :
     Renaming.rename_state r (st [ x <- z ]) = (Renaming.rename_state r st) [(Renaming.rename_id r x) <- z].
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction r.
+    constructor.
+  Qed.
   
   #[export] Hint Resolve Renaming.eval_renaming_invariance : core.
 
@@ -350,14 +557,40 @@ Module Renaming.
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : c == s ==> c') : (rename_conf r c) == rename r s ==> (rename_conf r c').
-  Proof. admit. Admitted.
+  Proof. 
+    induction Hbs; simpl; destruct r eqn:Hr.
+    - constructor.
+    - constructor. apply Renaming.eval_renaming_invariance. auto.
+    - constructor.
+    - constructor. apply Renaming.eval_renaming_invariance. auto.
+    - econstructor.
+      + apply IHHbs1.
+      + apply IHHbs2.
+    - constructor. apply Renaming.eval_renaming_invariance.
+      + auto.
+      + apply IHHbs.
+    - apply bs_If_False. apply Renaming.eval_renaming_invariance.
+      + auto.
+      + apply IHHbs.
+    - eapply bs_While_True. apply Renaming.eval_renaming_invariance.
+      + auto.
+      + apply IHHbs1.
+      + apply IHHbs2.
+    - eapply bs_While_False. apply Renaming.eval_renaming_invariance. auto.
+  Qed.
   
   Lemma renaming_invariant_bs_inv
     (s         : stmt)
     (r         : Renaming.renaming)
     (c c'      : conf)
     (Hbs       : (rename_conf r c) == rename r s ==> (rename_conf r c')) : c == s ==> c'.
-  Proof. admit. Admitted.
+  Proof. 
+    remember (Renaming.renaming_inv r). destruct e.
+    apply (renaming_invariant_bs _ x) in Hbs.
+    rewrite (re_rename x r) in Hbs.
+    destruct c, c', p, p0. simpl in Hbs. rewrite Renaming.re_rename_state in Hbs.
+    rewrite Renaming.re_rename_state in Hbs. auto. auto. auto. auto.
+  Qed.
     
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
   Proof. admit. Admitted.
@@ -433,31 +666,69 @@ Ltac cps_bs_gen_helper k H HH :=
 Lemma cps_bs_gen (S : stmt) (c c' : conf) (S1 k : cont)
       (EXEC : k |- c -- S1 --> c') (DEF : !S = S1 @ k):
   c == S ==> c'.
-Proof. admit. Admitted.
+Proof.
+admit. Admitted.
 
 Lemma cps_bs (s1 s2 : stmt) (c c' : conf) (STEP : !s2 |- c -- !s1 --> c'):
    c == s1 ;; s2 ==> c'.
-Proof. admit. Admitted.
+Proof. 
+  apply (cps_bs_gen (s1 ;; s2)) in STEP. auto. auto. 
+Qed.
 
 Lemma cps_int_to_bs_int (c c' : conf) (s : stmt)
       (STEP : KEmpty |- c -- !(s) --> c') : 
   c == s ==> c'.
-Proof. admit. Admitted.
+Proof. 
+  apply (cps_bs_gen s) in STEP. auto. auto. 
+Qed.
 
 Lemma cps_cont_to_seq c1 c2 k1 k2 k3
       (STEP : (k2 @ k3 |- c1 -- k1 --> c2)) :
   (k3 |- c1 -- k1 @ k2 --> c2).
-Proof. admit. Admitted.
+Proof. 
+  destruct k1, k2.
+  - inversion STEP. unfold Kapp in H. subst. apply cps_Empty.
+  - inversion STEP. destruct k3. inversion H0. inversion H0.
+  - inversion STEP; destruct k3; subst; unfold Kapp; eauto.
+  - inversion STEP; destruct k3; subst; unfold Kapp; apply cps_Seq; eauto.
+Qed.
 
 Lemma bs_int_to_cps_int_cont c1 c2 c3 s k
       (EXEC : c1 == s ==> c2)
       (STEP : k |- c2 -- !(SKIP) --> c3) :
   k |- c1 -- !(s) --> c3.
-Proof. admit. Admitted.
+Proof. 
+  generalize dependent k.
+  induction EXEC; intros; inversion STEP; subst.
+  - assumption.
+  - apply cps_Assign with (n := z); assumption.
+  - apply cps_Read. assumption.
+  - apply cps_Write with (z := z); assumption.
+  - apply cps_Seq. apply IHEXEC1. unfold Kapp. destruct k.
+    + constructor. apply IHEXEC2. assumption.
+    + constructor. constructor. unfold Kapp. apply IHEXEC2. assumption.
+  - apply cps_If_True.
+    + assumption.
+    + apply IHEXEC. assumption.
+  - apply cps_If_False.
+    + assumption.
+    + apply IHEXEC. assumption.
+  - apply cps_While_True.
+    + assumption.
+    + unfold Kapp. destruct k.
+      * apply IHEXEC1. constructor. apply IHEXEC2. assumption.
+      * apply IHEXEC1. constructor. constructor. unfold Kapp. apply IHEXEC2. assumption.
+  - apply cps_While_False; assumption.
+Qed.
 
 Lemma bs_int_to_cps_int st i o c' s (EXEC : (st, i, o) == s ==> c') :
   KEmpty |- (st, i, o) -- !s --> c'.
-Proof. admit. Admitted.
+Proof. 
+   apply bs_int_to_cps_int_cont with (c2 := c'). 
+  - auto. 
+  - apply cps_Skip.
+    apply cps_Empty.
+Qed.
 
 (* Lemma cps_stmt_assoc s1 s2 s3 s (c c' : conf) : *)
 (*   (! (s1 ;; s2 ;; s3)) |- c -- ! (s) --> (c') <-> *)
