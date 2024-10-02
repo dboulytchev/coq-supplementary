@@ -8,6 +8,8 @@ Require Export State.
 Require Export Expr.
 Require Export Stmt.
 
+Require Import Coq.Program.Equality.
+
 (* Configuration *)
 Definition conf := (list Z * state Z * list Z * list Z)%type.
 
@@ -198,7 +200,25 @@ Module StraightLine.
         (VAL : [| e |] st => n)
         (EXEC: (n::s, st, i, o) -- p --> c) :        
     (s, st, i, o) -- (compile_expr e) ++ p --> c.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction e. 
+    - simpl.
+      inversion VAL; subst.
+      apply sm_Const.
+      auto.
+    - simpl.
+      inversion VAL; subst.
+      apply sm_Load with (z := n).
+      all: auto.
+    - dependent destruction VAL; simpl; rewrite app_ass.
+      all: eapply IHe1;
+           try apply VAL1;
+           rewrite app_ass;
+           eapply IHe2;
+           try apply VAL2;
+           constructor;
+           auto; assumption.
+  Qed.
 
   #[export] Hint Resolve compiled_expr_correct_cont.
   
@@ -206,25 +226,63 @@ Module StraightLine.
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
         (VAL : [| e |] st => n) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o).
-  Proof. admit. Admitted.
+  Proof. 
+    rewrite (app_nil_end (compile_expr e)).
+    apply (compiled_expr_correct_cont _ _ _ _ _ n nil).
+    - auto.
+    - repeat(constructor).
+  Qed.
   
   Lemma compiled_expr_not_incorrect_cont
         (e : expr) (st : state Z) (s i o : list Z) (p : prog) (c : conf)
         (EXEC : (s, st, i, o) -- compile_expr e ++ p --> c) :
     exists (n : Z), [| e |] st => n /\ (n :: s, st, i, o) -- p --> c.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction e; simpl in EXEC.
+    - exists z.
+      split.
+      + apply bs_Nat.
+      + inversion EXEC; subst.
+        auto.
+    - inversion EXEC; subst.
+      exists z.
+      split.
+      + apply bs_Var.
+        auto.
+      + auto.
+    - repeat rewrite app_ass in EXEC.
+      specialize (IHe1 st s i o (compile_expr e2 ++ [B b] ++ p) c).
+      destruct IHe1 as [za [VAL1 EXEC1]]. 
+      + auto.
+      + specialize (IHe2 st (za::s) i o ([B b] ++ p) c EXEC1).
+        destruct IHe2 as [zb [VAL2 EXEC2]]. 
+        simpl in EXEC2. inversion EXEC2; subst; eauto.
+  Qed.
   
   Lemma compiled_expr_not_incorrect
         (e : expr) (st : state Z)
         (s i o : list Z) (n : Z)
         (EXEC : (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o)) :
     [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof. 
+    assert (H : exists n' : Z, [|e|] st => n' /\ (n'::s, st, i, o) -- [] --> (n::s, st, i, o)).
+    - apply compiled_expr_not_incorrect_cont.
+      rewrite <- app_nil_end.
+      auto.
+    - inversion H; subst.
+      destruct H0; subst.
+      inversion H1; subst.
+      auto.
+  Qed.
   
   Lemma expr_compiler_correct
         (e : expr) (st : state Z) (s i o : list Z) (n : Z) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o) <-> [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof. 
+    split.
+    - apply compiled_expr_not_incorrect.
+    - apply compiled_expr_correct.
+  Qed.
       
   Fixpoint compile (s : stmt) (H : StraightLine s) : prog :=
     match H with
@@ -247,7 +305,13 @@ Module StraightLine.
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : (st, i, o) == p ==> (st', i', o')) :
     ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof. 
+    rewrite (app_nil_end (compile p Sp)).
+    apply compiled_straightline_correct_cont with (st' := st') (i' := i') (o' := o').
+    all: auto.
+    apply sm_End.
+    constructor.
+  Qed.
   
   Lemma compiled_straightline_not_incorrect_cont
         (p : stmt) (Sp : StraightLine p) (st : state Z) (i o : list Z) (q : prog) (c : conf)
@@ -259,12 +323,28 @@ Module StraightLine.
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : ([], st, i, o) -- compile p Sp --> ([], st', i', o')) :
     (st, i, o) == p ==> (st', i', o').
-  Proof. admit. Admitted.
+  Proof. 
+    assert (exists (st'' : state Z) (i'' o'' : list Z), (st, i, o) == p ==> (st'', i'', o'')
+        /\ ([], st'', i'', o'') -- [] --> ([], st', i', o')).
+    - apply compiled_straightline_not_incorrect_cont with (Sp := Sp).
+      rewrite <- app_nil_end.
+      auto.      
+    - destruct H.
+      destruct H.
+      destruct H.
+      destruct H.
+      inversion H0; subst. 
+      auto.
+  Qed.
   
   Theorem straightline_compiler_correct
           (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z) :
     (st, i, o) == p ==> (st', i', o') <-> ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof. 
+    split.
+    - apply compiled_straightline_correct.
+    - apply compiled_straightline_not_incorrect.
+  Qed.
   
 End StraightLine.
   
