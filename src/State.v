@@ -47,31 +47,71 @@ Section S.
     (SN : st / x => n)
     (SM : st / x => m) :
     n = m. 
-  Proof. admit. Admitted.
+  Proof. 
+    induction SN.
+      - inversion SM.
+        * auto.
+        * contradiction.
+      - inversion SM.
+        * subst. contradiction.
+        * subst. auto.
+  Qed.
   
   Lemma update_eq (st : state) (x : id) (n : A) :
     st [x <- n] / x => n.
-  Proof. admit. Admitted.
+  Proof. apply st_binds_hd. Qed.
 
   Lemma update_neq (st : state) (x2 x1 : id) (n m : A)
         (NEQ : x2 <> x1) : st / x1 => m <-> st [x2 <- n] / x1 => m.
-  Proof. admit. Admitted.
+  Proof. split.
+    - intro. apply st_binds_tl. auto. auto.
+    - intro. inversion H.
+      * contradiction.
+      * auto.
+  Qed.
   
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
-  Proof. admit. Admitted.
+  Proof. split.
+    * intro. inversion H.
+      - apply st_binds_hd.
+      - apply st_binds_tl. auto. apply update_neq in H6.
+        + auto.
+        + auto.
+    * intro. inversion H.
+      - apply st_binds_hd.
+      - apply st_binds_tl. auto. apply st_binds_tl.
+        + auto.
+        + auto.
+  Qed.
   
   Lemma update_same (st : state) (x1 x2 : id) (n1 m : A)
         (SN : st / x1 => n1)
         (SM : st / x2 => m) :
     st [x1 <- n1] / x2 => m.
-  Proof. admit. Admitted.
+  Proof.
+    destruct (id_eq_dec x1 x2).
+      - subst. apply (state_deterministic st x2 n1 m) in SN. subst.
+        apply st_binds_hd. auto.
+      - apply st_binds_tl. auto. auto.
+  Qed.
   
   Lemma update_permute (st : state) (x1 x2 x3 : id) (n1 n2 m : A)
         (NEQ : x2 <> x1)
         (SM : st [x2 <- n1][x1 <- n2] / x3 => m) :
     st [x1 <- n2][x2 <- n1] / x3 => m.
-  Proof. admit. Admitted.
+  Proof. destruct (id_eq_dec x1 x3).
+      - subst. apply st_binds_tl.
+        * auto.
+        * inversion SM.
+          + apply st_binds_hd.
+          + contradiction.
+      - inversion SM.
+        * contradiction.
+        * subst. inversion H5.
+          + apply st_binds_hd.
+          + apply st_binds_tl. auto. apply st_binds_tl. auto. auto.
+  Qed.
 
   Lemma state_extensional_equivalence (st st' : state) (H: forall x z, st / x => z <-> st' / x => z) : st = st'.
   Proof. admit. Admitted.
