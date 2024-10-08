@@ -179,6 +179,9 @@ where "[| e |] st => z" := (eval e st z).
 
 Module SmokeTest.
 
+  Lemma zero_always x (s : state Z) : [| Var x [*] Nat 0 |] s => Z.zero.
+  Proof. admit. Admitted.
+  
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
   Proof. admit. Admitted.
   
@@ -209,6 +212,8 @@ Inductive V : expr -> id -> Prop :=
   v_Var : forall (id : id), id ? (Var id)
 | v_Bop : forall (id : id) (a b : expr) (op : bop), id ? a \/ id ? b -> id ? (Bop op a b)
 where "x ? e" := (V e x).
+
+#[export] Hint Constructors V : core.
 
 (* If an expression is defined in some state, then each its' variable is
    defined in that state

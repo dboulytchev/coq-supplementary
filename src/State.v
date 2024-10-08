@@ -76,9 +76,9 @@ Section S.
   Lemma state_extensional_equivalence (st st' : state) (H: forall x z, st / x => z <-> st' / x => z) : st = st'.
   Proof. admit. Admitted.
 
-  Definition state_equivalent (st st' : state) := forall x a, st / x => a <-> st' / x => a.
+  Definition state_equivalence (st st' : state) := forall x a, st / x => a <-> st' / x => a.
 
-  Notation "st1 ~~ st2" := (state_equivalent st1 st2) (at level 0).
+  Notation "st1 ~~ st2" := (state_equivalence st1 st2) (at level 0).
 
   Lemma st_equiv_refl (st: state) : st ~~ st.
   Proof. admit. Admitted.
@@ -87,6 +87,9 @@ Section S.
   Proof. admit. Admitted.
 
   Lemma st_equiv_trans (st st' st'': state) (H1: st ~~ st') (H2: st' ~~ st'') : st ~~ st''.
+  Proof. admit. Admitted.
+
+  Lemma equal_states_equive (st st' : state) (HE: st = st') : st ~~ st'.
   Proof. admit. Admitted.
   
 End S.
