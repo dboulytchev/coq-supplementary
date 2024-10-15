@@ -189,7 +189,7 @@ Module SmokeTest.
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
   Proof. admit. Admitted.
-
+  
 End SmokeTest.
 
 (* A relation of one expression being of a subexpression of another *)
@@ -354,6 +354,60 @@ Module SmallStep.
   Proof. admit. Admitted.
   
 End SmallStep.
+
+Module StaticSemantics.
+
+  Inductive Typ : Set := Int | Bool.
+
+  Reserved Notation "e :-: t" (at level 0).
+  
+  Inductive typeOf : expr -> Typ -> Prop :=
+  | type_X   : forall x, (Var x) :-: Int
+  | type_0   : (Nat 0) :-: Bool
+  | type_1   : (Nat 1) :-: Bool
+  | type_N   : forall z (HNbool : ~zbool z), (Nat z) :-: Int
+  | type_Add : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [+]  e2) :-: Int
+  | type_Sub : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [-]  e2) :-: Int
+  | type_Mul : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [*]  e2) :-: Int
+  | type_Div : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [/]  e2) :-: Int
+  | type_Mod : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [%]  e2) :-: Int
+  | type_Lt  : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [<]  e2) :-: Bool
+  | type_Le  : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [<=] e2) :-: Bool
+  | type_Gt  : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [>]  e2) :-: Bool
+  | type_Ge  : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [>=] e2) :-: Bool
+  | type_Eq  : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [==] e2) :-: Bool
+  | type_Ne  : forall e1 e2 (H1 : e1 :-: Int ) (H2 : e2 :-: Int ), (e1 [/=] e2) :-: Bool
+  | type_And : forall e1 e2 (H1 : e1 :-: Bool) (H2 : e2 :-: Bool), (e1 [&]  e2) :-: Bool
+  | type_Or  : forall e1 e2 (H1 : e1 :-: Bool) (H2 : e2 :-: Bool), (e1 [\/] e2) :-: Bool
+  where "e :-: t" := (typeOf e t).
+
+  Reserved Notation "st |- e ~~> e'" (at level 0).
+  
+  Inductive ss_reachable st e : expr -> Prop :=
+    reach_base : st |- e ~~> e
+  | reach_step : forall e' e'' (HStep : SmallStep.ss_step st e e') (HReach : st |- e' ~~> e''), st |- e ~~> e''
+  where "st |- e ~~> e'" := (ss_reachable st e e').
+
+  Lemma type_preservation e t (HT: e :-: t) : forall st e' (HR: st |- e ~~> e'), e' :-: t.
+  Proof. admit. Admitted.
+
+  Lemma type_bool e (HT : e :-: Bool) :
+    forall st z (HVal: [| e |] st => z), zbool z.
+  Proof. admit. Admitted.
+
+  (*
+  Lemma type_safety e t (HT : e :-: t) :
+    forall e' (HSub: e' << e)
+    forall st e' e1 e2 z1 z2
+           (HR   : st |- e ~~> e')
+           (HBool: e' = e1 [&] e2 \/ e' = e1 [\/] e2)
+           (HVal1: [| e1 |] st => z1)
+           (HVal2: [| e2 |] st => z2),  zbool z1 /\ zbool z2.
+  Proof.
+  *)
+
+
+End StaticSemantics.
 
 Module Renaming.
   
