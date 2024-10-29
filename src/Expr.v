@@ -322,10 +322,16 @@ Module SmallStep.
                      (z : Z),  s |- (Nat z) -->> (Nat z)
   | se_Step : forall (s : state Z)
                      (e e' e'' : expr)
-                     (HStep : s |- e --> e')
-                     (Heval: s |- e' -->> e''), s |- e -->> e''
+                     (HStep    : s |- e --> e')
+                     (Heval    : s |- e' -->> e''), s |- e -->> e''
   where "st |- e -->> e'"  := (ss_eval st e e').
-  
+
+  Lemma ss_eval_assoc s e e' e''
+                     (H1: s |- e  -->> e')
+                     (H2: s |- e' -->  e'') :
+    s |- e -->> e''.
+  Proof. admit. Admitted.
+          
   Definition normal_form (e : expr) : Prop :=
     forall s, ~ exists e', (s |- e --> e').   
 
@@ -347,18 +353,32 @@ Module SmallStep.
   
   Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
   Proof. admit. Admitted.
-  
+
+        
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
   Proof. admit. Admitted.
-  
+
 End SmallStep.
 
 Module StaticSemantics.
 
   Inductive Typ : Set := Int | Bool.
 
+  Reserved Notation "t1 << t2" (at level 0).
+  
+  Inductive subtype : Typ -> Typ -> Prop :=
+  | subt_refl : forall t,  t << t
+  | subt_base : Bool << Int
+  where "t1 << t2" := (subtype t1 t2).
+
+  Lemma subtype_trans t1 t2 t3 (H1: t1 << t2) (H2: t2 << t3) : t1 << t3.
+  Proof. admit. Admitted.
+
+  Lemma subtype_antisymm t1 t2 (H1: t1 << t2) (H2: t2 << t1) : t1 = t2.
+  Proof. admit. Admitted.
+  
   Reserved Notation "e :-: t" (at level 0).
   
   Inductive typeOf : expr -> Typ -> Prop :=
@@ -388,24 +408,12 @@ Module StaticSemantics.
   | reach_step : forall e' e'' (HStep : SmallStep.ss_step st e e') (HReach : st |- e' ~~> e''), st |- e ~~> e''
   where "st |- e ~~> e'" := (ss_reachable st e e').
 
-  Lemma type_preservation e t (HT: e :-: t) : forall st e' (HR: st |- e ~~> e'), e' :-: t.
+  Lemma type_preservation e t t' (HS: t' << t) (HT: e :-: t) : forall st e' (HR: st |- e ~~> e'), e' :-: t'.
   Proof. admit. Admitted.
 
   Lemma type_bool e (HT : e :-: Bool) :
     forall st z (HVal: [| e |] st => z), zbool z.
   Proof. admit. Admitted.
-
-  (*
-  Lemma type_safety e t (HT : e :-: t) :
-    forall e' (HSub: e' << e)
-    forall st e' e1 e2 z1 z2
-           (HR   : st |- e ~~> e')
-           (HBool: e' = e1 [&] e2 \/ e' = e1 [\/] e2)
-           (HVal1: [| e1 |] st => z1)
-           (HVal2: [| e2 |] st => z2),  zbool z1 /\ zbool z2.
-  Proof.
-  *)
-
 
 End StaticSemantics.
 
