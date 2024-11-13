@@ -315,6 +315,17 @@ Module SmallStep.
                       (EVAL    : [| Bop op (Nat zl) (Nat zr) |] s => z), (s |- (Bop op (Nat zl) (Nat zr)) --> (Nat z))      
   where "st |- e --> e'" := (ss_step st e e').
 
+  #[export] Hint Constructors ss_step : core.
+
+  Reserved Notation "st |- e ~~> e'" (at level 0).
+  
+  Inductive ss_reachable st e : expr -> Prop :=
+    reach_base : st |- e ~~> e
+  | reach_step : forall e' e'' (HStep : SmallStep.ss_step st e e') (HReach : st |- e' ~~> e''), st |- e ~~> e''
+  where "st |- e ~~> e'" := (ss_reachable st e e').
+  
+  #[export] Hint Constructors ss_reachable : core.
+
   Reserved Notation "st |- e -->> e'" (at level 0).
 
   Inductive ss_eval : state Z -> expr -> expr -> Prop :=
@@ -325,11 +336,28 @@ Module SmallStep.
                      (HStep    : s |- e --> e')
                      (Heval    : s |- e' -->> e''), s |- e -->> e''
   where "st |- e -->> e'"  := (ss_eval st e e').
+  
+  #[export] Hint Constructors ss_eval : core.
 
+  Lemma ss_eval_reachable s e e' (HE: s |- e -->> e') : s |- e ~~> e'.
+  Proof. admit. Admitted.
+
+  Lemma ss_reachable_eval s e z (HR: s |- e ~~> (Nat z)) : s |- e -->> (Nat z).
+  Proof.  admit. Admitted.
+
+  #[export] Hint Resolve ss_eval_reachable : core.
+  #[export] Hint Resolve ss_reachable_eval : core.
+  
   Lemma ss_eval_assoc s e e' e''
                      (H1: s |- e  -->> e')
                      (H2: s |- e' -->  e'') :
     s |- e -->> e''.
+  Proof. admit. Admitted.
+  
+  Lemma ss_reachable_trans s e e' e''
+                          (H1: s |- e  ~~> e')
+                          (H2: s |- e' ~~> e'') :
+    s |- e ~~> e''.
   Proof. admit. Admitted.
           
   Definition normal_form (e : expr) : Prop :=
@@ -354,16 +382,44 @@ Module SmallStep.
   Lemma ss_eval_stops_at_value (st : state Z) (e e': expr) (Heval: st |- e -->> e') : is_value e'.
   Proof. admit. Admitted.
 
-        
+  Lemma ss_subst s C e e' (HR: s |- e ~~> e') : s |- (C <~ e) ~~> (C <~ e').
+  Proof. admit. Admitted.
+   
+  Lemma ss_subst_binop s e1 e2 e1' e2' op (HR1: s |- e1 ~~> e1') (HR2: s |- e2 ~~> e2') :
+    s |- (Bop op e1 e2) ~~> (Bop op e1' e2').
+  Proof. admit. Admitted.
+
+  Lemma ss_bop_reachable s e1 e2 op za zb z
+    (H : [|Bop op e1 e2|] s => (z))
+    (VALA : [|e1|] s => (za))
+    (VALB : [|e2|] s => (zb)) :
+    s |- (Bop op (Nat za) (Nat zb)) ~~> (Nat z).
+  Proof. admit. Admitted.
+
+  #[export] Hint Resolve ss_bop_reachable : core.
+   
+  Lemma ss_eval_binop s e1 e2 za zb z op
+        (IHe1 : (s) |- e1 -->> (Nat za))
+        (IHe2 : (s) |- e2 -->> (Nat zb))
+        (H    : [|Bop op e1 e2|] s => z)
+        (VALA : [|e1|] s => (za))
+        (VALB : [|e2|] s => (zb)) :
+        s |- Bop op e1 e2 -->> (Nat z).
+  Proof. admit. Admitted.
+
+  #[export] Hint Resolve ss_eval_binop : core.
+  
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
   Proof. admit. Admitted.
-
+  
 End SmallStep.
 
 Module StaticSemantics.
 
+  Import SmallStep.
+  
   Inductive Typ : Set := Int | Bool.
 
   Reserved Notation "t1 << t2" (at level 0).
@@ -400,13 +456,6 @@ Module StaticSemantics.
   | type_And : forall e1 e2 (H1 : e1 :-: Bool) (H2 : e2 :-: Bool), (e1 [&]  e2) :-: Bool
   | type_Or  : forall e1 e2 (H1 : e1 :-: Bool) (H2 : e2 :-: Bool), (e1 [\/] e2) :-: Bool
   where "e :-: t" := (typeOf e t).
-
-  Reserved Notation "st |- e ~~> e'" (at level 0).
-  
-  Inductive ss_reachable st e : expr -> Prop :=
-    reach_base : st |- e ~~> e
-  | reach_step : forall e' e'' (HStep : SmallStep.ss_step st e e') (HReach : st |- e' ~~> e''), st |- e ~~> e''
-  where "st |- e ~~> e'" := (ss_reachable st e e').
 
   Lemma type_preservation e t t' (HS: t' << t) (HT: e :-: t) : forall st e' (HR: st |- e ~~> e'), e' :-: t'.
   Proof. admit. Admitted.
