@@ -1,0 +1,10 @@
+.direnv/**
+root*
+.envrc
+
+**/*.aux
+**/*.glob
+**/*.vo*
+Makefile.*
+.Makefile.coq.d
+_CoqProject
