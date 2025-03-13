@@ -7,6 +7,8 @@ Require Export Lia.
 Require Import List.
 Import ListNotations.
 
+Require Import Coq.Program.Equality.
+
 From hahn Require Import HahnBase.
 
 (* Type of binary operators *)
@@ -631,14 +633,69 @@ Module SmallStep.
         (VALA : [|e1|] s => (za))
         (VALB : [|e2|] s => (zb)) :
         s |- Bop op e1 e2 -->> (Nat z).
-  Proof. admit. Admitted.
+  Proof.
+    apply ss_eval_reachable in IHe1.
+    apply ss_eval_reachable in IHe2.
+    apply ss_reachable_eval.
+    eauto.
+    specialize (ss_subst_binop s e1 e2 (Nat za) (Nat zb) op IHe1 IHe2). intro.
+    specialize (ss_bop_reachable s e1 e2 op za zb z H VALA VALB). intro.
+    apply (ss_reachable_trans s (Bop op e1 e2) (Bop op (Nat za) (Nat zb)) (Nat z)).
+    eauto.
+    eauto.
+  Qed.
 
   #[export] Hint Resolve ss_eval_binop : core.
+
+  Lemma ss_binop_eval (e1 e2 : expr)
+        (s : state Z)
+        (z : Z)
+        (op : bop)
+        (H : s |- Bop op e1 e2 -->> (Nat z))
+        : exists za zb, s |- e1 -->> (Nat za) /\ s |- e2 -->> (Nat zb) /\ [|Bop op (Nat za) (Nat zb)|] s => z.
+  Proof.
+    dependent induction H.
+    - dependent destruction HStep.
+      + specialize (IHss_eval l' e2 z op).
+        assert (Bop op l' e2 = Bop op l' e2); eauto.
+        apply IHss_eval in H0; eauto.
+        destruct H0 as [za [zb [HL [HE2 VAL]]]].
+        exists za, zb.
+        eauto.
+      + specialize (IHss_eval e1 r' z op).
+        assert (Bop op e1 r' = Bop op e1 r'); eauto.
+        apply IHss_eval in H0; eauto.
+        destruct H0 as [za [zb [HE1 [HR VAL]]]].
+        exists za, zb.
+        eauto.
+      + exists zl, zr.
+        dependent destruction H.
+        * eauto.
+        * inversion HStep.
+  Qed.
   
   Lemma ss_eval_equiv (e : expr)
                       (s : state Z)
                       (z : Z) : [| e |] s => z <-> (s |- e -->> (Nat z)).
-  Proof. admit. Admitted.
+  Proof.
+    split; intros.
+    - generalize dependent z.
+      induction e; intros; inversion H; eauto.
+    - generalize dependent z.
+      induction e; intros.
+      + dependent destruction H; eauto.
+        inversion HStep.
+      + dependent destruction H.
+        dependent destruction HStep.
+        dependent destruction H; eauto;
+        inversion HStep;
+        eauto.
+      + apply ss_binop_eval in H.
+        destruct H as [za [zb [HA [HB VAL]]]].
+        apply IHe1 in HA.
+        apply IHe2 in HB.
+        inversion VAL; inversion VALA; inversion VALB; subst; eauto.
+  Qed.
   
 End SmallStep.
 
@@ -692,7 +749,40 @@ Module StaticSemantics.
 
   Lemma type_bool e (HT : e :-: Bool) :
     forall st z (HVal: [| e |] st => z), zbool z.
-  Proof. admit. Admitted.
+  Proof.
+    intros.
+    dependent induction HT.
+    - inversion HVal. subst. right. eauto.
+    - inversion HVal. subst. left. eauto.
+    - inversion HVal.
+      + left. eauto.
+      + right. eauto.
+    - inversion HVal.
+      + left. eauto.
+      + right. eauto.
+    - inversion HVal.
+      + left. eauto.
+      + right. eauto.
+    - inversion HVal.
+      + left. eauto.
+      + right. eauto.
+    - inversion HVal.
+      + left. eauto.
+      + right. eauto.
+    - inversion HVal.
+      + left. eauto.
+      + right. eauto.
+    - inversion HVal.
+      inversion BOOLA;
+      inversion BOOLB;
+      subst;
+      eauto.
+    - inversion HVal.
+      inversion BOOLA;
+      inversion BOOLB;
+      subst;
+      eauto.
+  Qed.
 
 End StaticSemantics.
 
@@ -789,9 +879,49 @@ Module Renaming.
     rewrite (H0 y).
     reflexivity.
   Qed.
+
+  Lemma state_renaming_invariance (x : id) (st : state Z) (z : Z) (r : renaming)
+    : st / x => z <-> (rename_state r st) / rename_id r x => z.
+  Proof.
+    split; intros.
+    - dependent induction H.
+      + dependent destruction r.
+        constructor.
+      + dependent destruction r.
+        constructor.
+        * intro. apply H. eapply bijective_injective; eauto.
+        * eauto.
+    - dependent induction H.
+      + dependent destruction r.
+        dependent destruction st.
+        * inversion x0.
+        * dependent destruction p.
+          dependent destruction x0.
+          apply bijective_injective in b.
+          apply b in x.
+          subst.
+          constructor.
+      + dependent destruction r.
+        simpl in x0, IHst_binds, H0, H.
+        dependent destruction st; inversion x0.
+        dependent destruction p.
+        dependent destruction H2.
+        constructor.
+        * unfold "<>". intro.
+          assert (x x1 = x i).
+          -- rewrite H1. eauto.
+          -- contradiction.
+        * eapply IHst_binds; eauto.
+  Qed.
   
   Lemma eval_renaming_invariance (e : expr) (st : state Z) (z : Z) (r: renaming) :
     [| e |] st => z <-> [| rename_expr r e |] (rename_state r st) => z.
-  Proof. admit. Admitted.
+  Proof.
+    split; intros.
+    - dependent induction H; econstructor; eauto.
+      + apply state_renaming_invariance. eauto.
+    - dependent induction H; dependent destruction e; dependent destruction x; try econstructor; eauto.
+      + eapply state_renaming_invariance; eauto.
+  Qed.
     
 End Renaming.
