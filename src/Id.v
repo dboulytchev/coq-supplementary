@@ -64,30 +64,58 @@ Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
 Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof. prove_with Nat.eq_dec. Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof.
+  intros. destruct id_eq_dec; [reflexivity | congruence].
+Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof.
+  intros. destruct id_eq_dec as [H' | H']; [exfalso; apply H; exact H' | reflexivity].
+Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros id1 id2 H1 H2. destruct id1 as [n]. destruct id2 as [m].
+  inversion H1. inversion H2. apply Nat.lt_asymm in H3. 
+  apply H3 in H6. destruct H6.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n1] [n2] Hle Hgt.
+  inversion Hle as [n1' n2' Hle_nat].
+  inversion Hgt as [n2'' n1'' Hgt_nat].
+  apply Nat.le_ngt in Hle_nat.
+  apply Hle_nat; exact Hgt_nat.
+Qed.
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof. destruct id1, id2. intros H. destruct (le_lt_eq_dec n n0).
+  + inversion H. assumption.
+  + right. apply (gt_conv n0 n) in l. assumption.
+  + left. rewrite e. reflexivity.
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  destruct id1, id2. intros H. unfold not in H.
+  destruct (gt_eq_gt_dec n n0).
+  + destruct s.
+    - right. apply (gt_conv n0 n) in g. assumption.
+    - exfalso. apply H. rewrite e. reflexivity.
+  + apply (gt_conv n n0) in g. left. assumption. 
+Qed.
     
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n1] [n2] Heq Hgt.
+  inversion Heq. inversion Hgt. lia.
+Qed.
