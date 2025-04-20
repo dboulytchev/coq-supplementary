@@ -39,57 +39,143 @@ Section S.
     (SN : st_eval st x = n)
     (SM : st_eval st x = m) :
     n = m.
-  Proof using Type.
+  Proof.
     subst n. subst m. reflexivity.
   Qed.
-  
+
   Lemma state_deterministic (st : state) (x : id) (n m : A)   
     (SN : st / x => n)
     (SM : st / x => m) :
     n = m. 
-  Proof. admit. Admitted.
+  Proof.
+  induction st.
+  - inversion SM.
+  - inversion SN. subst.
+    * inversion SM. subst.
+      + reflexivity. 
+      + contradiction.
+    * inversion SM. subst.
+      + injection H6. intros. contradiction.
+      + subst. apply IHst in H4.
+        ** assumption.
+        ** assumption.
+  Qed. 
   
   Lemma update_eq (st : state) (x : id) (n : A) :
     st [x <- n] / x => n.
-  Proof. admit. Admitted.
+  Proof. 
+    apply st_binds_hd.
+  Qed. 
 
   Lemma update_neq (st : state) (x2 x1 : id) (n m : A)
         (NEQ : x2 <> x1) : st / x1 => m <-> st [x2 <- n] / x1 => m.
-  Proof. admit. Admitted.
-  
+  Proof. 
+     split.
+     - intro H. 
+       apply st_binds_tl.
+        + apply not_eq_id_sym in NEQ. apply NEQ.
+        + apply H.
+    - intro H. 
+      inversion H. 
+      subst.
+        + contradiction.
+        + subst. assumption.
+  Qed.
+
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
-  Proof. admit. Admitted.
-  
+  Proof.
+    split.
+    - intro H. inversion H. subst.
+      + apply st_binds_hd.
+      + subst. apply st_binds_tl.
+        * assumption.
+        * apply update_neq in H6.
+          ** assumption.
+          ** apply not_eq_id_sym in H5. assumption.
+    - intro H. inversion H. subst.
+      + apply st_binds_hd.
+      + subst. apply st_binds_tl.
+        * assumption.
+        * apply update_neq.
+          ** apply not_eq_id_sym in H5. assumption.
+          ** assumption.
+  Qed.
+
   Lemma update_same (st : state) (x1 x2 : id) (n1 m : A)
         (SN : st / x1 => n1)
         (SM : st / x2 => m) :
     st [x1 <- n1] / x2 => m.
-  Proof. admit. Admitted.
-  
+  Proof.
+    intros.
+    destruct (id_eq_dec x1 x2) as [eq | neq].
+    - rewrite eq in SN. destruct (state_deterministic st x2 n1 m).
+      + exact SN.
+      + exact SM.
+      + rewrite eq. apply update_eq.
+    - apply update_neq.
+      + assumption.
+      + assumption. 
+  Qed.
+
   Lemma update_permute (st : state) (x1 x2 x3 : id) (n1 n2 m : A)
         (NEQ : x2 <> x1)
         (SM : st [x2 <- n1][x1 <- n2] / x3 => m) :
     st [x1 <- n2][x2 <- n1] / x3 => m.
-  Proof. admit. Admitted.
+  Proof.
+    unfold update. unfold update in SM. inversion SM. subst.
+    - apply st_binds_tl.
+      + apply not_eq_id_sym. apply NEQ.
+      + apply st_binds_hd.
+    - subst. inversion H5. subst.
+      + apply update_eq.
+      + subst. apply st_binds_tl.
+        * assumption.
+        * apply st_binds_tl.
+          ** assumption.
+          ** assumption.
+  Qed.    
 
   Lemma state_extensional_equivalence (st st' : state) (H: forall x z, st / x => z <-> st' / x => z) : st = st'.
-  Proof. admit. Admitted.
+  Proof.
+    destruct st as [| p], st' as [| p'].
+    - reflexivity.
+    - *
+  Abort.
 
   Definition state_equivalence (st st' : state) := forall x a, st / x => a <-> st' / x => a.
 
   Notation "st1 ~~ st2" := (state_equivalence st1 st2) (at level 0).
 
   Lemma st_equiv_refl (st: state) : st ~~ st.
-  Proof. admit. Admitted.
+  Proof.
+    unfold state_equivalence.
+    intros.
+    split.
+    - intro H. exact H.
+    - intro H. exact H.
+  Qed.
 
   Lemma st_equiv_symm (st st': state) (H: st ~~ st') : st' ~~ st.
-  Proof. admit. Admitted.
+  Proof.
+    unfold state_equivalence. unfold state_equivalence in H.
+    intros.
+    split.
+    - apply H.
+    - apply H.
+  Qed.
 
   Lemma st_equiv_trans (st st' st'': state) (H1: st ~~ st') (H2: st' ~~ st'') : st ~~ st''.
-  Proof. admit. Admitted.
+  Proof.
+    unfold state_equivalence.
+    intros.
+    split.
+    - intro H. apply H1 in H. apply H2 in H. exact H.
+    - intro H. apply H2 in H. apply H1 in H. exact H.
+  Qed.
 
   Lemma equal_states_equive (st st' : state) (HE: st = st') : st ~~ st'.
-  Proof. admit. Admitted.
-  
+  Proof.
+    rewrite HE. apply st_equiv_refl.
+  Qed.
 End S.

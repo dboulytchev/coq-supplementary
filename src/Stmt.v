@@ -3,6 +3,7 @@ Import ListNotations.
 Require Import Lia.
 
 Require Import BinInt ZArith_dec Zorder ZArith.
+Require Import Coq.Program.Equality.
 Require Export Id.
 Require Export State.
 Require Export Expr.
@@ -136,38 +137,136 @@ Module SmokeTest.
   (* Associativity of sequential composition *)
   Lemma seq_assoc (s1 s2 s3 : stmt) :
     ((s1 ;; s2) ;; s3) ~~~ (s1 ;; (s2 ;; s3)).
-  Proof. admit. Admitted.
-  
+  Proof. 
+    unfold bs_equivalent. intros c c'. split.
+    - intro H.
+      seq_inversion.
+      seq_inversion.
+      pose proof (bs_Seq c'1 c'0 c' s2 s3) as H1.
+      apply H1 in STEP3.
+      pose proof (bs_Seq c c'1 c' s1 (s2 ;; s3)) as H2.
+      apply H2 in STEP0.
+      + exact STEP0.
+      + exact STEP3.
+      + exact STEP2.
+    - intro H.
+      seq_inversion.
+      seq_inversion.
+      pose proof (bs_Seq c c'0 c'1 s1 s2) as H1.
+      apply H1 in STEP1.
+      pose proof (bs_Seq c c'1 c' (s1 ;; s2) s3) as H2.
+      apply H2 in STEP1.
+      + exact STEP1.
+      + exact STEP3.
+      + exact STEP0.
+  Qed.
+
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent. intros c c'. split.
+    - intro H.
+      inversion H.
+      + pose proof (bs_Skip c).
+        pose proof (bs_If_False st i o c e (s;; (WHILE e DO s END)) SKIP) as H5.
+        rewrite H0 in H5.
+        constructor.
+        * exact CVAL.
+        * pose proof (bs_Seq c c'0 c' s (WHILE e DO s END)) as H6.
+          rewrite H0 in STEP.
+          apply H6 in STEP.
+          rewrite H0.
+          ** exact STEP.
+          ** exact WSTEP.
+      + pose proof (bs_Skip c).
+        pose proof (bs_If_False st i o c e (s ;; (WHILE e DO s END)) SKIP).
+        rewrite H0 in H5.
+        apply H5 in CVAL.
+        rewrite H0.
+        * exact CVAL.
+        * exact H4.
+    - intro H.
+      inversion H.
+      + seq_inversion.
+        pose proof (bs_While_True s0 i o c'1 c' e s).
+        apply H5 in CVAL.
+        * exact CVAL.
+        * exact STEP1.
+        * exact STEP2.
+      + inversion STEP.
+        rewrite H0.
+        pose proof (bs_While_False s0 i o e s).
+        apply H5 in CVAL.
+        rewrite H0 in CVAL.
+        exact CVAL.
+  Qed.
       
   (* Terminating loop invariant *)
   Lemma while_false (e : expr) (s : stmt) (st : state Z)
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof. admit. Admitted.
-  
+  Proof.
+    remember (WHILE e DO s END) as s' eqn:Heqs'.
+    remember ((st, i, o)) as c' eqn:Heqc'.
+    induction EXE. 
+    all: try (inversion Heqs').
+    - subst. apply IHEXE2. all: (reflexivity). 
+    - subst. inversion Heqc'. rewrite <- H0. exact CVAL.
+  Qed.
+
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
     (WHILE (Nat 1) DO SKIP END) ~~~
     (COND (Nat 3) THEN SKIP ELSE SKIP END).
-  Proof. admit. Admitted.
-  
+  Proof.
+    unfold bs_equivalent. intros c c'. split.
+    - intro H.
+      inversion H.
+      + destruct c' as [[st' i'] o']. apply while_false in H. inversion H. 
+      + inversion CVAL.
+    - intro H.
+      inversion H.
+      + inversion CVAL.
+      + inversion CVAL.
+  Qed.
+
   (* Loops with equivalent bodies are equivalent *)
   Lemma while_eq (e : expr) (s1 s2 : stmt)
         (EQ : s1 ~~~ s2) :
     WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-  Proof. admit. Admitted.
-  
+  Proof.
+    unfold bs_equivalent. intros c c'. split.
+    - intro H. dependent induction H.
+      + pose proof (bs_While_True st i o c' c'' e s2) as H2.
+        apply H2 in CVAL.
+        * exact CVAL.
+        * apply EQ. exact H.
+        * pose proof (IHbs_int2 e s1). apply H1 in EQ. assumption. reflexivity.
+      + pose proof (bs_While_False st i o e s2). apply H in CVAL. exact CVAL.
+    - intro H. dependent induction H.
+      + pose proof (bs_While_True st i o c' c'' e s1) as H2.
+        apply H2 in CVAL.
+        * exact CVAL.
+        * apply EQ. exact H.
+        * pose proof (IHbs_int2 e s2). apply H1 in EQ. assumption. reflexivity.
+      + pose proof (bs_While_False st i o e s1). apply H in CVAL. exact CVAL.
+  Qed.
+
   (* Loops with the constant true condition don't terminate *)
   (* Exercise 4.8 from Winskel's *)
   Lemma while_true_undefined c s c' :
     ~ c == WHILE (Nat 1) DO s END ==> c'.
-  Proof. admit. Admitted.
-  
+    Proof.
+      unfold not. intro H. 
+      remember c as c1 eqn:Heqc1. destruct c1 as [[st i] o]. 
+      remember c' as c'1. destruct c'1 as [[st' i'] o']. 
+      pose proof (while_false (Nat 1) s st' i' o' c) as H1.
+      rewrite <- Heqc1 in H1.
+      apply H1 in H.
+      inversion H.
+    Qed.
 End SmokeTest.
 
 (* Semantic equivalence is a congruence *)
@@ -219,7 +318,44 @@ Ltac eval_zero_not_one :=
 Lemma bs_int_deterministic (c c1 c2 : conf) (s : stmt)
       (EXEC1 : c == s ==> c1) (EXEC2 : c == s ==> c2) :
   c1 = c2.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent c2. induction EXEC1.
+  - intros c2 EXEC2. inversion EXEC2. reflexivity.
+  - intros c2 EXEC2. inversion EXEC2. subst. pose proof (eval_deterministic e s z z0) as H. apply H in VAL.
+    + subst. reflexivity.
+    + assumption.
+  - intros c2 EXEC2. inversion EXEC2. subst. reflexivity.
+  - intros c2 EXEC2. inversion EXEC2. subst. pose proof (eval_deterministic e s z z0) as H. apply H in VAL.
+    + subst. reflexivity.
+    + assumption.
+  - intros c2 EXEC2. 
+    inversion EXEC2. subst. 
+    apply (IHEXEC1_2 c2). 
+    specialize (IHEXEC1_1 c'0). apply IHEXEC1_1 in STEP1. 
+    rewrite <- STEP1 in STEP2. specialize (IHEXEC1_2 c2). 
+    apply IHEXEC1_2 in STEP2. rewrite STEP2 in EXEC1_2. exact EXEC1_2.
+  - intros c2 EXEC2. inversion EXEC2.
+    + subst. specialize (IHEXEC1 c2). apply IHEXEC1 in STEP. exact STEP.
+    + subst. pose proof (eval_deterministic e s 1 0) as H. apply H in CVAL.
+      * inversion CVAL.
+      * assumption.
+  - intros c2 EXEC2. inversion EXEC2.
+    + subst. pose proof (eval_deterministic e s 0 1) as H. apply H in CVAL.
+      * inversion CVAL.
+      * assumption.
+    + subst. specialize (IHEXEC1 c2). apply IHEXEC1 in STEP. exact STEP.
+  - intros c2 EXEC2. inversion EXEC2.
+    + subst. specialize (IHEXEC1_1 c'0). apply IHEXEC1_1 in STEP. 
+      rewrite <- STEP in WSTEP. specialize (IHEXEC1_2 c2). apply IHEXEC1_2 in WSTEP. exact WSTEP.
+    + subst. pose proof (eval_deterministic e st 0 1) as H. apply H in CVAL.
+      * inversion CVAL.
+      * assumption.
+  - intros c2 EXEC2. inversion EXEC2.
+    + subst. pose proof (eval_deterministic e st 0 1) as H. apply H in CVAL.
+      * inversion CVAL.
+      * assumption.
+    + subst. reflexivity.
+Qed.
 
 Definition equivalent_states (s1 s2 : state Z) :=
   forall id, Expr.equivalent_states s1 s2 id.
