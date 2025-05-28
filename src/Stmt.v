@@ -107,10 +107,26 @@ Definition contextual_equivalent (s1 s2 : stmt) :=
 Notation "s1 '~c~' s2" := (contextual_equivalent s1 s2) (at level 42, no associativity).
 
 Lemma contextual_equiv_stronger (s1 s2 : stmt) (H: s1 ~c~ s2) : s1 ~e~ s2.
-Proof. admit. Admitted.
+Proof.
+  unfold contextual_equivalent, eval_equivalent in *.
+  intros i o; specialize (H Hole i o); simpl in H; auto.
+Qed.
 
 Lemma eval_equiv_weaker : exists (s1 s2 : stmt), s1 ~e~ s2 /\ ~ (s1 ~c~ s2).
-Proof. admit. Admitted.
+Proof.
+  exists ((Id 1) ::= (Nat 2)).
+  exists ((Id 1) ::= (Nat 0)).
+  split.
+  - constructor; intros; inversion H; inversion H0; econstructor; eauto.
+  - unfold not. intro. unfold contextual_equivalent in H.
+    specialize (H (SeqL Hole (WRITE (Var (Id 1))))).
+    simpl in H. unfold eval_equivalent in H.
+    specialize (H ([]) ([2%Z])). inversion H. destruct H0.
+    + repeat econstructor.
+    + inversion H0. subst. inversion STEP1. subst. inversion VAL. subst.
+      inversion STEP2. subst. inversion VAL0. subst. inversion VAR. subst.
+      inversion H8.
+Qed.
 
 (* Big step equivalence *)
 Definition bs_equivalent (s1 s2 : stmt) :=
@@ -136,37 +152,90 @@ Module SmokeTest.
   (* Associativity of sequential composition *)
   Lemma seq_assoc (s1 s2 s3 : stmt) :
     ((s1 ;; s2) ;; s3) ~~~ (s1 ;; (s2 ;; s3)).
-  Proof. admit. Admitted.
+    Proof.
+      unfold bs_equivalent. intros c c'. split.
+      - intros H. inversion H; subst. inversion STEP1; subst.
+        apply bs_Seq with c'1. assumption.
+        apply bs_Seq with c'0; assumption.
+      - intros H. inversion H; subst. inversion STEP2; subst.
+        apply bs_Seq with c'1.
+        apply bs_Seq with c'0; assumption.
+        assumption.
+    Qed.
+
   
   (* One-step unfolding *)
   Lemma while_unfolds (e : expr) (s : stmt) :
     (WHILE e DO s END) ~~~ (COND e THEN s ;; WHILE e DO s END ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent. intros. split. all: intros.
+    - inversion H. subst. all: eauto.
+    - inversion H. all: subst. all: try inversion STEP. all: eauto.
+  Qed.
       
   (* Terminating loop invariant *)
   Lemma while_false (e : expr) (s : stmt) (st : state Z)
         (i o : list Z) (c : conf)
         (EXE : c == WHILE e DO s END ==> (st, i, o)) :
     [| e |] st => Z.zero.
-  Proof. admit. Admitted.
+  Proof.
+    remember (WHILE e DO s END) as prog.
+    remember ((st, i, o)) as state.
+    induction EXE; inversion Heqprog.
+    - subst. apply IHEXE2; reflexivity.
+    - inversion Heqstate. subst. assumption.
+  Qed.
   
   (* Big-step semantics does not distinguish non-termination from stuckness *)
   Lemma loop_eq_undefined :
     (WHILE (Nat 1) DO SKIP END) ~~~
     (COND (Nat 3) THEN SKIP ELSE SKIP END).
-  Proof. admit. Admitted.
+  Proof.
+    unfold bs_equivalent.
+    intros. split.
+    - intro.
+      inversion_clear H. inversion STEP.
+      destruct c' eqn:E. destruct p.
+      apply (while_false (Nat 1) SKIP s l0 l c'0) in WSTEP.
+      inversion WSTEP.
+      inversion CVAL.
+    - intro.
+      inversion_clear H;
+      inversion CVAL.
+  Qed.
+  
   
   (* Loops with equivalent bodies are equivalent *)
   Lemma while_eq (e : expr) (s1 s2 : stmt)
         (EQ : s1 ~~~ s2) :
     WHILE e DO s1 END ~~~ WHILE e DO s2 END.
-  Proof. admit. Admitted.
+    Proof.
+      split; intros H.
+      * remember (WHILE e DO s1 END) as loop1 in H.
+        induction H; inversion Heqloop1; subst.
+        -- eapply bs_While_True; eauto.
+           apply EQ. auto.
+        -- apply bs_While_False; auto.
+      * remember (WHILE e DO s2 END) as loop2 in H.
+        induction H; inversion Heqloop2; subst.
+        -- eapply bs_While_True; eauto.
+           apply EQ. auto.
+        -- apply bs_While_False; auto.
+    Qed.
   
   (* Loops with the constant true condition don't terminate *)
   (* Exercise 4.8 from Winskel's *)
   Lemma while_true_undefined c s c' :
     ~ c == WHILE (Nat 1) DO s END ==> c'.
-  Proof. admit. Admitted.
+  Proof. 
+    intros H.
+    remember (WHILE Nat 1 DO s END) as loop.
+    induction H; try discriminate.
+    - inversion Heqloop; subst. 
+      apply IHbs_int2; auto.
+    - inversion Heqloop; subst.
+      inversion CVAL.
+  Qed.
   
 End SmokeTest.
 
