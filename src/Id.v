@@ -104,11 +104,16 @@ Qed.
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. intros id1 id2 H0. destruct (gt_eq_gt_id_dec id1 id2) as [[H1 | H1] | H1].
-  {exfalso. destruct (le_gt_id_false id2 id1 H0 H1). }
-  {left. apply H1. }
-  {right. apply H1. }
-Qed.
+Proof.
+  intros.
+  destruct id1.
+  destruct id2.
+  destruct (le_lt_eq_dec n n0).
+  - inversion H; auto.
+  - right. apply gt_conv. auto.
+  - left. rewrite e. reflexivity.
+Qed.  
+
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
 Proof. 
