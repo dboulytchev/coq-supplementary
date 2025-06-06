@@ -64,30 +64,70 @@ Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
 Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof. prove_with eq_nat_dec. Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof. 
+  intros. 
+  destruct (id_eq_dec x x) as [Heq | Hneq].
+  - reflexivity.
+  - contradiction.
+Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof. 
+  intros.
+  destruct (id_eq_dec x y) as [Heq | Hneq].
+  - contradiction.
+  - reflexivity.
+Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof. 
+  intros id1 id2 H1 H2.
+  destruct id1 as [n1], id2 as [n2].
+  inversion H1 as [n1' n2' H1'].
+  inversion H2 as [n2'' n1'' H2'].
+  lia.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof. 
+  intros id1 id2 H1 H2.
+  destruct id1 as [n1], id2 as [n2].
+  inversion H1 as [n1' n2' H1'].
+  inversion H2 as [n2'' n1'' H2'].
+  lia.
+Qed.
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
-
+Proof. intros id1 id2 H0. destruct (gt_eq_gt_id_dec id1 id2) as [[H1 | H1] | H1].
+  {exfalso. destruct (le_gt_id_false id2 id1 H0 H1). }
+  {left. apply H1. }
+  {right. apply H1. }
+Qed.
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof. 
+  intros id1 id2 H.
+  destruct id1 as [n1], id2 as [n2].
+  destruct (lt_dec n1 n2) as [Hlt | Hge].
+  - right. constructor. assumption.
+  - left. constructor. 
+    destruct (eq_nat_dec n1 n2) as [Heq | Hneq].
+    + exfalso. apply H. rewrite Heq. reflexivity.
+    + apply not_le in Hge. lia.
+Qed.
     
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof. 
+  intros id1 id2 H1 H2.
+  rewrite H1 in H2.
+  destruct id2 as [n].
+  inversion H2 as [n' n'' H'].
+  lia.
+Qed.
