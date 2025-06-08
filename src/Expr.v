@@ -1,5 +1,3 @@
-Set Warnings "-notation-overridden,-non-recursive,-implicit-core-hint-db".
-
 Require Import FinFun.
 Require Import BinInt ZArith_dec.
 Require Export Id.
