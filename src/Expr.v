@@ -1,3 +1,5 @@
+Set Warnings "-notation-overridden,-non-recursive,-implicit-core-hint-db".
+
 Require Import FinFun.
 Require Import BinInt ZArith_dec.
 Require Export Id.
@@ -55,7 +57,6 @@ Definition zor (x y : Z) : Z :=
 Reserved Notation "[| e |] st => z" (at level 0).
 Notation "st / x => y" := (st_binds Z st x y) (at level 0).
 
-(* Big-step evaluation relation *)
 Inductive eval : expr -> state Z -> Z -> Prop := 
   bs_Nat  : forall (s : state Z) (n : Z), [| Nat n |] s => n
 
@@ -197,11 +198,15 @@ Module SmokeTest.
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
     [| e [+] e |] s => z.
-  Proof. admit. Admitted.
+  Proof.
+    inversion HH; subst.
+    inversion VALB; subst.
+    rewrite <- Zplus_diag_eq_mult_2.
+    apply bs_Add; assumption.
+  Qed.
   
 End SmokeTest.
 
-(* A relation of one expression being of a subexpression of another *)
 Reserved Notation "e1 << e2" (at level 0).
 
 Inductive subexpr : expr -> expr -> Prop :=
@@ -212,7 +217,16 @@ where "e1 << e2" := (subexpr e1 e2).
 
 Lemma strictness (e e' : expr) (HSub : e' << e) (st : state Z) (z : Z) (HV : [| e |] st => z) :
   exists z' : Z, [| e' |] st => z'.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent z.
+  generalize dependent st.
+  induction HSub; intros.
+  - exists z. exact HV.
+  - inversion HV; subst; 
+    apply IHHSub with za; assumption.
+  - inversion HV; subst;
+    apply IHHSub with zb; assumption.
+Qed.
 
 Reserved Notation "x ? e" (at level 0).
 
@@ -232,7 +246,14 @@ Lemma defined_expression
       (RED : [| e |] s => z)
       (ID  : id ? e) :
   exists z', s / id => z'.
-Proof. admit. Admitted.
+Proof. 
+  generalize dependent z.
+  induction e; intros; inversion ID; inversion RED.
+  { exists z. rewrite <- H1. assumption. }
+  all: destruct H3; try solve 
+  [ apply IHe1 with (z := za); assumption 
+  | apply IHe2 with (z := zb); assumption ].
+Qed.
 
 (* If a variable in expression is undefined in some state, then the expression
    is undefined is that state as well
