@@ -64,30 +64,60 @@ Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
 Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof. prove_with Nat.eq_dec. Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof. intros. destruct (id_eq_dec x x); auto. contradiction. Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof. intros. destruct (id_eq_dec x y); auto. contradiction. Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof. intros id1 id2 H F. destruct id1, id2. 
+  destruct (gt_dec n n0).
+  destruct (Nat.lt_asymm n0 n). assumption. inversion F. assumption.
+  apply n1. inversion H. assumption.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof. destruct id1, id2. intros H F.
+  inversion H. inversion F. apply (Nat.le_ngt n0 n).
+  unfold not. assumption.
+  assumption.
+Qed.
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof. destruct id1, id2. intros H. destruct (le_lt_eq_dec n n0).
+  inversion H. assumption.
+  right. apply (gt_conv n0 n) in l. assumption.
+  left. rewrite e. reflexivity.
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
-    
+Proof. destruct id1, id2. intros H. unfold not in H.
+  destruct (gt_eq_gt_dec n n0).
+  + destruct s.
+    - right. apply (gt_conv n0 n) in g. assumption.
+    - exfalso. apply H. rewrite e. reflexivity.
+  + apply (gt_conv n n0) in g. left. assumption.
+Qed.
+
+Lemma neq_id_sym : forall id1 id2 : id,
+    id1 <> id2 -> id2 <> id1.
+Proof. destruct id1, id2.
+  intros H.
+  destruct (id_eq_dec (Id n0) (Id n)).
+  + rewrite e in H. contradiction.
+  + assumption.
+Qed. 
+
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof. destruct id1, id2. intros H F. 
+  injection H as G. rewrite G in F. inversion F.
+  apply Nat.lt_irrefl in H1. assumption. 
+Qed.
