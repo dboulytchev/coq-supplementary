@@ -4,6 +4,7 @@ Require Export Id.
 Require Export State.
 Require Export Lia.
 
+Require Import Coq.Program.Equality.
 Require Import List.
 Import ListNotations.
 
@@ -179,11 +180,19 @@ where "[| e |] st => z" := (eval e st z).
 
 Module SmokeTest.
 
-  Lemma zero_always x (s : state Z) : [| Var x [*] Nat 0 |] s => Z.zero.
-  Proof. admit. Admitted.
+  Lemma zero_always x (s : state Z) (n : Z) (H: s / x => n) : [| Var x [*] Nat 0 |] s => Z.zero.
+  Proof.
+    assert ((n * 0)%Z = Z.zero) as H0 by (apply Zmult_0_r).
+    rewrite <- H0.
+    apply bs_Mul with (za := n) (zb := Z.zero).
+    - apply bs_Var. exact H.
+    - apply bs_Nat.
+  Qed.
   
   Lemma nat_always n (s : state Z) : [| Nat n |] s => n.
-  Proof. admit. Admitted.
+  Proof. 
+    apply bs_Nat.
+  Qed.
   
   Lemma double_and_sum (s : state Z) (e : expr) (z : Z)
         (HH : [| e [*] (Nat 2) |] s => z) :
