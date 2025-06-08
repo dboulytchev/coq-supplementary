@@ -598,7 +598,18 @@ Module Renaming.
   Qed.
     
   Lemma renaming_invariant (s : stmt) (r : renaming) : s ~e~ (rename r s).
-  Proof. admit. Admitted.
+  Proof. 
+    unfold eval_equivalent, eval.
+    split; intros [st H].
+    - exists (Renaming.rename_state r st).
+      apply (renaming_invariant_bs s r ([], i, []) (st, [], o) H).
+    - remember (Renaming.renaming_inv2 r) as rinv eqn:Hr.
+      destruct rinv.
+      exists (Renaming.rename_state x st).
+      rewrite <- (rename_conf_inv r x r0 (st, [], o)) in H.
+      apply (renaming_invariant_bs_inv s r ([], i, [])) in H.
+      simpl in H. auto.
+  Qed.
   
 End Renaming.
 
