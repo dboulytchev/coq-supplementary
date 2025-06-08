@@ -1,0 +1,7 @@
+_[^_]*
+.Makefile*
+*.coq*
+**/*.aux
+**/*.glob
+**/*.vo*
+.lia*
