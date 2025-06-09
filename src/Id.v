@@ -2,6 +2,7 @@
 
 Require Import Arith Arith.EqNat.
 Require Import Lia.
+Require Import Coq.Program.Equality.
 
 Inductive id : Type :=
   Id : nat -> id.
@@ -64,30 +65,67 @@ Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
 Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof. prove_with eq_nat_dec. Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (id_eq_dec x x).
+  - reflexivity.
+  - contradiction.
+Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (id_eq_dec x y).
+  - contradiction.
+  - reflexivity.
+Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct id1, id2.
+  inversion H. inversion H0.
+  lia.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct id1, id2.
+  inversion H. inversion H0.
+  lia.
+Qed.
 
-Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
+Lemma le_lt_eq_id_dec : forall id1 id2 : id,
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (lt_eq_lt_id_dec id1 id2) as [[H1 | H2] | H3].
+  - right. inversion H1. apply gt_conv. lia.
+  - auto.
+  - right. inversion H3. subst. inversion H. subst. lia.
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct (gt_eq_gt_id_dec id1 id2) as [[H1 | H2] | H3].
+  - auto.
+  - contradiction.
+  - auto.
+Qed.
     
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros.
+  destruct id1, id2.
+  inversion H. inversion H0.
+  lia.
+Qed.
