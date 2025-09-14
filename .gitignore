@@ -1,0 +1,6 @@
+src/*
+!src/*.v
+*Makefile*
+!Makefile
+_CoqProject
+.lia.cache
