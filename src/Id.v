@@ -64,30 +64,89 @@ Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
 Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof. 
+prove_with Nat.eq_dec .
+Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof. 
+intros T x p q.
+(*хз поч не сработало assert (ea : (id_eq_dec x x) = True). *)
+destruct (id_eq_dec x x).
+- reflexivity.
+- contradiction n. reflexivity.  
+Qed.   
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof.
+intros T x y p q ne1.
+destruct (id_eq_dec x y).
+- contradiction ne1.
+- reflexivity.
+Qed. 
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof. 
+(* Search ((?id1 > ?id2  ?id2 > ?id1) -> False). *)
+
+  intros id1 id2 a1 a2.
+  inversion a1 as [n1 m1].
+  inversion a2 as [m2 n2].
+  subst.
+  injection H3 as mm.
+  injection H4 as nn.
+  subst.
+  lia.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof. 
+  intros id1 id2 a1 a2.
+  inversion a1 as [n1 m1].
+  inversion a2 as [m2 n2].
+  subst.
+  injection H3 as mm.
+  injection H4 as nn.
+  subst.
+  lia.
+Qed.
+
+(* Check ( (le_gt_id_dec (Id 3) (Id 4))). *)
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof. 
+  intros.
+  destruct id1. destruct id2. 
+  destruct (le_lt_eq_dec n n0).
+  inversion H.
+  eauto.
+  right. apply gt_conv. eauto.
+  left. eauto.  
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
-    
+Proof. 
+  intros.
+  destruct (gt_eq_gt_id_dec id1 id2).
+  destruct s.
+  left. eauto.
+  contradiction.
+  right. eauto.
+Qed.  
+
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof. 
+  intros n m. 
+  destruct n.
+  destruct m.
+  subst.
+  intros H1 H2.
+  inversion H1. inversion H2. 
+  lia.
+Qed. 
+ 
