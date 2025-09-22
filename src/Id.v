@@ -64,30 +64,109 @@ Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
 Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof. prove_with Nat.eq_dec. Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof.
+  intros. destruct id_eq_dec as [_|D].
+  - reflexivity.
+  - unfold not in D. destruct D. reflexivity.
+Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof. 
+  intros. destruct id_eq_dec as [D|_].
+  -  unfold not in H. apply H in D. destruct D.
+  - reflexivity.
+Qed.
+
+Lemma lt_gt_false: forall n m : nat,
+  n > m -> m > n -> False.
+Proof.
+  intros.
+  unfold gt in H.
+  unfold gt in H0.
+  set (Nat.lt_trans n m n) as J.
+  apply J in H0.
+  - set (Nat.lt_irrefl n) as J2. unfold not in J2. apply J2 in H0. destruct H0.
+  - apply H. 
+Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof. 
+  intros.
+  inversion H.
+  inversion H0.
+  rewrite <- H3 in H5. injection H5 as H5.
+  rewrite <- H2 in H6. injection H6 as H6.
+  rewrite H5 in H4. rewrite H6 in H4.
+  apply lt_gt_false in H1.
+  - destruct H1.
+  - apply H4.
+Qed.
+
+
+Lemma le_gt_false: forall n m : nat,
+  m <= n -> m > n -> False.
+Proof.
+  intros.
+  unfold gt in H0.
+  set (Nat.lt_le_trans n m n) as J.
+  apply J in H0.
+  - set (Nat.lt_irrefl n) as J2. unfold not in J2. apply J2 in H0. destruct H0.
+  - apply H. 
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof. 
+  intros.
+  inversion H.
+  inversion H0.
+  rewrite <- H3 in H6. injection H6 as H6.
+  rewrite <- H2 in H5. injection H5 as H5.
+  rewrite H5 in H4. rewrite H6 in H4.
+  apply le_gt_false in H1.
+  - destruct H1.
+  - apply H4.
+Qed.
+
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof. 
+  intros.
+  destruct id1, id2.
+  destruct (n ?= n0) eqn:res.
+  - apply Nat.compare_eq in res. left. apply f_equal. apply res.
+  - apply Nat.compare_lt_iff in res. right.  
+    assert (J: n0 > n). { apply res. } apply gt_conv in J. apply J.
+  - apply Nat.compare_gt_iff in res. assert (J: n > n0). { apply res. }
+    apply gt_conv in J. apply le_gt_id_false in H.
+    * destruct H.
+    * apply J.
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
-    
+Proof.
+  intros.
+  destruct id1, id2.
+  destruct (n ?= n0) eqn:res.
+  - apply Nat.compare_eq in res. unfold not in H. destruct H. apply f_equal. apply res.
+  - apply Nat.compare_lt_iff in res. right.  
+  assert (J: n0 > n). { apply res. } apply gt_conv in J. apply J.
+  - apply Nat.compare_gt_iff in res. assert (J: n > n0). { apply res. }
+  apply gt_conv in J. left. apply J.
+Qed.
+
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof. intros.
+  destruct H.
+  inversion H0.
+  unfold gt in H2.
+  specialize Nat.lt_irrefl with n. unfold not.
+  intros. apply H3 in H2. destruct H2.
+Qed.
