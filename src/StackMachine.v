@@ -218,7 +218,7 @@ Module StraightLine.
         (VAL : [| e |] st => n) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o).
   Proof.
-    replace (compile_expr e) with (compile_expr e ++ nil) by (symmetry; apply app_nil_end).
+    replace (compile_expr e) with (compile_expr e ++ nil) by apply app_nil_r.
     apply (compiled_expr_correct_cont e st s i o n nil); auto.
     constructor; constructor.
   Qed.
