@@ -9,12 +9,12 @@ Require Export Id.
 Section S.
 
   Variable A : Set.
-  
-  Definition state := list (id * A). 
+
+  Definition state := list (id * A).
 
   Reserved Notation "st / x => y" (at level 0).
 
-  Inductive st_binds : state -> id -> A -> Prop := 
+  Inductive st_binds : state -> id -> A -> Prop :=
     st_binds_hd : forall st id x, ((id, x) :: st) / id => x
   | st_binds_tl : forall st id x id' x', id <> id' -> st / id => x -> ((id', x')::st) / id => x
   where "st / x => y" := (st_binds st x y).
@@ -22,7 +22,7 @@ Section S.
   Definition update (st : state) (id : id) (a : A) : state := (id, a) :: st.
 
   Notation "st [ x '<-' y ]" := (update st x y) (at level 0).
-  
+
   (* Functional version of binding-in-a-state relation *)
   Fixpoint st_eval (st : state) (x : id) : option A :=
     match st with
@@ -30,7 +30,7 @@ Section S.
         if id_eq_dec x' x then Some a else st_eval st' x
     | [] => None
     end.
- 
+
   (* State a prove a lemma which claims that st_eval and
      st_binds are actually define the same relation.
   *)
@@ -42,11 +42,11 @@ Section S.
   Proof using Type.
     subst n. subst m. reflexivity.
   Qed.
-  
-  Lemma state_deterministic (st : state) (x : id) (n m : A)   
+
+  Lemma state_deterministic (st : state) (x : id) (n m : A)
     (SN : st / x => n)
     (SM : st / x => m) :
-    n = m. 
+    n = m.
   Proof.
     revert m SM.
     induction SN; intros m SM.
@@ -56,7 +56,7 @@ Section S.
       + exfalso; auto.
       + apply IHSN. assumption.
   Qed.
-  
+
   Lemma update_eq (st : state) (x : id) (n : A) :
     st [x <- n] / x => n.
   Proof.
@@ -75,7 +75,7 @@ Section S.
       + exfalso. apply NEQ. reflexivity.
       + assumption.
   Qed.
-  
+
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
   Proof.
@@ -104,7 +104,7 @@ Section S.
         destruct (update_neq (st[x2 <- n1]) x2 x1 n2 m Hneq') as [H3 _].
         apply H3. exact H.
   Qed.
-  
+
   Lemma update_same (st : state) (x1 x2 : id) (n1 m : A)
         (SN : st / x1 => n1)
         (SM : st / x2 => m) :
@@ -119,12 +119,12 @@ Section S.
       + intro Heq. apply Hneq. symmetry. exact Heq.
       + exact SM.
   Qed.
-  
+
   Lemma update_permute (st : state) (x1 x2 x3 : id) (n1 n2 m : A)
         (NEQ : x2 <> x1)
         (SM : st [x2 <- n1][x1 <- n2] / x3 => m) :
     st [x1 <- n2][x2 <- n1] / x3 => m.
-  Proof. 
+  Proof.
     specialize id_eq_dec with x2 x3. intros [H | H].
     - rewrite H. rewrite H in SM. inversion SM.
       * rewrite H0 in NEQ. rewrite H in NEQ. contradiction.
@@ -163,7 +163,7 @@ Section S.
           -- apply IHst. assumption.
   Qed.
 
-  Lemma state_extensional_equivalence_contra : 
+  Lemma state_extensional_equivalence_contra :
     (exists a : A, True) -> ~(forall st st', (forall x z, st/x => z <-> st' / x => z) -> st = st').
   Proof.
     unfold not. intros [a _] H.
@@ -199,5 +199,5 @@ Section S.
   Proof.
     subst. apply st_equiv_refl.
   Qed.
-  
+
 End S.
