@@ -64,30 +64,67 @@ Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
 Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof.
+  decide equality.
+  apply eq_nat_dec.
+Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof.
+  intros T x p q.
+  destruct (id_eq_dec x x) as [_|H].
+  - reflexivity.
+  - exfalso. apply H. reflexivity.
+Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof.
+  intros T x y p q Hneq.
+  destruct (id_eq_dec x y) as [Heq|Hne].
+  - contradiction.
+  - reflexivity.
+Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n] [m] Hgt1 Hgt2.
+  inversion Hgt1; inversion Hgt2; subst.
+  lia.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n] [m] Hle Hgt.
+  inversion Hle; inversion Hgt; subst.
+  lia.
+Qed.
 
-Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
-    id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Lemma le_lt_eq_id_dec id1 id2 : id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
+Proof.
+  intro Hle.
+  destruct (gt_eq_gt_id_dec id1 id2) as [[Hgt|Heq]|Hgt].
+  - exfalso. eapply le_gt_id_false; eauto.
+  - now left.
+  - now right.
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
-    
+Proof.
+  intros [n] [m] Hneq.
+  destruct (lt_eq_lt_dec n m) as [[Hlt|Heq]|Hgt].
+  - right. constructor. exact Hlt.
+  - exfalso. apply Hneq. now f_equal.
+  - left. constructor. exact Hgt.
+Qed.
+
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n] [m] Heq Hgt.
+  inversion Heq; subst.
+  inversion Hgt; subst.
+  lia.
+Qed.
