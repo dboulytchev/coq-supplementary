@@ -190,7 +190,9 @@ Module StraightLine.
   | Nat  n       => [C n]
   | Bop op e1 e2 => compile_expr e1 ++ compile_expr e2 ++ [B op]
   end.
-  
+
+  Require Import Stdlib.Program.Equality.
+
   (* Partial correctness of expression compiler *)
   Lemma compiled_expr_correct_cont
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
@@ -198,7 +200,16 @@ Module StraightLine.
         (VAL : [| e |] st => n)
         (EXEC: (n::s, st, i, o) -- p --> c) :        
     (s, st, i, o) -- (compile_expr e) ++ p --> c.
-  Proof. admit. Admitted.
+   Proof.
+    generalize dependent p.
+    generalize dependent s.
+    induction VAL; intros; simpl;
+      try (rewrite <- app_assoc; apply IHVAL1;
+           rewrite <- app_assoc; apply IHVAL2;
+           constructor; assumption; assumption).
+    - econstructor. eauto.
+    - eapply sm_Load; eauto.
+  Qed.
 
   #[export] Hint Resolve compiled_expr_correct_cont.
   
@@ -206,25 +217,71 @@ Module StraightLine.
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
         (VAL : [| e |] st => n) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o).
-  Proof. admit. Admitted.
-  
+  Proof.
+    replace (compile_expr e) with (compile_expr e ++ @nil insn) by apply app_nil_r.
+    apply (compiled_expr_correct_cont e st s i o n nil (n::s, st, i, o)).
+    - exact VAL.
+    - intuition (repeat constructor).
+  Qed.
+
   Lemma compiled_expr_not_incorrect_cont
         (e : expr) (st : state Z) (s i o : list Z) (p : prog) (c : conf)
         (EXEC : (s, st, i, o) -- compile_expr e ++ p --> c) :
     exists (n : Z), [| e |] st => n /\ (n :: s, st, i, o) -- p --> c.
-  Proof. admit. Admitted.
+  Proof.
+    generalize dependent p.
+    generalize dependent s.
+    generalize dependent i.
+    generalize dependent o.
+    induction e; intros o_out i_in s_stack p_prog EXEC_OP.
+    - simpl in EXEC_OP.
+      inversion EXEC_OP; subst; clear EXEC_OP.
+      exists z. split.
+      + apply bs_Nat.
+      + assumption.
+    - simpl in EXEC_OP.
+      inversion EXEC_OP; subst; clear EXEC_OP.
+      exists z. split.
+      + apply bs_Var. exact VAR.
+      + assumption.
+    - simpl in EXEC_OP.
+      rewrite <- !app_assoc in EXEC_OP.
+      edestruct IHe1 as [za [VALA EX1]]. { exact EXEC_OP. }
+      edestruct IHe2 as [zb [VALB EX2]]. { exact EX1. }
+      simpl in EX2.
+      inversion EX2; subst; clear EX2.
+      all: try (exists Z.one;  split; try assumption; econstructor; eauto; fail).
+      all: try (exists Z.zero; split; try assumption; econstructor; eauto; fail).
+      + exists (za + zb)%Z. split; [econstructor; eauto | assumption].
+      + exists (za - zb)%Z. split; [econstructor; eauto | assumption].
+      + exists (za * zb)%Z. split; [econstructor; eauto | assumption].
+      + exists (Z.div za zb). split; [econstructor; eauto | assumption].
+      + exists (Z.modulo za zb). split; [econstructor; eauto | assumption].
+      + exists (za * zb)%Z. split; [econstructor; eauto | assumption].
+      + exists (zor za zb). split; [econstructor; eauto | assumption].
+  Qed.
   
   Lemma compiled_expr_not_incorrect
         (e : expr) (st : state Z)
         (s i o : list Z) (n : Z)
         (EXEC : (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o)) :
     [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof.
+    rewrite <- (app_nil_r (compile_expr e)) in EXEC.
+    apply compiled_expr_not_incorrect_cont in EXEC.
+    destruct EXEC as [n0 [Hval Hexec]].
+    inversion Hexec; subst.
+    eexact Hval.
+  Qed.
   
   Lemma expr_compiler_correct
         (e : expr) (st : state Z) (s i o : list Z) (n : Z) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o) <-> [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof.
+    split.
+    - apply compiled_expr_not_incorrect.
+    - apply compiled_expr_correct.
+  Qed.
       
   Fixpoint compile (s : stmt) (H : StraightLine s) : prog :=
     match H with
@@ -241,30 +298,91 @@ Module StraightLine.
         (H : (st, i, o) == p ==> (st', i', o')) (q : prog) (c : conf)
         (EXEC : ([], st', i', o') -- q --> c) :
     ([], st, i, o) -- (compile p Sp) ++ q --> c.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction Sp. 
+    - simpl. rewrite <- app_assoc. inversion H. eapply compiled_expr_correct_cont. 
+      * eassumption. 
+      * constructor. congruence. 
+    - simpl. inversion H. repeat constructor. congruence. 
+    - simpl. rewrite <- app_assoc. inversion H. eapply compiled_expr_correct_cont. 
+      * eassumption. 
+      * constructor. congruence. 
+    - simpl. inversion H. congruence. 
+    - simpl. rewrite <- app_assoc. 
+      inversion H; subst.
+      destruct c'.
+      all: try solve [inversion H0].
+      all: try solve [inversion H1].
+      all: try solve [inversion H2].
+      all: try solve [inversion H3].
+      all: try destruct s0.
+      all: try destruct p0.
+      all: try destruct s.
+      all: try destruct p.
+      all: eapply IHSp1; try eassumption.  
+      all: eapply IHSp2; eassumption. 
+  Qed.
   
   Lemma compiled_straightline_correct
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : (st, i, o) == p ==> (st', i', o')) :
     ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
-  
+    Proof. 
+      rewrite <- (app_nil_r (compile p Sp)).
+      apply (compiled_straightline_correct_cont p Sp st st' nil i o nil i' o'); 
+      eauto; repeat constructor.
+    Qed.
+
+  Require Import Coq.Program.Equality. 
+
   Lemma compiled_straightline_not_incorrect_cont
         (p : stmt) (Sp : StraightLine p) (st : state Z) (i o : list Z) (q : prog) (c : conf)
         (EXEC: ([], st, i, o) -- (compile p Sp) ++ q --> c) :
     exists (st' : state Z) (i' o' : list Z), (st, i, o) == p ==> (st', i', o') /\ ([], st', i', o') -- q --> c.
-  Proof. admit. Admitted.
+  Proof. 
+    dependent induction Sp.
+    - simpl in EXEC; rewrite <- app_assoc in EXEC.
+    apply compiled_expr_not_incorrect_cont in EXEC as [n [EVAL EXEC]].
+    inversion EXEC; subst.
+    repeat eexists; eauto.
+    - simpl in EXEC.
+    inversion EXEC; subst.
+    inversion EXEC0; subst.
+    repeat eexists; eauto.
+    - simpl in EXEC; rewrite <- app_assoc in EXEC.
+    apply compiled_expr_not_incorrect_cont in EXEC as [n [EVAL EXEC]].
+    inversion EXEC; subst.
+    repeat eexists; eauto.
+    - simpl in EXEC.
+    repeat eexists; eauto.
+    - simpl in EXEC; rewrite <- app_assoc in EXEC.
+    apply IHSp1 in EXEC as [st1 [i1 [o1 [EVAL1 EXEC]]]].
+    apply IHSp2 in EXEC as [st2 [i2 [o2 [EVAL2 EXEC]]]].
+    repeat eexists; eauto.
+  Qed.
   
   Lemma compiled_straightline_not_incorrect
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : ([], st, i, o) -- compile p Sp --> ([], st', i', o')) :
     (st, i, o) == p ==> (st', i', o').
-  Proof. admit. Admitted.
+  Proof.
+    rewrite <- (app_nil_r (compile p Sp)) in EXEC.
+    apply compiled_straightline_not_incorrect_cont in EXEC.
+    destruct EXEC as [st_mid [i_mid [o_mid [Hbs Hexec]]]].
+    inversion Hexec; subst.
+    eexact Hbs.
+  Qed.
   
   Theorem straightline_compiler_correct
           (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z) :
     (st, i, o) == p ==> (st', i', o') <-> ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof.
+    split.
+    - intros H.
+      eapply compiled_straightline_correct; eexact H.
+    - intros EXEC.
+      eapply compiled_straightline_not_incorrect; eexact EXEC.
+  Qed.
   
 End StraightLine.
   
@@ -368,10 +486,51 @@ Lemma wf_app (p q  : prog)
              (l    : nat)
              (Hwf  : prog_wf_rec q p = true)
              (Hocc : label_occurs_once l q = true) : prog_wf_rec q (p ++ [JMP l]) = true.
-Proof. admit. Admitted.
+Proof.
+  generalize dependent Hwf. 
+  induction p; intros Hwf; simpl in *.
+  - rewrite Hocc. reflexivity. 
+  - rename a into head, p into tail, IHp into IH.
+    destruct (match head with
+              | JMP l0 | JZ l0 | JNZ l0 => label_occurs_once l0 q
+              | _ => true
+              end) eqn:H_match.
+    + specialize (IH Hwf); auto.
+    + discriminate Hwf.
+Qed.
+
+Require Import Coq.Bool.Bool.
+
+Lemma wf_app_split (p1 p2 : prog) (q : prog) :
+  prog_wf_rec q (p1 ++ p2) = true <-> (prog_wf_rec q p1 = true /\ prog_wf_rec q p2 = true).
+Proof.
+  induction p1; simpl in *.
+    - tauto.
+    - remember (match a with
+                | JMP l | JZ l | JNZ l => label_occurs_once l q
+                | _ => true
+                end) as check_a.
+      destruct check_a; simpl in *.
+      + exact IHp1.
+      + split.
+        * intros H.   
+          discriminate H.
+        * intros [H _]. 
+          discriminate H.
+  Qed.
 
 Lemma wf_rev (p q : prog) (Hwf : prog_wf_rec q p = true) : prog_wf_rec q (rev p) = true.
-Proof. admit. Admitted.
+Proof.
+  induction p; simpl in *.
+  - eauto.
+  - apply andb_true_iff in Hwf.
+    destruct Hwf as [H_a H_p].
+    specialize (IHp H_p).
+    apply wf_app_split.
+    split.
+    + exact IHp.
+    + simpl. rewrite H_a. reflexivity.
+Qed.
 
 Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
   match p with
@@ -380,7 +539,10 @@ Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
   end.
 
 Lemma cons_comm_app (A : Type) (a : A) (l1 l2 : list A) : l1 ++ a :: l2 = (l1 ++ [a]) ++ l2.
-Proof. admit. Admitted.
+Proof. 
+  rewrite <- app_assoc. 
+  reflexivity. 
+Qed.
 
 Definition compile_expr (e : expr) : prog :=
   convert_straightline (StraightLine.compile_expr e).
