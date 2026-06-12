@@ -64,30 +64,71 @@ Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
 Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof.
+  intros [n] [m].
+  destruct (Nat.eq_dec n m) as [H | H].
+  - left. now subst.
+  - right. intros E. inversion E. contradiction.
+Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof.
+  intros T x p q.
+  destruct (id_eq_dec x x) as [E | N].
+  - reflexivity.
+  - exfalso. apply N. reflexivity.
+Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof.
+  intros T x y p q NEQ.
+  destruct (id_eq_dec x y) as [EQ | DIFFERENT].
+  - contradiction.
+  - reflexivity.
+Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n] [m] Hnm Hmn.
+  inversion Hnm; inversion Hmn; subst.
+  lia.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros [n] [m] Hle Hgt.
+  inversion Hle; inversion Hgt; subst.
+  lia.
+Qed.
 
 Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros [n] [m] H.
+  assert (Hnm : n <= m).
+  { inversion H. assumption. }
+  destruct (Nat.eq_dec n m) as [SAME | DIFFERENT].
+  - left. now subst.
+  - right. constructor. lia.
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof.
+  intros [n] [m] NEQ.
+  destruct (lt_eq_lt_dec n m) as [[LT | SAME] | GT].
+  - right. now constructor.
+  - subst. exfalso. apply NEQ. reflexivity.
+  - left. now constructor.
+Qed.
     
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof.
+  intros x y SAME GREATER.
+  subst y.
+  destruct x as [n].
+  inversion GREATER; lia.
+Qed.
