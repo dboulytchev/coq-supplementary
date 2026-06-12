@@ -1,0 +1,9 @@
+*.coq
+*.coq.d
+*.coq.conf
+*.aux
+*.glob
+*.vo
+*.vok
+*.vos
+_CoqProject
