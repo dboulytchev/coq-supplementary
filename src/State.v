@@ -51,9 +51,9 @@ Section S.
     induction SN.
     - inversion SM; subst.
       + reflexivity.
-      + destruct H2. reflexivity.
+      + unfold not in *. contradiction.
     - inversion SM; subst.
-      + destruct H. reflexivity.
+      + unfold not in *. contradiction.
       + apply IHSN. assumption.
   Qed.
   
@@ -68,23 +68,29 @@ Section S.
         (NEQ : x2 <> x1) : st / x1 => m <-> st [x2 <- n] / x1 => m.
   Proof.
     split; intro H.
-    - unfold update.
-      apply st_binds_tl.
-      + assumption.
-      + assumption.
-    - unfold update in H.
-      inversion H; subst.
-      + destruct NEQ. reflexivity.
+    - apply st_binds_tl.
+      + congruence.
+      + eexact H.
+    - inversion H; subst.
+      + congruence.
       + assumption.
   Qed.
   
   Lemma update_shadow (st : state) (x1 x2 : id) (n1 n2 m : A) :
     st[x2 <- n1][x2 <- n2] / x1 => m <-> st[x2 <- n2] / x1 => m.
   Proof.
-    rewrite <- st_eval_equiv_st_binds.
-    rewrite <- st_eval_equiv_st_binds.
-    unfold update; simpl.
-    reflexivity.
+    split; intros H.
+    - inversion H; subst.
+      + apply st_binds_hd.
+      + match goal with
+        | H_deep : _ [x2 <- n1] / x1 => m |- _ => 
+            inversion H_deep; subst; [congruence |]
+        end.
+        apply st_binds_tl; [congruence | assumption].  
+    - inversion H; subst.
+      + apply st_binds_hd.
+      + apply st_binds_tl; [congruence |].
+        apply st_binds_tl; [congruence | assumption].
   Qed.
   
   Lemma update_same (st : state) (x1 x2 : id) (n1 m : A)
@@ -92,13 +98,15 @@ Section S.
         (SM : st / x2 => m) :
     st [x1 <- n1] / x2 => m.
   Proof.
-    apply st_eval_equiv_st_binds in SN.
-    apply st_eval_equiv_st_binds in SM.
-    apply st_eval_equiv_st_binds.
-    unfold update; simpl.
     destruct (id_eq_dec x1 x2) as [Heq | Hneq].
-    - subst x1. inversion SN; subst. assumption.
-    - assumption.
+    + subst x2.
+      assert (Heq_vals : n1 = m).
+      { eapply state_deterministic; eexact SN || eexact SM. }
+      subst n1.
+      apply st_binds_hd.
+    + apply update_neq.
+      * congruence.
+      * eexact SM.
   Qed.
   
   Lemma update_permute (st : state) (x1 x2 x3 : id) (n1 n2 m : A)
@@ -106,11 +114,17 @@ Section S.
         (SM : st [x2 <- n1][x1 <- n2] / x3 => m) :
     st [x1 <- n2][x2 <- n1] / x3 => m.
   Proof.
-    apply st_eval_equiv_st_binds in SM.
-    apply st_eval_equiv_st_binds.
-    unfold update in *; simpl in *.
-    destruct (id_eq_dec x1 x3); destruct (id_eq_dec x2 x3); subst; auto.
-    destruct NEQ; reflexivity.
+    inversion SM; subst.
+    - apply st_binds_tl.
+      + congruence.
+      + apply st_binds_hd.
+    - match goal with
+      | H_inner : _ [x2 <- n1] / x3 => m |- _ =>
+        inversion H_inner; subst
+      end.
+      + apply st_binds_hd.
+      + apply st_binds_tl; [congruence |].
+        apply st_binds_tl; [congruence | assumption].
   Qed.
 
   Lemma state_extensional_equivalence (st st' : state) (H: forall x z, st / x => z <-> st' / x => z) : st = st'.
@@ -120,20 +134,20 @@ Section S.
     (exists a : A, True) ->
     exists st st', (forall x z, st / x => z <-> st' / x => z) /\ st <> st'.
   Proof.
-    intros [a _].
-    exists [(Id 0, a)], [(Id 0, a); (Id 0, a)].
-    split.
-    - intros x z. split; intro H.
-      + inversion H; subst.
-        * constructor.
-        * inversion H5.
-      + inversion H; subst.
-        * constructor.
-        * inversion H5; subst.
-          -- destruct H4. reflexivity.
-          -- inversion H10.
-    - discriminate.
-  Qed.
+  intros [a _].
+  exists [(Id 0, a)], [(Id 0, a); (Id 0, a)].
+  split.
+  - intros x z. split; intro H.
+    + inversion H; subst.
+      * apply st_binds_hd.
+      * match goal with | H_empty : [] / _ => z |- _ => inversion H_empty end.
+    + inversion H; subst.
+      * apply st_binds_hd.
+      * match goal with | H_layer2 : [(Id 0, a)] / _ => z |- _ => inversion H_layer2; subst end.
+        -- apply st_binds_hd.
+        -- match goal with | H_empty : [] / _ => z |- _ => inversion H_empty end.
+  - discriminate.
+Qed.
 
   Definition state_equivalence (st st' : state) := forall x a, st / x => a <-> st' / x => a.
 
