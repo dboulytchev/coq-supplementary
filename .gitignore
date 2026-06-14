@@ -1,0 +1,14 @@
+.vscode
+src/*.crashrocqide
+src/*.aux
+src/*.glob
+src/*.vok
+src/*.vos
+src/*.vo
+src/Playground.*
+src/Tactics.*
+src/Logic.*
+src/IndProp.*
+src/Induction.*
+src/Poly.*
+*Makefile.*
