@@ -5,31 +5,31 @@ Require Import Lia.
 
 Inductive id : Type :=
   Id : nat -> id.
-             
+
 Reserved Notation "m i<= n" (at level 70, no associativity).
 Reserved Notation "m i>  n" (at level 70, no associativity).
 Reserved Notation "m i<  n" (at level 70, no associativity).
 
 Inductive le_id : id -> id -> Prop :=
   le_conv : forall n m, n <= m -> (Id n) i<= (Id m)
-where "n i<= m" := (le_id n m).   
+where "n i<= m" := (le_id n m).
 
 Inductive lt_id : id -> id -> Prop :=
   lt_conv : forall n m, n < m -> (Id n) i< (Id m)
-where "n i< m" := (lt_id n m).   
+where "n i< m" := (lt_id n m).
 
 Inductive gt_id : id -> id -> Prop :=
   gt_conv : forall n m, n > m -> (Id n) i> (Id m)
-where "n i> m" := (gt_id n m).   
+where "n i> m" := (gt_id n m).
 
 Ltac prove_with th :=
-  intros; 
-  repeat (match goal with H: id |- _ => destruct H end); 
+  intros;
+  repeat (match goal with H: id |- _ => destruct H end);
   match goal with n: nat, m: nat |- _ => set (th n m) end;
   repeat match goal with H: _ + {_} |- _ => inversion_clear H end;
   try match goal with H: {_} + {_} |- _ => inversion_clear H end;
   repeat
-    match goal with 
+    match goal with
       H: ?n <  ?m |-  _                + {Id ?n i< Id ?m}  => right
     | H: ?n <  ?m |-  _                + {_}               => left
     | H: ?n >  ?m |-  _                + {Id ?n i> Id ?m}  => right
@@ -56,7 +56,7 @@ Ltac prove_with th :=
 
 Lemma lt_eq_lt_id_dec: forall (id1 id2 : id), {id1 i< id2} + {id1 = id2} + {id2 i< id1}.
 Proof. prove_with lt_eq_lt_dec. Qed.
-  
+
 Lemma gt_eq_gt_id_dec: forall (id1 id2 : id), {id1 i> id2} + {id1 = id2} + {id2 i> id1}.
 Proof. prove_with gt_eq_gt_dec. Qed.
 
@@ -64,30 +64,54 @@ Lemma le_gt_id_dec : forall id1 id2 : id, {id1 i<= id2} + {id1 i> id2}.
 Proof. prove_with le_gt_dec. Qed.
 
 Lemma id_eq_dec : forall id1 id2 : id, {id1 = id2} + {id1 <> id2}.
-Proof. admit. Admitted.
+Proof. prove_with Nat.eq_dec. Qed.
 
 Lemma eq_id : forall (T:Type) x (p q:T), (if id_eq_dec x x then p else q) = p.
-Proof. admit. Admitted.
+Proof. intros. destruct (id_eq_dec x x).
+  - reflexivity.
+  - destruct n. reflexivity.
+Qed.
 
 Lemma neq_id : forall (T:Type) x y (p q:T), x <> y -> (if id_eq_dec x y then p else q) = q.
-Proof. admit. Admitted.
+Proof. intros. destruct (id_eq_dec x y).
+  - congruence.
+  - reflexivity.
+Qed.
 
 Lemma lt_gt_id_false : forall id1 id2 : id,
     id1 i> id2 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof. intros. inversion H. inversion H0.
+  subst id1 id2. inversion H5. inversion H6.
+  subst n m. lia.
+Qed.
 
 Lemma le_gt_id_false : forall id1 id2 : id,
     id2 i<= id1 -> id2 i> id1 -> False.
-Proof. admit. Admitted.
+Proof. intros. inversion H. inversion H0.
+  subst id1 id2. inversion H5. inversion H6.
+  subst n m. lia.
+Qed.
 
-Lemma le_lt_eq_id_dec : forall id1 id2 : id, 
+Lemma le_lt_eq_id_dec : forall id1 id2 : id,
     id1 i<= id2 -> {id1 = id2} + {id2 i> id1}.
-Proof. admit. Admitted.
+Proof. intros. destruct (id_eq_dec id1 id2).
+  - left. assumption.
+  - right. destruct id1, id2. inversion H. inversion H0.
+    subst. constructor.
+    assert (n0 <> n1) by congruence.
+    lia.
+Qed.
 
 Lemma neq_lt_gt_id_dec : forall id1 id2 : id,
     id1 <> id2 -> {id1 i> id2} + {id2 i> id1}.
-Proof. admit. Admitted.
-    
+Proof. intros. destruct (gt_eq_gt_id_dec id1 id2).
+  - left. destruct s.
+    + assumption.
+    + contradiction.
+  - right. assumption.
+Qed.
+
 Lemma eq_gt_id_false : forall id1 id2 : id,
     id1 = id2 -> id1 i> id2 -> False.
-Proof. admit. Admitted.
+Proof. intros. subst. inversion H0. subst. lia.
+Qed.
