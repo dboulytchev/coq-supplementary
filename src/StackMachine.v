@@ -196,9 +196,37 @@ Module StraightLine.
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
         (p : prog) (c : conf)
         (VAL : [| e |] st => n)
-        (EXEC: (n::s, st, i, o) -- p --> c) :        
+        (EXEC: (n::s, st, i, o) -- p --> c) :
     (s, st, i, o) -- (compile_expr e) ++ p --> c.
-  Proof. admit. Admitted.
+  Proof.
+    revert s i o n p c VAL EXEC.
+    induction e as [n0 | x | op e1 IHe1 e2 IHe2]; intros s i o n p c VAL EXEC.
+    - inversion VAL; subst. simpl. eapply sm_Const. exact EXEC.
+    - inversion VAL; subst. simpl. eapply sm_Load; [exact VAR | exact EXEC].
+    - simpl. rewrite <- app_assoc.
+      inversion VAL; subst;
+      (eapply IHe1; [eassumption | rewrite <- app_assoc; eapply IHe2; [eassumption | simpl;
+        first [ eapply sm_Add; solve [assumption | exact EXEC]
+              | eapply sm_Sub; solve [assumption | exact EXEC]
+              | eapply sm_Mul; solve [assumption | exact EXEC]
+              | eapply sm_Div; solve [assumption | exact EXEC]
+              | eapply sm_Mod; solve [assumption | exact EXEC]
+              | eapply sm_Le_T; solve [assumption | exact EXEC]
+              | eapply sm_Le_F; solve [assumption | exact EXEC]
+              | eapply sm_Ge_T; solve [assumption | exact EXEC]
+              | eapply sm_Ge_F; solve [assumption | exact EXEC]
+              | eapply sm_Lt_T; solve [assumption | exact EXEC]
+              | eapply sm_Lt_F; solve [assumption | exact EXEC]
+              | eapply sm_Gt_T; solve [assumption | exact EXEC]
+              | eapply sm_Gt_F; solve [assumption | exact EXEC]
+              | eapply sm_Eq_T; solve [assumption | exact EXEC]
+              | eapply sm_Eq_F; solve [assumption | exact EXEC]
+              | eapply sm_Ne_T; solve [assumption | exact EXEC]
+              | eapply sm_Ne_F; solve [assumption | exact EXEC]
+              | eapply sm_And; solve [assumption | exact EXEC]
+              | eapply sm_Or; solve [assumption | exact EXEC] ] ] ]).
+    Unshelve. all: exact [].
+  Qed.
 
   #[export] Hint Resolve compiled_expr_correct_cont.
   
@@ -206,25 +234,69 @@ Module StraightLine.
         (e : expr) (st : state Z) (s i o : list Z) (n : Z)
         (VAL : [| e |] st => n) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o).
-  Proof. admit. Admitted.
+  Proof.
+    rewrite <- (app_nil_r (compile_expr e)).
+    eapply compiled_expr_correct_cont; [exact VAL | constructor].
+    Unshelve. exact [].
+  Qed.
   
   Lemma compiled_expr_not_incorrect_cont
         (e : expr) (st : state Z) (s i o : list Z) (p : prog) (c : conf)
         (EXEC : (s, st, i, o) -- compile_expr e ++ p --> c) :
     exists (n : Z), [| e |] st => n /\ (n :: s, st, i, o) -- p --> c.
-  Proof. admit. Admitted.
+  Proof.
+    revert s i o p c EXEC.
+    induction e as [n0 | x | op e1 IHe1 e2 IHe2]; intros s i o p c EXEC.
+    - simpl in EXEC. inversion EXEC; subst.
+      exists n0. split; [constructor | assumption].
+    - simpl in EXEC. inversion EXEC; subst.
+      exists z. split; [constructor; assumption | assumption].
+    - simpl in EXEC. rewrite <- app_assoc in EXEC.
+      apply IHe1 in EXEC. destruct EXEC as [za [VALA EXEC1]].
+      rewrite <- app_assoc in EXEC1.
+      apply IHe2 in EXEC1. destruct EXEC1 as [zb [VALB EXEC2]].
+      simpl in EXEC2.
+      inversion EXEC2; subst;
+      [ (exists (za + zb)%Z; split; [eapply bs_Add; eauto | assumption])
+      | (exists (za - zb)%Z; split; [eapply bs_Sub; eauto | assumption])
+      | (exists (za * zb)%Z; split; [eapply bs_Mul; eauto | assumption])
+      | (exists (Z.div za zb); split; [eapply bs_Div; eauto | assumption])
+      | (exists (Z.modulo za zb); split; [eapply bs_Mod; eauto | assumption])
+      | (exists Z.one; split; [eapply bs_Le_T; eauto | assumption])
+      | (exists Z.zero; split; [eapply bs_Le_F; eauto | assumption])
+      | (exists Z.one; split; [eapply bs_Ge_T; eauto | assumption])
+      | (exists Z.zero; split; [eapply bs_Ge_F; eauto | assumption])
+      | (exists Z.one; split; [eapply bs_Lt_T; eauto | assumption])
+      | (exists Z.zero; split; [eapply bs_Lt_F; eauto | assumption])
+      | (exists Z.one; split; [eapply bs_Gt_T; eauto | assumption])
+      | (exists Z.zero; split; [eapply bs_Gt_F; eauto | assumption])
+      | (exists Z.one; split; [eapply bs_Eq_T; eauto | assumption])
+      | (exists Z.zero; split; [eapply bs_Eq_F; eauto | assumption])
+      | (exists Z.one; split; [eapply bs_Ne_T; eauto | assumption])
+      | (exists Z.zero; split; [eapply bs_Ne_F; eauto | assumption])
+      | (exists (za * zb)%Z; split; [eapply bs_And; eauto | assumption])
+      | (exists (zor za zb); split; [eapply bs_Or; eauto | assumption])
+      ].
+  Qed.
   
   Lemma compiled_expr_not_incorrect
         (e : expr) (st : state Z)
         (s i o : list Z) (n : Z)
         (EXEC : (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o)) :
     [| e |] st => n.
-  Proof. admit. Admitted.
-  
+  Proof.
+    rewrite <- (app_nil_r (compile_expr e)) in EXEC.
+    apply compiled_expr_not_incorrect_cont in EXEC.
+    destruct EXEC as [n' [VAL EXEC']].
+    inversion EXEC'; subst. assumption.
+  Qed.
+
   Lemma expr_compiler_correct
         (e : expr) (st : state Z) (s i o : list Z) (n : Z) :
     (s, st, i, o) -- (compile_expr e) --> (n::s, st, i, o) <-> [| e |] st => n.
-  Proof. admit. Admitted.
+  Proof.
+    split; [apply compiled_expr_not_incorrect | apply compiled_expr_correct].
+  Qed.
       
   Fixpoint compile (s : stmt) (H : StraightLine s) : prog :=
     match H with
@@ -241,30 +313,80 @@ Module StraightLine.
         (H : (st, i, o) == p ==> (st', i', o')) (q : prog) (c : conf)
         (EXEC : ([], st', i', o') -- q --> c) :
     ([], st, i, o) -- (compile p Sp) ++ q --> c.
-  Proof. admit. Admitted.
-  
+  Proof.
+    revert st st' i o i' o' H q c EXEC.
+    induction Sp as [x e | x | e | | s1 s2 Sp1 IH1 Sp2 IH2]; intros st st' i o i' o' H q c EXEC.
+    - inversion H; subst. simpl. rewrite <- app_assoc.
+      eapply compiled_expr_correct_cont; [exact VAL | eapply sm_Store; exact EXEC].
+    - inversion H; subst. simpl.
+      eapply sm_Read. eapply sm_Store. exact EXEC.
+    - inversion H; subst. simpl. rewrite <- app_assoc.
+      eapply compiled_expr_correct_cont; [exact VAL | eapply sm_Write; exact EXEC].
+    - inversion H; subst. simpl. exact EXEC.
+    - inversion H; subst.
+      destruct c' as [[st1 i1] o1].
+      simpl. rewrite <- app_assoc.
+      eapply IH1; [exact STEP1 | eapply IH2; [exact STEP2 | exact EXEC]].
+  Qed.
+
   Lemma compiled_straightline_correct
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : (st, i, o) == p ==> (st', i', o')) :
     ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
-  
+  Proof.
+    rewrite <- (app_nil_r (compile p Sp)).
+    eapply (compiled_straightline_correct_cont p Sp st st' (@nil Z) i o (@nil Z) i' o' EXEC).
+    constructor.
+    Unshelve. all: exact [].
+  Qed.
+
   Lemma compiled_straightline_not_incorrect_cont
         (p : stmt) (Sp : StraightLine p) (st : state Z) (i o : list Z) (q : prog) (c : conf)
         (EXEC: ([], st, i, o) -- (compile p Sp) ++ q --> c) :
     exists (st' : state Z) (i' o' : list Z), (st, i, o) == p ==> (st', i', o') /\ ([], st', i', o') -- q --> c.
-  Proof. admit. Admitted.
-  
+  Proof.
+    revert st i o q c EXEC.
+    induction Sp as [x e | x | e | | s1 s2 Sp1 IH1 Sp2 IH2]; intros st i o q c EXEC.
+    - simpl in EXEC. rewrite <- app_assoc in EXEC.
+      apply compiled_expr_not_incorrect_cont in EXEC.
+      destruct EXEC as [z [VAL EXEC1]].
+      simpl in EXEC1. inversion EXEC1; subst.
+      exists (st [x <- z]), i, o. split; [constructor; assumption | assumption].
+    - simpl in EXEC. inversion EXEC; subst.
+      inversion EXEC0; subst.
+      exists (st [x <- z]), i0, o. split; [constructor | assumption].
+    - simpl in EXEC. rewrite <- app_assoc in EXEC.
+      apply compiled_expr_not_incorrect_cont in EXEC.
+      destruct EXEC as [z [VAL EXEC1]].
+      simpl in EXEC1. inversion EXEC1; subst.
+      exists st, i, (z :: o). split; [constructor; assumption | assumption].
+    - simpl in EXEC.
+      exists st, i, o. split; [constructor | exact EXEC].
+    - simpl in EXEC. rewrite <- app_assoc in EXEC.
+      apply IH1 in EXEC.
+      destruct EXEC as [st1 [i1 [o1 [STEP1 EXEC1]]]].
+      apply IH2 in EXEC1.
+      destruct EXEC1 as [st' [i' [o' [STEP2 EXEC2]]]].
+      exists st', i', o'. split; [eapply bs_Seq; [exact STEP1 | exact STEP2] | exact EXEC2].
+  Qed.
+
   Lemma compiled_straightline_not_incorrect
         (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z)
         (EXEC : ([], st, i, o) -- compile p Sp --> ([], st', i', o')) :
     (st, i, o) == p ==> (st', i', o').
-  Proof. admit. Admitted.
-  
+  Proof.
+    rewrite <- (app_nil_r (compile p Sp)) in EXEC.
+    apply compiled_straightline_not_incorrect_cont in EXEC.
+    destruct EXEC as [st1 [i1 [o1 [H EXEC1]]]].
+    inversion EXEC1; subst. exact H.
+  Qed.
+
   Theorem straightline_compiler_correct
           (p : stmt) (Sp : StraightLine p) (st st' : state Z) (i o i' o' : list Z) :
     (st, i, o) == p ==> (st', i', o') <-> ([], st, i, o) -- compile p Sp --> ([], st', i', o').
-  Proof. admit. Admitted.
+  Proof.
+    split; [apply compiled_straightline_correct | apply compiled_straightline_not_incorrect].
+  Qed.
   
 End StraightLine.
   
@@ -364,14 +486,38 @@ Fixpoint prog_wf_rec (prog p : prog) : bool :=
    
 Definition prog_wf (p : prog) : bool := prog_wf_rec p p.
 
+Lemma wf_app_gen (p q : prog) (i : insn)
+      (Hwf : prog_wf_rec q p = true)
+      (Hi : match i with
+            | JMP l | JZ l | JNZ l => label_occurs_once l q
+            | _ => true
+            end = true) :
+  prog_wf_rec q (p ++ [i]) = true.
+Proof.
+  induction p as [ | i' p' IH].
+  - simpl. rewrite Bool.andb_true_r. exact Hi.
+  - simpl in Hwf |- *.
+    apply Bool.andb_true_iff in Hwf. destruct Hwf as [Hi' Hp'].
+    apply Bool.andb_true_iff. split.
+    + exact Hi'.
+    + apply IH. exact Hp'.
+Qed.
+
 Lemma wf_app (p q  : prog)
              (l    : nat)
              (Hwf  : prog_wf_rec q p = true)
              (Hocc : label_occurs_once l q = true) : prog_wf_rec q (p ++ [JMP l]) = true.
-Proof. admit. Admitted.
+Proof. apply wf_app_gen; [exact Hwf | exact Hocc]. Qed.
 
 Lemma wf_rev (p q : prog) (Hwf : prog_wf_rec q p = true) : prog_wf_rec q (rev p) = true.
-Proof. admit. Admitted.
+Proof.
+  induction p as [ | i p' IH].
+  - reflexivity.
+  - simpl in Hwf. apply Bool.andb_true_iff in Hwf. destruct Hwf as [Hi Hp'].
+    simpl. apply wf_app_gen.
+    + apply IH. exact Hp'.
+    + exact Hi.
+Qed.
 
 Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
   match p with
@@ -380,7 +526,7 @@ Fixpoint convert_straightline (p : StraightLine.prog) : prog :=
   end.
 
 Lemma cons_comm_app (A : Type) (a : A) (l1 l2 : list A) : l1 ++ a :: l2 = (l1 ++ [a]) ++ l2.
-Proof. admit. Admitted.
+Proof. exact (app_assoc l1 (a :: nil) l2). Qed.
 
 Definition compile_expr (e : expr) : prog :=
   convert_straightline (StraightLine.compile_expr e).
